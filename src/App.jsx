@@ -378,7 +378,7 @@ export default function App() {
           body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
         `}</style>
 
-        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px', textAlign: 'center' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
             Capture what comes up between sessions
@@ -497,8 +497,7 @@ export default function App() {
       background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
       padding: '24px',
       display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'flex-start'
+      justifyContent: 'center'
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
@@ -509,7 +508,7 @@ export default function App() {
         body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '1024px' }}>
+      <div style={{ width: '100%', maxWidth: '1024px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -539,7 +538,7 @@ export default function App() {
           {[
             ["capture", "Capture your thoughts"],
             ["prep", "Prep for your session"],
-            ["during", "During your session"],
+            ["during", "Use during your session"],
           ].map(([t, label]) => (
             <button
               key={t}
@@ -838,7 +837,7 @@ export default function App() {
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                   </svg>
-                  <span>Your journal is stored in Back4App for this MVP.</span>
+                  <span>Your data is private and secure.</span>
                 </div>
               </div>
             )}
