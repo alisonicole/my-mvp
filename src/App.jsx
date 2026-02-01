@@ -482,39 +482,22 @@ export default function App() {
   // Show login/signup screen if not authenticated
   if (!currentUser) {
     return (
-      <div className="container-padding" style={{
+      <div style={{ 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
+        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
+        padding: '24px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
       }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
           * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
           h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
           body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
-
-          .container-padding { padding: 24px; }
-          .auth-card-padding { padding: 48px; }
-
-          input, textarea {
-            max-width: 100%;
-            box-sizing: border-box;
-          }
-
-          @media (max-width: 768px) {
-            .container-padding { padding: 16px; }
-            .auth-card-padding { padding: 24px; }
-          }
-
-          @media (max-width: 640px) {
-            .container-padding { padding: 12px; }
-            .auth-card-padding { padding: 16px; }
-          }
         `}</style>
 
-        <div className="auth-card-padding" style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
+        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px', textAlign: 'center' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
             Capture what comes up between sessions
@@ -628,48 +611,44 @@ export default function App() {
   }
 
   return (
-    <div className="container-padding" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)' }}>
+    <div style={{ 
+      minHeight: '100vh', 
+      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
+      padding: '24px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start'
+    }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
-        * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
+        * { 
+          font-family: 'Work Sans', sans-serif; 
+          box-sizing: border-box;
+        }
         h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
-
-        .container-padding { padding: 24px; }
-        .card-padding { padding: 32px; }
-        .tab-gap { gap: 16px; }
-
-        input, textarea {
+        
+        /* Ensure inputs and content don't overflow */
+        input, textarea, select {
           max-width: 100%;
           box-sizing: border-box;
         }
-
-        .archive-item {
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          overflow: hidden;
-        }
-
-        .archive-card {
+        
+        /* Prevent text overflow in containers */
+        p, li, div {
           word-wrap: break-word;
           overflow-wrap: break-word;
         }
-
-        @media (max-width: 768px) {
-          .container-padding { padding: 16px; }
-          .card-padding { padding: 24px; }
-          .tab-gap { gap: 12px; }
-        }
-
-        @media (max-width: 640px) {
-          .container-padding { padding: 12px; }
-          .card-padding { padding: 16px; }
-          .tab-gap { gap: 8px; }
+        
+        /* Ensure long words break */
+        .archive-card, .archive-card * {
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
       `}</style>
 
-      <div style={{ maxWidth: '1024px', width: '100%', margin: '0 auto' }}>
+      <div style={{ width: '100%', maxWidth: '1024px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -697,7 +676,7 @@ export default function App() {
           </p>
         </div>
 
-        <div className="tab-gap" style={{ display: 'flex', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
           {[
             ["capture", "Capture your thoughts"],
             ["prep", "Prep for your session"],
@@ -760,7 +739,7 @@ export default function App() {
             </div>
 
             {showArchive ? (
-              <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '24px' }}>Archive</h2>
 
                 {!entries.length && !history.length ? (
@@ -770,12 +749,12 @@ export default function App() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {combined().map((item) => (
-                      <div key={item.id} className="archive-item" style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden' }}>
+                      <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden', maxWidth: '100%' }}>
                         <div
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', cursor: 'pointer' }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', cursor: 'pointer', gap: '8px' }}
                           onClick={() => setExpanded((p) => ({ ...p, [item.id]: !p[item.id] }))}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
                             {expanded[item.id] ? (
                               <ChevronDown size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
                             ) : (
@@ -854,7 +833,7 @@ export default function App() {
                         </div>
 
                         {expanded[item.id] && (
-                          <div style={{ padding: '16px', paddingTop: 0, borderTop: '1px solid #e9d5ff' }}>
+                          <div style={{ padding: '16px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
                             {item.type === "entry" ? (
                               <>
                                 {editingId === item.data.parseId ? (
@@ -895,7 +874,7 @@ export default function App() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', marginTop: '12px' }}>
+                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', marginTop: '12px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                     {item.data.text}
                                   </p>
                                 )}
@@ -907,7 +886,7 @@ export default function App() {
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Session Starter
                                   </h4>
-                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                     {item.data.openingStatement || "—"}
                                   </p>
                                 </div>
@@ -917,7 +896,7 @@ export default function App() {
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Notes
                                   </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                     {item.data.notes || "—"}
                                   </p>
                                 </div>
@@ -927,7 +906,7 @@ export default function App() {
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Next Steps
                                   </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                     {item.data.nextSteps || "—"}
                                   </p>
                                 </div>
@@ -980,7 +959,7 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
                     <Calendar size={20} />
@@ -1054,7 +1033,7 @@ export default function App() {
         {/* PREP TAB */}
         {tab === "prep" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+            <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
               <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                 Last session
               </h3>
@@ -1073,7 +1052,7 @@ export default function App() {
                     <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px', margin: '0 0 8px 0' }}>
                       What you talked about
                     </h4>
-                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {lastSnapshot.notes || "—"}
                     </p>
                   </div>
@@ -1082,7 +1061,7 @@ export default function App() {
                     <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px', margin: '0 0 8px 0' }}>
                       Next steps
                     </h4>
-                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {lastSnapshot.nextSteps || "—"}
                     </p>
                   </div>
@@ -1121,7 +1100,7 @@ export default function App() {
                   Refresh Analysis
                 </button>
 
-                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
                     <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
                     <div style={{ flex: 1 }}>
@@ -1209,7 +1188,7 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Session Date
                   </h3>
@@ -1221,9 +1200,10 @@ export default function App() {
                   />
                 </div>
 
-                <div className="card-padding" style={{
+                <div style={{
                   background: 'linear-gradient(to right, #e9d5ff, #ddd6fe)',
                   borderRadius: '24px',
+                  padding: '32px',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
                   border: '1px solid #c4b5fd',
                   minHeight: '200px',
@@ -1278,7 +1258,7 @@ export default function App() {
                           rows="3"
                         />
                       ) : (
-                        <p style={{ color: '#581c87', fontSize: '16px', whiteSpace: 'pre-wrap', margin: 0 }}>
+                        <p style={{ color: '#581c87', fontSize: '16px', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                           "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
                         </p>
                       )}
@@ -1286,7 +1266,7 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Notes
                   </h3>
@@ -1298,7 +1278,7 @@ export default function App() {
                   />
                 </div>
 
-                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Next steps
                   </h3>
