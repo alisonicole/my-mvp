@@ -619,7 +619,7 @@ export default function App() {
     <div style={{ 
       minHeight: '100vh', 
       background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
-      padding: '16px',
+      padding: '12px',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start'
@@ -644,12 +644,14 @@ export default function App() {
         input, textarea, select {
           max-width: 100%;
           box-sizing: border-box;
+          width: 100% !important;
         }
         
         /* Prevent text overflow in containers */
         p, li, div {
           word-wrap: break-word;
           overflow-wrap: break-word;
+          max-width: 100%;
         }
         
         /* Ensure long words break */
@@ -666,12 +668,17 @@ export default function App() {
           
           /* Reduce padding on cards for mobile */
           .mobile-card {
-            padding: 20px !important;
+            padding: 16px !important;
           }
           
           /* Smaller heading on mobile */
           .mobile-heading {
             font-size: 20px !important;
+          }
+          
+          /* Compact last session */
+          .last-session-card {
+            padding: 16px !important;
           }
         }
       `}</style>
@@ -779,10 +786,10 @@ export default function App() {
                     {combined().map((item) => (
                       <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden', maxWidth: '100%' }}>
                         <div
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', cursor: 'pointer', gap: '8px' }}
+                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', cursor: 'pointer', gap: '8px', flexWrap: 'wrap' }}
                           onClick={() => setExpanded((p) => ({ ...p, [item.id]: !p[item.id] }))}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '0', overflow: 'hidden' }}>
                             {expanded[item.id] ? (
                               <ChevronDown size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
                             ) : (
@@ -790,13 +797,13 @@ export default function App() {
                             )}
 
                             <div style={{
-                              width: '80px',
-                              height: '36px',
-                              padding: '4px 8px',
+                              width: '70px',
+                              height: '32px',
+                              padding: '4px 6px',
                               borderRadius: '8px',
                               background: item.type === "entry" ? '#dbeafe' : '#ede9fe',
                               color: item.type === "entry" ? '#1e40af' : '#5b21b6',
-                              fontSize: '12px',
+                              fontSize: '10px',
                               fontWeight: '500',
                               display: 'flex',
                               alignItems: 'center',
@@ -808,7 +815,7 @@ export default function App() {
                               {item.type === "entry" ? "Journal\nEntry" : "Session\nSnapshot"}
                             </div>
 
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                               <h3 style={{ fontWeight: '500', color: '#581c87', marginBottom: '4px', margin: 0 }}>
                                 {formatDate(item.date)}
                               </h3>
@@ -822,7 +829,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             {item.type === "entry" && (
                               <button
                                 onClick={(e) => {
@@ -831,9 +838,9 @@ export default function App() {
                                   setEditDraft({ title: item.data.title || "", text: item.data.text || "" });
                                   setExpanded((p) => ({ ...p, [item.id]: true }));
                                 }}
-                                style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px' }}
+                                style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
                               >
-                                <Edit2 size={18} />
+                                <Edit2 size={16} />
                               </button>
                             )}
 
@@ -853,15 +860,15 @@ export default function App() {
                                   alert("Delete failed. Check Back4App permissions.");
                                 }
                               }}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
                             >
-                              <Trash2 size={18} />
+                              <Trash2 size={16} />
                             </button>
                           </div>
                         </div>
 
                         {expanded[item.id] && (
-                          <div style={{ padding: '16px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
+                          <div style={{ padding: '12px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
                             {item.type === "entry" ? (
                               <>
                                 {editingId === item.data.parseId ? (
@@ -1061,8 +1068,8 @@ export default function App() {
         {/* PREP TAB */}
         {tab === "prep" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-              <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+            <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
                 Last session
               </h3>
               {!lastSnapshot ? (
@@ -1070,26 +1077,26 @@ export default function App() {
                   Archive your first session snapshot to get a recap of your last session
                 </p>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ color: '#7c3aed', fontSize: '14px' }}>
-                    <span style={{ fontWeight: '600', color: '#581c87' }}>Session Date: </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
                     {formatDate(lastSnapshot.sessionDate)}
                   </div>
 
                   <div>
-                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px', margin: '0 0 8px 0' }}>
+                    <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
                       What you talked about
                     </h4>
-                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {lastSnapshot.notes || "—"}
                     </p>
                   </div>
 
                   <div>
-                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px', margin: '0 0 8px 0' }}>
+                    <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
                       Next steps
                     </h4>
-                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {lastSnapshot.nextSteps || "—"}
                     </p>
                   </div>
