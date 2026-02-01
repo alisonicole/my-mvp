@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Parse from "parse";
 import {
   Calendar,
   Sparkles,
@@ -13,11 +12,6 @@ import {
   RefreshCw,
   LogOut,
 } from "lucide-react";
-
-// Ensure Parse is properly initialized
-if (typeof window !== 'undefined' && !window.Parse) {
-  window.Parse = Parse;
-}
 
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
@@ -53,7 +47,9 @@ export default function App() {
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
   const SERVER_URL = import.meta.env.VITE_PARSE_SERVER_URL;
 
-  const PARSE_READY = Boolean(APP_ID && JS_KEY && SERVER_URL);
+  // Get Parse from window (loaded via CDN)
+  const Parse = typeof window !== 'undefined' ? window.Parse : null;
+  const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
 
   const formatDate = (d) =>
     new Date(d + "T12:00").toLocaleDateString("en-US", {
@@ -63,17 +59,16 @@ export default function App() {
     });
 
   useEffect(() => {
+    if (!Parse) {
+      console.error("Parse SDK not loaded from CDN");
+      return;
+    }
     if (!APP_ID || !JS_KEY || !SERVER_URL) {
       console.warn("Missing env vars:", { APP_ID, JS_KEY, SERVER_URL });
       return;
     }
     
     try {
-      console.log("Initializing Parse...");
-      console.log("Parse object:", Parse);
-      console.log("Parse.initialize type:", typeof Parse.initialize);
-      console.log("Parse keys:", Object.keys(Parse));
-      
       // Initialize Parse
       Parse.initialize(APP_ID, JS_KEY);
       Parse.serverURL = SERVER_URL;
@@ -86,7 +81,7 @@ export default function App() {
     } catch (e) {
       console.error("Parse init failed", e);
     }
-  }, [APP_ID, JS_KEY, SERVER_URL]);
+  }, [APP_ID, JS_KEY, SERVER_URL, Parse]);
 
   // Auth functions
   const handleLogin = async (e) => {
