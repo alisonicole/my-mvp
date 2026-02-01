@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   RefreshCw,
+  LogOut,
 } from "lucide-react";
 
 export default function App() {
@@ -226,14 +227,45 @@ export default function App() {
     await obj.destroy();
   }
 
+  async function saveAnalysisToUser(analysisData) {
+    if (!PARSE_READY || !currentUser) return;
+    try {
+      currentUser.set("lastAnalysis", analysisData);
+      await currentUser.save();
+    } catch (error) {
+      console.error("Failed to save analysis:", error);
+    }
+  }
+
+  async function loadAnalysisFromUser() {
+    if (!PARSE_READY || !currentUser) return null;
+    try {
+      await currentUser.fetch();
+      return currentUser.get("lastAnalysis");
+    } catch (error) {
+      console.error("Failed to load analysis:", error);
+      return null;
+    }
+  }
+
   useEffect(() => {
     if (!currentUser) return;
     
     const load = async () => {
       try {
-        const [e, s] = await Promise.all([fetchEntries(), fetchSnapshots()]);
+        const [e, s, savedAnalysis] = await Promise.all([
+          fetchEntries(), 
+          fetchSnapshots(),
+          loadAnalysisFromUser()
+        ]);
         setEntries(e);
         setHistory(s);
+        
+        // Load saved analysis if available
+        if (savedAnalysis) {
+          setAnalysis(savedAnalysis);
+          setAnalysisTimestamp(new Date().toISOString());
+        }
         
         // Invalidate cache when entries change
         setLastAnalyzedEntries([]);
@@ -286,7 +318,7 @@ export default function App() {
           questions: lastSnapshot.questions || []
         };
       } else {
-        // No new entries since last snapshot, use cached analysis
+        // No new entries since last snapshot, use cached analysis with warning
         setAnalysis((prev) => ({
           ...(prev ?? {}),
           themes: lastSnapshot.themes || [],
@@ -294,6 +326,7 @@ export default function App() {
           questions: lastSnapshot.questions || [],
           openingStatement: lastSnapshot.openingStatement || "I think what I'd like to talk about today is…",
           sessionDate: sessionDate || getDate(),
+          showNewEntryWarning: true, // Flag to show warning
         }));
         return;
       }
@@ -304,7 +337,7 @@ export default function App() {
     
     // Check cache - only if analyzing same entries
     const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
-    if (analysis && lastAnalyzedEntries === entriesHash) {
+    if (analysis && lastAnalyzedEntries === entriesHash && !analysis.showNewEntryWarning) {
       console.log("Using cached analysis");
       return;
     }
@@ -324,6 +357,7 @@ export default function App() {
         questions: result.questions || [],
         openingStatement: result.openingStatement || "I think what I'd like to talk about today is…",
         sessionDate: sessionDate || getDate(),
+        showNewEntryWarning: false,
       };
 
       setAnalysis((prev) => ({
@@ -333,6 +367,9 @@ export default function App() {
       }));
       setAnalysisTimestamp(new Date().toISOString());
       setLastAnalyzedEntries(entriesHash);
+      
+      // Save to Parse for persistence across sessions
+      await saveAnalysisToUser(newAnalysis);
     } catch (error) {
       console.error("Error analyzing journal:", error);
       alert("Analysis failed. Make sure your Anthropic API key is set in Back4app environment variables.");
@@ -588,27 +625,64 @@ export default function App() {
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
         body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
+        
+        /* Mobile responsive styles */
+        @media (max-width: 768px) {
+          /* Make calendar scrollable on mobile */
+          .calendar-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          /* Adjust archive card padding on mobile */
+          .archive-card {
+            padding: 16px !important;
+          }
+          
+          /* Make text smaller on mobile */
+          .archive-card h3 {
+            font-size: 20px !important;
+          }
+          
+          .archive-card p, .archive-card li {
+            font-size: 14px !important;
+          }
+          
+          /* Stack buttons vertically on very small screens */
+          @media (max-width: 480px) {
+            .button-group {
+              flex-direction: column !important;
+              gap: 8px !important;
+            }
+            
+            .button-group button {
+              width: 100% !important;
+            }
+          }
+        }
       `}</style>
 
       <div style={{ width: '100%', maxWidth: '1024px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
+            title="Log out"
             style={{
               position: 'absolute',
               right: 0,
               top: 0,
-              padding: '8px 16px',
-              borderRadius: '12px',
+              padding: '8px',
+              borderRadius: '8px',
               border: 'none',
-              fontWeight: '500',
-              fontSize: '14px',
               cursor: 'pointer',
               background: 'rgba(255,255,255,0.7)',
-              color: '#7c3aed'
+              color: '#7c3aed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
-            Log Out
+            <LogOut size={20} />
           </button>
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px' }}>
@@ -620,7 +694,7 @@ export default function App() {
           {[
             ["capture", "Capture your thoughts"],
             ["prep", "Prep for your session"],
-            ["during", "Use during your session"],
+            ["during", "Use in your session"],
           ].map(([t, label]) => (
             <button
               key={t}
@@ -820,7 +894,7 @@ export default function App() {
                                 )}
                               </>
                             ) : (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                              <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
                                 <div>
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Session Starter
@@ -829,6 +903,46 @@ export default function App() {
                                     {item.data.openingStatement || "—"}
                                   </p>
                                 </div>
+                                
+                                {/* Display Patterns */}
+                                {(item.data.themes?.length > 0 || item.data.avoiding?.length > 0 || item.data.questions?.length > 0) && (
+                                  <div>
+                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', fontSize: '14px' }}>
+                                      Patterns
+                                    </h4>
+                                    {item.data.themes?.length > 0 && (
+                                      <div style={{ marginBottom: '12px' }}>
+                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What's trying to come up:</p>
+                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                          {item.data.themes.map((theme, i) => (
+                                            <li key={i} style={{ marginBottom: '4px' }}>{theme}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {item.data.avoiding?.length > 0 && (
+                                      <div style={{ marginBottom: '12px' }}>
+                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Things I might be avoiding:</p>
+                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                          {item.data.avoiding.map((avoid, i) => (
+                                            <li key={i} style={{ marginBottom: '4px' }}>{avoid}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                    {item.data.questions?.length > 0 && (
+                                      <div>
+                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions and confusions:</p>
+                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                          {item.data.questions.map((question, i) => (
+                                            <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                
                                 <div>
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Notes
@@ -1020,6 +1134,19 @@ export default function App() {
                           </p>
                         );
                       })()}
+                      {analysis?.showNewEntryWarning && (
+                        <div style={{ 
+                          background: '#fef3c7', 
+                          border: '1px solid #fbbf24', 
+                          borderRadius: '8px', 
+                          padding: '8px 12px', 
+                          marginTop: '8px',
+                          fontSize: '13px',
+                          color: '#92400e'
+                        }}>
+                          💡 Enter a new journal entry to refresh your analysis and get new insights
+                        </div>
+                      )}
                     </div>
                   </div>
 
