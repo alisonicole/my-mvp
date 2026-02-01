@@ -498,6 +498,11 @@ export default function App() {
           .container-padding { padding: 24px; }
           .auth-card-padding { padding: 48px; }
 
+          input, textarea {
+            max-width: 100%;
+            box-sizing: border-box;
+          }
+
           @media (max-width: 768px) {
             .container-padding { padding: 16px; }
             .auth-card-padding { padding: 24px; }
@@ -635,6 +640,22 @@ export default function App() {
         .card-padding { padding: 32px; }
         .tab-gap { gap: 16px; }
 
+        input, textarea {
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+
+        .archive-item {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          overflow: hidden;
+        }
+
+        .archive-card {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+
         @media (max-width: 768px) {
           .container-padding { padding: 16px; }
           .card-padding { padding: 24px; }
@@ -648,7 +669,7 @@ export default function App() {
         }
       `}</style>
 
-      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1024px', width: '100%', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -749,7 +770,7 @@ export default function App() {
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {combined().map((item) => (
-                      <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden' }}>
+                      <div key={item.id} className="archive-item" style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden' }}>
                         <div
                           style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px', cursor: 'pointer' }}
                           onClick={() => setExpanded((p) => ({ ...p, [item.id]: !p[item.id] }))}
