@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import ParseImport from "parse/dist/parse.min.js";
-const Parse = ParseImport;
+import Parse from "parse";
 import {
   Calendar,
   Sparkles,
@@ -14,6 +13,11 @@ import {
   RefreshCw,
   LogOut,
 } from "lucide-react";
+
+// Ensure Parse is properly initialized
+if (typeof window !== 'undefined' && !window.Parse) {
+  window.Parse = Parse;
+}
 
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
@@ -66,6 +70,9 @@ export default function App() {
     
     try {
       console.log("Initializing Parse...");
+      console.log("Parse object:", Parse);
+      console.log("Parse.initialize type:", typeof Parse.initialize);
+      console.log("Parse keys:", Object.keys(Parse));
       
       // Initialize Parse
       Parse.initialize(APP_ID, JS_KEY);
