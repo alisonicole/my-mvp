@@ -611,58 +611,16 @@ export default function App() {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
-      padding: '24px',
-      display: 'flex',
-      justifyContent: 'center'
-    }}>
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', padding: '24px' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
         * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
         h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
-        body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
-        
-        /* Mobile responsive styles */
-        @media (max-width: 768px) {
-          /* Make calendar scrollable on mobile */
-          .calendar-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-          }
-          
-          /* Adjust archive card padding on mobile */
-          .archive-card {
-            padding: 16px !important;
-          }
-          
-          /* Make text smaller on mobile */
-          .archive-card h3 {
-            font-size: 20px !important;
-          }
-          
-          .archive-card p, .archive-card li {
-            font-size: 14px !important;
-          }
-          
-          /* Stack buttons vertically on very small screens */
-          @media (max-width: 480px) {
-            .button-group {
-              flex-direction: column !important;
-              gap: 8px !important;
-            }
-            
-            .button-group button {
-              width: 100% !important;
-            }
-          }
-        }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '1024px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -895,6 +853,7 @@ export default function App() {
                               </>
                             ) : (
                               <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                                {/* 1. Session Starter */}
                                 <div>
                                   <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
                                     Session Starter
@@ -904,11 +863,31 @@ export default function App() {
                                   </p>
                                 </div>
                                 
-                                {/* Display Patterns */}
+                                {/* 2. Notes */}
+                                <div>
+                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                    Notes
+                                  </h4>
+                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                    {item.data.notes || "—"}
+                                  </p>
+                                </div>
+                                
+                                {/* 3. Next Steps */}
+                                <div>
+                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                    Next Steps
+                                  </h4>
+                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
+                                    {item.data.nextSteps || "—"}
+                                  </p>
+                                </div>
+                                
+                                {/* 4. Patterns (Session Summary) */}
                                 {(item.data.themes?.length > 0 || item.data.avoiding?.length > 0 || item.data.questions?.length > 0) && (
                                   <div>
                                     <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', fontSize: '14px' }}>
-                                      Patterns
+                                      Session Summary
                                     </h4>
                                     {item.data.themes?.length > 0 && (
                                       <div style={{ marginBottom: '12px' }}>
@@ -942,23 +921,6 @@ export default function App() {
                                     )}
                                   </div>
                                 )}
-                                
-                                <div>
-                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                    Notes
-                                  </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                    {item.data.notes || "—"}
-                                  </p>
-                                </div>
-                                <div>
-                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                    Next Steps
-                                  </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0 }}>
-                                    {item.data.nextSteps || "—"}
-                                  </p>
-                                </div>
                               </div>
                             )}
                           </div>
