@@ -363,11 +363,19 @@ export default function App() {
   // Show login/signup screen if not authenticated
   if (!currentUser) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', padding: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
+        padding: '24px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
           * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
           h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
+          body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
         `}</style>
 
         <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
@@ -484,16 +492,24 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', padding: '24px' }}>
+    <div style={{ 
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
+      padding: '24px',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start'
+    }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
         * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
         h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
+        body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
       `}</style>
 
-      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
+      <div style={{ width: '100%', maxWidth: '1024px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -530,7 +546,6 @@ export default function App() {
               onClick={() => {
                 setTab(t);
                 setExpanded({});
-                if (t !== "capture" && !analysis) genAnalysis();
               }}
               style={{
                 flex: 1,
@@ -971,49 +986,64 @@ export default function App() {
                   borderRadius: '24px',
                   padding: '32px',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-                  border: '1px solid #c4b5fd'
+                  border: '1px solid #c4b5fd',
+                  minHeight: '200px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
-                      Your Session Starter
-                    </h3>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={refreshSessionStarter}
-                        style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
-                      >
-                        <RefreshCw size={14} />
-                        Refresh
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (editStmt) {
-                            setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                            setEditStmt(false);
-                          } else {
-                            setTempStmt(analysis.openingStatement || "");
-                            setEditStmt(true);
-                          }
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
-                      >
-                        <Edit2 size={14} />
-                        {editStmt ? "Save" : "Edit"}
-                      </button>
+                  {loading ? (
+                    <div style={{ textAlign: 'center', padding: '48px 0' }}>
+                      <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
+                      <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Refreshing your session starter...</p>
                     </div>
-                  </div>
-
-                  {editStmt ? (
-                    <textarea
-                      value={tempStmt}
-                      onChange={(e) => setTempStmt(e.target.value)}
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'white', color: '#581c87', height: '80px' }}
-                      rows="3"
-                    />
                   ) : (
-                    <p style={{ color: '#581c87', fontSize: '16px', whiteSpace: 'pre-wrap', margin: 0 }}>
-                      "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
-                    </p>
+                    <>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
+                          Your Session Starter
+                        </h3>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={refreshSessionStarter}
+                            disabled={loading}
+                            style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
+                          >
+                            <RefreshCw size={14} />
+                            Refresh
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (editStmt) {
+                                setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                                setEditStmt(false);
+                              } else {
+                                setTempStmt(analysis.openingStatement || "");
+                                setEditStmt(true);
+                              }
+                            }}
+                            disabled={loading}
+                            style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
+                          >
+                            <Edit2 size={14} />
+                            {editStmt ? "Save" : "Edit"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {editStmt ? (
+                        <textarea
+                          value={tempStmt}
+                          onChange={(e) => setTempStmt(e.target.value)}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'white', color: '#581c87', height: '80px' }}
+                          rows="3"
+                        />
+                      ) : (
+                        <p style={{ color: '#581c87', fontSize: '16px', whiteSpace: 'pre-wrap', margin: 0 }}>
+                          "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
 
