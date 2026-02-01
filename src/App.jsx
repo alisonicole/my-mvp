@@ -33,6 +33,8 @@ export default function App() {
   const [editDraft, setEditDraft] = useState({ title: "", text: "" });
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
+  const [analysisTimestamp, setAnalysisTimestamp] = useState(null);
+  const [lastAnalyzedEntries, setLastAnalyzedEntries] = useState([]);
   const [history, setHistory] = useState([]);
   const [sessionDate, setSessionDate] = useState(getDate());
   const [notes, setNotes] = useState("");
@@ -232,6 +234,9 @@ export default function App() {
         const [e, s] = await Promise.all([fetchEntries(), fetchSnapshots()]);
         setEntries(e);
         setHistory(s);
+        
+        // Invalidate cache when entries change
+        setLastAnalyzedEntries([]);
       } catch (err) {
         console.error(err);
       }
@@ -257,11 +262,60 @@ export default function App() {
       return;
     }
 
+    // Get the last session snapshot (if any)
+    const lastSnapshot = history?.[0];
+    
+    // If we have a snapshot, only send NEW entries since that snapshot
+    let entriesToAnalyze = [];
+    let previousPatterns = null;
+    
+    if (lastSnapshot) {
+      // Get entries created AFTER the last snapshot
+      const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+      const newEntries = entries.filter(e => {
+        const entryTime = new Date(e.timestamp).getTime();
+        return entryTime > snapshotTime;
+      });
+      
+      // If there are new entries, use them
+      if (newEntries.length > 0) {
+        entriesToAnalyze = newEntries.slice(0, 20); // Limit to 20 most recent
+        previousPatterns = {
+          themes: lastSnapshot.themes || [],
+          avoiding: lastSnapshot.avoiding || [],
+          questions: lastSnapshot.questions || []
+        };
+      } else {
+        // No new entries since last snapshot, use cached analysis
+        setAnalysis((prev) => ({
+          ...(prev ?? {}),
+          themes: lastSnapshot.themes || [],
+          avoiding: lastSnapshot.avoiding || [],
+          questions: lastSnapshot.questions || [],
+          openingStatement: lastSnapshot.openingStatement || "I think what I'd like to talk about today is…",
+          sessionDate: sessionDate || getDate(),
+        }));
+        return;
+      }
+    } else {
+      // No previous snapshot, analyze recent entries (limit to 20)
+      entriesToAnalyze = entries.slice(0, 20);
+    }
+    
+    // Check cache - only if analyzing same entries
+    const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
+    if (analysis && lastAnalyzedEntries === entriesHash) {
+      console.log("Using cached analysis");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Call Back4app Cloud Function
+      // Call Back4app Cloud Function with incremental analysis
       const result = await Parse.Cloud.run("analyzeJournal", {
-        entries: entries.map(e => e.text)
+        entries: entriesToAnalyze.map(e => e.text),
+        previousPatterns: previousPatterns, // Pass previous patterns for context
+        isIncremental: !!previousPatterns
       });
 
       const newAnalysis = {
@@ -277,6 +331,8 @@ export default function App() {
         notes: prev?.notes ?? "",
         nextSteps: prev?.nextSteps ?? "",
       }));
+      setAnalysisTimestamp(new Date().toISOString());
+      setLastAnalyzedEntries(entriesHash);
     } catch (error) {
       console.error("Error analyzing journal:", error);
       alert("Analysis failed. Make sure your Anthropic API key is set in Back4app environment variables.");
@@ -287,17 +343,43 @@ export default function App() {
 
   const refreshSessionStarter = async () => {
     if (!entries.length) return;
+    
+    // Get the last session snapshot (if any)
+    const lastSnapshot = history?.[0];
+    
+    // Determine which entries to send
+    let entriesToAnalyze = [];
+    
+    if (lastSnapshot) {
+      // Get entries created AFTER the last snapshot
+      const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+      const newEntries = entries.filter(e => {
+        const entryTime = new Date(e.timestamp).getTime();
+        return entryTime > snapshotTime;
+      });
+      entriesToAnalyze = newEntries.slice(0, 20);
+    } else {
+      // No previous snapshot, use recent entries
+      entriesToAnalyze = entries.slice(0, 20);
+    }
+    
+    if (entriesToAnalyze.length === 0) {
+      // No new entries to analyze
+      return;
+    }
+    
     setLoading(true);
     try {
       // Call Back4app Cloud Function
       const result = await Parse.Cloud.run("generateSessionStarter", {
-        entries: entries.map(e => e.text)
+        entries: entriesToAnalyze.map(e => e.text)
       });
 
       setAnalysis((prev) => ({
         ...(prev ?? {}),
         openingStatement: result.openingStatement || prev?.openingStatement || "",
       }));
+      setAnalysisTimestamp(new Date().toISOString());
     } catch (error) {
       console.error("Error generating session starter:", error);
     } finally {
@@ -917,7 +999,28 @@ export default function App() {
                 <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
                     <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
-                    <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
+                      {analysisTimestamp && (() => {
+                        const lastSnapshot = history?.[0];
+                        let entryCount = entries.length;
+                        if (lastSnapshot) {
+                          const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+                          const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
+                          entryCount = newEntries.length;
+                          return (
+                            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                              {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
+                            </p>
+                          );
+                        }
+                        return (
+                          <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                            Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                          </p>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
