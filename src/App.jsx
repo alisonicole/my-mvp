@@ -482,22 +482,34 @@ export default function App() {
   // Show login/signup screen if not authenticated
   if (!currentUser) {
     return (
-      <div style={{ 
+      <div className="container-padding" style={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
-        padding: '24px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
+        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
           * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
           h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
           body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
+
+          .container-padding { padding: 24px; }
+          .auth-card-padding { padding: 48px; }
+
+          @media (max-width: 768px) {
+            .container-padding { padding: 16px; }
+            .auth-card-padding { padding: 24px; }
+          }
+
+          @media (max-width: 640px) {
+            .container-padding { padding: 12px; }
+            .auth-card-padding { padding: 16px; }
+          }
         `}</style>
 
-        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
+        <div className="auth-card-padding" style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px', textAlign: 'center' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
             Capture what comes up between sessions
@@ -611,13 +623,29 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', padding: '24px' }}>
+    <div className="container-padding" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
         * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
         h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
+
+        .container-padding { padding: 24px; }
+        .card-padding { padding: 32px; }
+        .tab-gap { gap: 16px; }
+
+        @media (max-width: 768px) {
+          .container-padding { padding: 16px; }
+          .card-padding { padding: 24px; }
+          .tab-gap { gap: 12px; }
+        }
+
+        @media (max-width: 640px) {
+          .container-padding { padding: 12px; }
+          .card-padding { padding: 16px; }
+          .tab-gap { gap: 8px; }
+        }
       `}</style>
 
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
@@ -648,7 +676,7 @@ export default function App() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
+        <div className="tab-gap" style={{ display: 'flex', marginBottom: '24px' }}>
           {[
             ["capture", "Capture your thoughts"],
             ["prep", "Prep for your session"],
@@ -711,7 +739,7 @@ export default function App() {
             </div>
 
             {showArchive ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '24px' }}>Archive</h2>
 
                 {!entries.length && !history.length ? (
@@ -931,7 +959,7 @@ export default function App() {
                 )}
               </div>
             ) : (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
                     <Calendar size={20} />
@@ -1005,7 +1033,7 @@ export default function App() {
         {/* PREP TAB */}
         {tab === "prep" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+            <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
               <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                 Last session
               </h3>
@@ -1072,7 +1100,7 @@ export default function App() {
                   Refresh Analysis
                 </button>
 
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
                     <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
                     <div style={{ flex: 1 }}>
@@ -1160,7 +1188,7 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Session Date
                   </h3>
@@ -1172,10 +1200,9 @@ export default function App() {
                   />
                 </div>
 
-                <div style={{
+                <div className="card-padding" style={{
                   background: 'linear-gradient(to right, #e9d5ff, #ddd6fe)',
                   borderRadius: '24px',
-                  padding: '32px',
                   boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
                   border: '1px solid #c4b5fd',
                   minHeight: '200px',
@@ -1238,7 +1265,7 @@ export default function App() {
                   )}
                 </div>
 
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Notes
                   </h3>
@@ -1250,7 +1277,7 @@ export default function App() {
                   />
                 </div>
 
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <div className="card-padding" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                   <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                     Next steps
                   </h3>
