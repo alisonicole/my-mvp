@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import Parse from "parse";
+import ParseImport from "parse/dist/parse.min.js";
+const Parse = ParseImport;
 import {
   Calendar,
   Sparkles,
@@ -62,9 +63,15 @@ export default function App() {
       console.warn("Missing env vars:", { APP_ID, JS_KEY, SERVER_URL });
       return;
     }
+    
     try {
+      console.log("Initializing Parse...");
+      
+      // Initialize Parse
       Parse.initialize(APP_ID, JS_KEY);
       Parse.serverURL = SERVER_URL;
+      
+      console.log("Parse initialized successfully");
       
       // Check if user is already logged in
       const user = Parse.User.current();
