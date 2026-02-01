@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import Parse from "parse";
 import {
   Calendar,
   Sparkles,
@@ -47,8 +48,7 @@ export default function App() {
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
   const SERVER_URL = import.meta.env.VITE_PARSE_SERVER_URL;
 
-  const Parse = useMemo(() => window.Parse, []);
-  const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
+  const PARSE_READY = Boolean(APP_ID && JS_KEY && SERVER_URL);
 
   const formatDate = (d) =>
     new Date(d + "T12:00").toLocaleDateString("en-US", {
@@ -58,10 +58,6 @@ export default function App() {
     });
 
   useEffect(() => {
-    if (!Parse) {
-      console.error("Parse SDK missing.");
-      return;
-    }
     if (!APP_ID || !JS_KEY || !SERVER_URL) {
       console.warn("Missing env vars:", { APP_ID, JS_KEY, SERVER_URL });
       return;
@@ -76,7 +72,7 @@ export default function App() {
     } catch (e) {
       console.error("Parse init failed", e);
     }
-  }, [APP_ID, JS_KEY, SERVER_URL, Parse]);
+  }, [APP_ID, JS_KEY, SERVER_URL]);
 
   // Auth functions
   const handleLogin = async (e) => {
