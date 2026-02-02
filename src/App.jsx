@@ -664,11 +664,12 @@ export default function App() {
         /* Mobile specific adjustments */
         @media (max-width: 768px) {
           .app-wrapper {
-            padding: 12px !important;
+            padding: 8px !important;
           }
           
           .main-container {
-            padding: 16px !important;
+            padding: 12px !important;
+            width: 100% !important;
           }
           
           h1 {
@@ -677,7 +678,7 @@ export default function App() {
           
           /* Reduce padding on cards for mobile */
           .mobile-card {
-            padding: 20px !important;
+            padding: 16px !important;
             border: 1px solid #e9d5ff !important;
             backdrop-filter: none !important;
             background: rgba(255,255,255,0.9) !important;
@@ -700,10 +701,22 @@ export default function App() {
             font-size: 14px !important;
             border-radius: 12px !important;
           }
+          
+          /* Fix input overflow on mobile */
+          input[type="date"], input[type="text"], textarea {
+            min-width: 0 !important;
+          }
+        }
+        
+        /* Desktop: remove width constraint to allow centering */
+        @media (min-width: 769px) {
+          .main-container {
+            width: auto !important;
+          }
         }
       `}</style>
 
-      <div className="main-container" style={{ width: '100%', maxWidth: '1200px', padding: '32px' }}>
+      <div className="main-container" style={{ maxWidth: '1200px', padding: '32px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
