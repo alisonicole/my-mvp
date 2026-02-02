@@ -765,7 +765,7 @@ export default function App() {
 
         {/* CAPTURE TAB */}
         {tab === "capture" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 [false, "Journal Entry"],
@@ -793,6 +793,8 @@ export default function App() {
                 </button>
               ))}
             </div>
+
+            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
 
             {showArchive ? (
               <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
@@ -1083,12 +1085,13 @@ export default function App() {
                 </div>
               </div>
             )}
+            </div>
           </div>
         )}
 
         {/* PREP TAB */}
         {tab === "prep" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
             <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
                 Last session
@@ -1227,7 +1230,7 @@ export default function App() {
 
         {/* DURING TAB */}
         {tab === "during" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
             {!analysis ? (
               <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
                 <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
