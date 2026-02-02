@@ -489,7 +489,7 @@ export default function App() {
     return (
       <div style={{ 
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
+        background: '#f3e8ff', 
         padding: '24px', 
         display: 'flex', 
         alignItems: 'center', 
@@ -499,7 +499,7 @@ export default function App() {
           @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
           * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
           h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
-          body, html { margin: 0; padding: 0; min-height: 100vh; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%); }
+          body, html { margin: 0; padding: 0; min-height: 100vh; background: #f3e8ff; }
         `}</style>
 
         <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
@@ -618,8 +618,8 @@ export default function App() {
   return (
     <div style={{ 
       minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #fce7f3 100%)', 
-      padding: '12px',
+      background: '#f3e8ff',
+      padding: '24px',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'flex-start'
@@ -638,6 +638,7 @@ export default function App() {
           margin: 0;
           padding: 0;
           overflow-x: hidden;
+          background: #f3e8ff;
         }
         
         /* Ensure inputs and content don't overflow */
@@ -683,7 +684,7 @@ export default function App() {
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '1024px' }}>
+      <div style={{ width: '100%', maxWidth: '1200px', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
