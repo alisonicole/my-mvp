@@ -616,7 +616,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ 
+    <div className="app-wrapper" style={{ 
       minHeight: '100vh', 
       background: '#f3e8ff',
       padding: '24px',
@@ -663,13 +663,25 @@ export default function App() {
         
         /* Mobile specific adjustments */
         @media (max-width: 768px) {
+          .app-wrapper {
+            padding: 12px !important;
+          }
+          
+          .main-container {
+            padding: 16px !important;
+          }
+          
           h1 {
             font-size: 36px !important;
           }
           
           /* Reduce padding on cards for mobile */
           .mobile-card {
-            padding: 16px !important;
+            padding: 20px !important;
+            border: 1px solid #e9d5ff !important;
+            backdrop-filter: none !important;
+            background: rgba(255,255,255,0.9) !important;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
           }
           
           /* Smaller heading on mobile */
@@ -681,10 +693,17 @@ export default function App() {
           .last-session-card {
             padding: 16px !important;
           }
+          
+          /* Smaller tab buttons on mobile */
+          .tab-button {
+            padding: 10px 16px !important;
+            font-size: 14px !important;
+            border-radius: 12px !important;
+          }
         }
       `}</style>
 
-      <div style={{ width: '100%', maxWidth: '1200px', padding: '32px' }}>
+      <div className="main-container" style={{ width: '100%', maxWidth: '1200px', padding: '32px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -747,7 +766,7 @@ export default function App() {
         {/* CAPTURE TAB */}
         {tab === "capture" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 [false, "Journal Entry"],
                 [true, `Archive (${entries.length + history.length})`],
@@ -755,18 +774,19 @@ export default function App() {
                 <button
                   key={String(isArchive)}
                   onClick={() => setShowArchive(isArchive)}
+                  className="tab-button"
                   style={{
                     flex: 1,
-                    padding: '8px 16px',
-                    borderRadius: '12px',
-                    fontWeight: '500',
-                    fontSize: '14px',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    fontWeight: '600',
+                    fontSize: '16px',
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     background: showArchive === isArchive ? '#9333ea' : 'rgba(255,255,255,0.6)',
                     color: showArchive === isArchive ? 'white' : '#7c3aed',
-                    boxShadow: showArchive === isArchive ? '0 2px 8px rgba(147,51,234,0.3)' : 'none'
+                    boxShadow: showArchive === isArchive ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
                   }}
                 >
                   {label}
