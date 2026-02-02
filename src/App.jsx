@@ -648,6 +648,24 @@ export default function App() {
           padding: 32px;
         }
         
+        /* Ensure date inputs match other inputs - reset browser defaults */
+        input[type="date"] {
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+          font-family: 'Work Sans', sans-serif;
+        }
+        
+        input[type="date"]::-webkit-inner-spin-button,
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          display: none;
+          -webkit-appearance: none;
+        }
+        
+        input[type="date"]::-webkit-date-and-time-value {
+          text-align: left;
+        }
+        
         /* Ensure inputs and content don't overflow */
         input, textarea, select {
           max-width: 100%;
@@ -722,6 +740,12 @@ export default function App() {
             font-size: 16px !important;
             box-sizing: border-box !important;
             display: block !important;
+            border: 2px solid #e9d5ff !important;
+            border-radius: 12px !important;
+            background: rgba(255,255,255,0.8) !important;
+            -webkit-appearance: none !important;
+            -moz-appearance: none !important;
+            appearance: none !important;
           }
           
           input[type="text"], 
@@ -740,10 +764,10 @@ export default function App() {
           }
         }
         
-        /* Desktop: ensure centering works by not setting width */
+        /* Desktop: ensure centering works with flexbox parent */
         @media (min-width: 769px) {
           .main-container {
-            width: auto;
+            /* No width or margin needed - flexbox parent centers us */
           }
           
           .capture-content-wrapper {
