@@ -641,6 +641,12 @@ export default function App() {
           background: #f3e8ff;
         }
         
+        /* Base layout - no width set to allow centering */
+        .main-container {
+          max-width: 1200px;
+          padding: 32px;
+        }
+        
         /* Ensure inputs and content don't overflow */
         input, textarea, select {
           max-width: 100%;
@@ -664,11 +670,11 @@ export default function App() {
         /* Mobile specific adjustments */
         @media (max-width: 768px) {
           .app-wrapper {
-            padding: 8px !important;
+            padding: 4px !important;
           }
           
           .main-container {
-            padding: 12px !important;
+            padding: 8px !important;
             width: 100% !important;
           }
           
@@ -678,7 +684,7 @@ export default function App() {
           
           /* Reduce padding on cards for mobile */
           .mobile-card {
-            padding: 16px !important;
+            padding: 12px !important;
             border: 1px solid #e9d5ff !important;
             backdrop-filter: none !important;
             background: rgba(255,255,255,0.9) !important;
@@ -692,7 +698,7 @@ export default function App() {
           
           /* Compact last session */
           .last-session-card {
-            padding: 16px !important;
+            padding: 12px !important;
           }
           
           /* Smaller tab buttons on mobile */
@@ -703,20 +709,30 @@ export default function App() {
           }
           
           /* Fix input overflow on mobile */
-          input[type="date"], input[type="text"], textarea {
+          input[type="date"], 
+          input[type="text"], 
+          textarea {
             min-width: 0 !important;
+            padding: 10px 12px !important;
+            font-size: 14px !important;
+          }
+          
+          /* Override 800px wrapper on mobile */
+          .capture-content-wrapper {
+            max-width: 100% !important;
+            margin: 0 !important;
           }
         }
         
-        /* Desktop: remove width constraint to allow centering */
+        /* Desktop: ensure centering works by not setting width */
         @media (min-width: 769px) {
           .main-container {
-            width: auto !important;
+            width: auto;
           }
         }
       `}</style>
 
-      <div className="main-container" style={{ maxWidth: '1200px', padding: '32px', width: '100%' }}>
+      <div className="main-container">
         <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
           <button
             onClick={handleLogout}
@@ -807,7 +823,7 @@ export default function App() {
               ))}
             </div>
 
-            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+            <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
 
             {showArchive ? (
               <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
