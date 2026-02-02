@@ -622,7 +622,8 @@ export default function App() {
       padding: '24px',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'flex-start'
+      alignItems: 'flex-start',
+      width: '100%'
     }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
@@ -651,7 +652,6 @@ export default function App() {
         input, textarea, select {
           max-width: 100%;
           box-sizing: border-box;
-          width: 100% !important;
         }
         
         /* Prevent text overflow in containers */
@@ -670,12 +670,12 @@ export default function App() {
         /* Mobile specific adjustments */
         @media (max-width: 768px) {
           .app-wrapper {
-            padding: 4px !important;
+            padding: 12px !important;
           }
           
           .main-container {
-            padding: 8px !important;
             width: 100% !important;
+            padding: 16px !important;
           }
           
           h1 {
@@ -684,11 +684,16 @@ export default function App() {
           
           /* Reduce padding on cards for mobile */
           .mobile-card {
-            padding: 12px !important;
+            padding: 20px !important;
             border: 1px solid #e9d5ff !important;
             backdrop-filter: none !important;
             background: rgba(255,255,255,0.9) !important;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+            overflow: hidden !important;
+          }
+          
+          .mobile-card > div {
+            max-width: 100%;
           }
           
           /* Smaller heading on mobile */
@@ -698,7 +703,7 @@ export default function App() {
           
           /* Compact last session */
           .last-session-card {
-            padding: 12px !important;
+            padding: 16px !important;
           }
           
           /* Smaller tab buttons on mobile */
@@ -708,13 +713,24 @@ export default function App() {
             border-radius: 12px !important;
           }
           
-          /* Fix input overflow on mobile */
-          input[type="date"], 
+          /* Fix input overflow on mobile - CRITICAL */
+          input[type="date"] {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding: 12px 16px !important;
+            font-size: 16px !important;
+            box-sizing: border-box !important;
+            display: block !important;
+          }
+          
           input[type="text"], 
           textarea {
+            width: 100% !important;
             min-width: 0 !important;
-            padding: 10px 12px !important;
-            font-size: 14px !important;
+            padding: 12px 16px !important;
+            font-size: 16px !important;
+            box-sizing: border-box !important;
           }
           
           /* Override 800px wrapper on mobile */
@@ -727,6 +743,10 @@ export default function App() {
         /* Desktop: ensure centering works by not setting width */
         @media (min-width: 769px) {
           .main-container {
+            width: auto;
+          }
+          
+          .capture-content-wrapper {
             width: auto;
           }
         }
