@@ -12,9 +12,7 @@ import {
   RefreshCw,
   LogOut,
 } from "lucide-react";
-
-export default function App() {
-  const getDate = () => new Date().toISOString().split("T")[0];
+import AdminDashboard from './AdminDashboard';
 
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
@@ -42,6 +40,7 @@ export default function App() {
   const [nextSteps, setNextSteps] = useState("");
   const [editStmt, setEditStmt] = useState(false);
   const [tempStmt, setTempStmt] = useState("");
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -57,6 +56,9 @@ export default function App() {
       day: "numeric",
       year: "numeric",
     });
+
+ 
+  return showAdmin ? <AdminDashboard /> : (between);
 
   useEffect(() => {
     if (!Parse) {
@@ -615,7 +617,10 @@ export default function App() {
     );
   }
 
-  return (
+ if (showAdmin) {
+  return <AdminDashboard />;
+}
+return (
     <div className="app-wrapper" style={{ 
       minHeight: '100vh', 
       background: '#f3e8ff',
@@ -798,6 +803,12 @@ export default function App() {
           >
             <LogOut size={20} />
           </button>
+
+           {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
+    <button onClick={() => setShowAdmin(!showAdmin)}>
+    📊 Analytics
+  </button>
+  )}
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px' }}>
             Capture what comes up between sessions and bring it into the room
