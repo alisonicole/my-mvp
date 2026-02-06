@@ -14,9 +14,12 @@ import {
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 
+export default function App() {
+  const getDate = () => new Date().toISOString().split("T")[0];
+
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
-  const [authMode, setAuthMode] = useState("login"); // "login" or "signup"
+  const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
