@@ -57,9 +57,6 @@ import AdminDashboard from './AdminDashboard';
       year: "numeric",
     });
 
- 
-  return showAdmin ? <AdminDashboard /> : (between);
-
   useEffect(() => {
     if (!Parse) {
       console.error("Parse SDK not loaded from CDN");
@@ -805,10 +802,30 @@ return (
           </button>
 
            {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
-    <button onClick={() => setShowAdmin(!showAdmin)}>
+  <button
+    onClick={() => setShowAdmin(!showAdmin)}
+    title="Analytics"
+    style={{
+      position: 'absolute',
+      right: '50px',
+      top: 0,
+      padding: '8px 16px',
+      borderRadius: '8px',
+      border: 'none',
+      cursor: 'pointer',
+      background: 'rgba(255,255,255,0.7)',
+      color: '#7c3aed',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '4px',
+      fontSize: '14px',
+      fontWeight: '500'
+    }}
+  >
     📊 Analytics
   </button>
-  )}
+)}
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px' }}>
             Capture what comes up between sessions and bring it into the room
