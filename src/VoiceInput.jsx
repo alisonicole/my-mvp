@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 
 export default function VoiceInput({ onTranscript, placeholder = "Start speaking..." }) {
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [recognition, setRecognition] = useState(null);
   const [supported, setSupported] = useState(true);
+  
+  // Use ref to track accumulated final transcript
+  const finalTranscriptRef = useRef('');
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -22,9 +24,10 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
     recognitionInstance.lang = 'en-US';
 
     recognitionInstance.onresult = (event) => {
-      let finalTranscript = '';
       let interimTranscript = '';
+      let finalTranscript = '';
 
+      // Process all results
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPiece = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -34,20 +37,16 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
         }
       }
 
-      const currentTranscript = transcript + finalTranscript;
-      setTranscript(currentTranscript);
+      // Accumulate final results
+      if (finalTranscript) {
+        finalTranscriptRef.current += finalTranscript;
+      }
+
+      // Combine accumulated final + current interim for LIVE display
+      const completeTranscript = finalTranscriptRef.current + interimTranscript;
       
-      // Call parent callback with updated transcript
-      // Accumulate final results in a ref
-    if (finalTranscript) {
-    finalTranscriptRef.current += finalTranscript;
-    }
-
-    // Combine final + interim for LIVE display
-    const completeTranscript = finalTranscriptRef.current + interimTranscript;
-
-    // Update IMMEDIATELY - no waiting for pauses!
-    onTranscript(completeTranscript);
+      // Update parent IMMEDIATELY (live dictation)
+      onTranscript(completeTranscript);
     };
 
     recognitionInstance.onerror = (event) => {
@@ -73,7 +72,7 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
         recognitionInstance.stop();
       }
     };
-  }, []);
+  }, [isListening]);
 
   const toggleListening = () => {
     if (!recognition) return;
@@ -82,7 +81,8 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
       recognition.stop();
       setIsListening(false);
     } else {
-      setTranscript(''); // Clear previous transcript
+      // Reset accumulated transcript when starting new recording
+      finalTranscriptRef.current = '';
       recognition.start();
       setIsListening(true);
     }
