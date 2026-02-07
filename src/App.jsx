@@ -997,9 +997,9 @@ return (
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
           {[
-            ["capture", "Capture your thoughts"],
-            ["prep", "Prep for your session"],
-            ["during", "Use in your session"],
+            ["capture", "Between Sessions"],
+            ["prep", "Pre-session"],
+            ["during", "Post-session"],
           ].map(([t, label]) => (
             <button
               key={t}
