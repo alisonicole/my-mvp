@@ -28,6 +28,8 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const [tab, setTab] = useState("capture");
   const [showArchive, setShowArchive] = useState(false);
@@ -48,6 +50,7 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
+
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -128,7 +131,31 @@ export default function App() {
       setAuthLoading(false);
     }
   };
-
+  
+  async function handlePasswordReset() {
+  if (!email) {
+    setAuthError("Please enter your email address");
+    return;
+  }
+  
+  setAuthLoading(true);
+  setAuthError("");
+  
+  try {
+    await Parse.User.requestPasswordReset(email);
+    setResetSuccess(true);
+    setAuthError("");
+  } catch (error) {
+    console.error("Password reset error:", error);
+    if (error.message.includes("no user found")) {
+      setAuthError("No account found with this email address");
+    } else {
+      setAuthError(error.message || "Failed to send reset email. Please try again.");
+    }
+  } finally {
+    setAuthLoading(false);
+  }
+}
   const handleLogout = async () => {
     await Parse.User.logOut();
     setCurrentUser(null);
@@ -593,7 +620,134 @@ export default function App() {
                 <p style={{ color: '#dc2626', margin: 0, fontSize: '14px' }}>{authError}</p>
               </div>
             )}
+            {/* Forgot Password Link */}
+{authMode === "login" && !showForgotPassword && (
+  <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+    <button
+      onClick={(e) => {
+        e.preventDefault();
+        setShowForgotPassword(true);
+        setAuthError("");
+        setResetSuccess(false);
+      }}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: '#7c3aed',
+        fontSize: '14px',
+        cursor: 'pointer',
+        textDecoration: 'underline',
+        padding: 0
+      }}
+    >
+      Forgot password?
+    </button>
+  </div>
+)}
 
+{/* Forgot Password Form */}
+{showForgotPassword && (
+  <div style={{ 
+    padding: '16px', 
+    background: '#faf5ff', 
+    borderRadius: '12px', 
+    marginBottom: '16px',
+    border: '1px solid #e9d5ff'
+  }}>
+    {resetSuccess ? (
+      <div>
+        <p style={{ color: '#059669', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
+          ✓ Password reset email sent!
+        </p>
+        <p style={{ color: '#7c3aed', fontSize: '14px', marginBottom: '12px' }}>
+          Check your email for a link to reset your password.
+        </p>
+        <button
+          onClick={() => {
+            setShowForgotPassword(false);
+            setResetSuccess(false);
+            setEmail("");
+          }}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            background: '#9333ea',
+            color: 'white',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '500'
+          }}
+        >
+          Back to Login
+        </button>
+      </div>
+    ) : (
+      <div>
+        <p style={{ color: '#581c87', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
+          Reset your password
+        </p>
+        <p style={{ color: '#7c3aed', fontSize: '13px', marginBottom: '12px' }}>
+          Enter your email and we'll send you a reset link.
+        </p>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+          style={{
+            width: '100%',
+            padding: '12px 16px',
+            borderRadius: '8px',
+            border: '2px solid #e9d5ff',
+            outline: 'none',
+            fontSize: '16px',
+            marginBottom: '12px',
+            background: 'white',
+            color: '#581c87'
+          }}
+        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={handlePasswordReset}
+            disabled={authLoading}
+            style={{
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: 'none',
+              background: authLoading ? '#d1d5db' : '#9333ea',
+              color: 'white',
+              fontSize: '14px',
+              cursor: authLoading ? 'not-allowed' : 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            {authLoading ? 'Sending...' : 'Send Reset Link'}
+          </button>
+          <button
+            onClick={() => {
+              setShowForgotPassword(false);
+              setAuthError("");
+            }}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: '1px solid #e9d5ff',
+              background: 'white',
+              color: '#7c3aed',
+              fontSize: '14px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
             <button
               type="submit"
               disabled={authLoading}
