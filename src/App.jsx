@@ -1141,14 +1141,6 @@ return (
                 <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                   What's on your mind?
                 </h2>
-        
-                <div style={{ marginBottom: '16px' }}>
-                  <VoiceInput 
-                    onTranscript={(text) => {
-                      setEntry(prev => ({ ...prev, text: prev.text + text + ' ' }));
-                    }}
-                  />
-                </div>
 
                 <input
                   type="text"
@@ -1164,7 +1156,16 @@ return (
                   placeholder="Start writing..."
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                 />
-
+                <div style={{ marginBottom: '16px' }}>
+                  <VoiceInput 
+                    onTranscript={(text) => {
+                      setEntry(prev => ({ 
+                        ...prev, 
+                        text: prev.text + text + ' ' 
+                      }));
+                    }}
+                  />
+                </div>
                 <button
                   onClick={async () => {
                     if (!entry.text) return;
