@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="512" height="512"><svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="115" fill="#f3e8ff"></rect>
+  
+  <!-- Connecting lines - the journey between dots -->
+  <path d="M 140 350 Q 200 290, 256 230 Q 312 170, 372 110" stroke="#C084FC" strokewidth="12" strokelinecap="round" strokedasharray="16 24" opacity="0.6"></path>
+  
+  <!-- Main dots to connect -->
+  <circle cx="140" cy="350" r="32" fill="#9333EA" opacity="0.9"></circle>
+  <circle cx="256" cy="230" r="32" fill="#A855F7"></circle>
+  <circle cx="372" cy="110" r="32" fill="#9333EA" opacity="0.9"></circle>
+  
+  <!-- Smaller dots in between - the insights -->
+  <circle cx="200" cy="290" r="16" fill="#DDD6FE"></circle>
+  <circle cx="312" cy="170" r="16" fill="#DDD6FE"></circle>
+  
+  <!-- Glow effect on main dots -->
+  <circle cx="140" cy="350" r="48" fill="#C084FC" opacity="0.2"></circle>
+  <circle cx="256" cy="230" r="48" fill="#C084FC" opacity="0.3"></circle>
+  <circle cx="372" cy="110" r="48" fill="#C084FC" opacity="0.2"></circle>
+</svg></svg><style>@media (prefers-color-scheme: light) { :root { filter: none; } }
+@media (prefers-color-scheme: dark) { :root { filter: none; } }
+</style></svg>
