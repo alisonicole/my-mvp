@@ -112,11 +112,11 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
           fontSize: '16px',
           cursor: 'pointer',
           transition: 'all 0.2s',
-          background: isListening ? '#ef4444' : '#9333ea',
-          color: 'white',
+          background: isListening ? '#ef4444' : '#ddd6fe',  // Light purple when not recording
+          color: isListening ? 'white' : '#581c87',  // Dark purple text
           boxShadow: isListening 
             ? '0 4px 12px rgba(239,68,68,0.3)' 
-            : '0 4px 12px rgba(147,51,234,0.3)'
+            : '0 4px 12px rgba(221,214,254,0.4)'
         }}
       >
         {isListening ? (
