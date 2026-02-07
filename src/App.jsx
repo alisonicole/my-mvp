@@ -1449,7 +1449,6 @@ export default function App() {
                   marginTop: '12px',
                   marginBottom: 0
                 }}>
-                  💡 Use this to start your next therapy session
                 </p>
               </div>
             )}
