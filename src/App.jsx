@@ -1141,6 +1141,14 @@ return (
                 <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
                   What's on your mind?
                 </h2>
+        
+                <div style={{ marginBottom: '16px' }}>
+                  <VoiceInput 
+                    onTranscript={(text) => {
+                      setEntry(prev => ({ ...prev, text: prev.text + text + ' ' }));
+                    }}
+                  />
+                </div>
 
                 <input
                   type="text"
