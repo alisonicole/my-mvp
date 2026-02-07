@@ -15,7 +15,6 @@ import {
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
-import VoiceRecorder from './VoiceRecorder.jsx';
 
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
@@ -27,8 +26,6 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetSuccess, setResetSuccess] = useState(false);
 
   // Main tabs: "journal" or "sessions"
   const [tab, setTab] = useState("journal");
@@ -56,9 +53,6 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
-  
-  // Voice memo state
-  const [voiceMemo, setVoiceMemo] = useState("");
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -134,31 +128,6 @@ export default function App() {
     }
   };
   
-  async function handlePasswordReset() {
-    if (!email) {
-      setAuthError("Please enter your email address");
-      return;
-    }
-    
-    setAuthLoading(true);
-    setAuthError("");
-    
-    try {
-      await Parse.User.requestPasswordReset(email);
-      setResetSuccess(true);
-      setAuthError("");
-    } catch (error) {
-      console.error("Password reset error:", error);
-      if (error.message.includes("no user found")) {
-        setAuthError("No account found with this email address");
-      } else {
-        setAuthError(error.message || "Failed to send reset email. Please try again.");
-      }
-    } finally {
-      setAuthLoading(false);
-    }
-  }
-
   const handleLogout = async () => {
     await Parse.User.logOut();
     setCurrentUser(null);
@@ -452,7 +421,7 @@ export default function App() {
       avoiding: analysis.avoiding || [],
       questions: analysis.questions || [],
       openingStatement: analysis.openingStatement || "",
-      notes: notes || voiceMemo || "",
+      notes: notes || "",
       nextSteps: nextSteps || "",
     };
 
@@ -462,7 +431,6 @@ export default function App() {
       setHistory(refreshed);
 
       setNotes("");
-      setVoiceMemo("");
       setNextSteps("");
       setTab("journal");
       setJournalView("archive");
@@ -597,133 +565,6 @@ export default function App() {
             {authError && (
               <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
                 <p style={{ color: '#dc2626', margin: 0, fontSize: '14px' }}>{authError}</p>
-              </div>
-            )}
-
-            {authMode === "login" && !showForgotPassword && (
-              <div style={{ textAlign: 'right', marginBottom: '16px' }}>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowForgotPassword(true);
-                    setAuthError("");
-                    setResetSuccess(false);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#7c3aed',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    padding: 0
-                  }}
-                >
-                  Forgot password?
-                </button>
-              </div>
-            )}
-
-            {showForgotPassword && (
-              <div style={{ 
-                padding: '16px', 
-                background: '#faf5ff', 
-                borderRadius: '12px', 
-                marginBottom: '16px',
-                border: '1px solid #e9d5ff'
-              }}>
-                {resetSuccess ? (
-                  <div>
-                    <p style={{ color: '#059669', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
-                      ✓ Password reset email sent!
-                    </p>
-                    <p style={{ color: '#7c3aed', fontSize: '14px', marginBottom: '12px' }}>
-                      Check your email for a link to reset your password.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setShowForgotPassword(false);
-                        setResetSuccess(false);
-                        setEmail("");
-                      }}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: '#9333ea',
-                        color: 'white',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      Back to Login
-                    </button>
-                  </div>
-                ) : (
-                  <div>
-                    <p style={{ color: '#581c87', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
-                      Reset your password
-                    </p>
-                    <p style={{ color: '#7c3aed', fontSize: '13px', marginBottom: '12px' }}>
-                      Enter your email and we'll send you a reset link.
-                    </p>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email"
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: '2px solid #e9d5ff',
-                        outline: 'none',
-                        fontSize: '16px',
-                        marginBottom: '12px',
-                        background: 'white',
-                        color: '#581c87'
-                      }}
-                    />
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={handlePasswordReset}
-                        disabled={authLoading}
-                        style={{
-                          flex: 1,
-                          padding: '10px 16px',
-                          borderRadius: '8px',
-                          border: 'none',
-                          background: authLoading ? '#d1d5db' : '#9333ea',
-                          color: 'white',
-                          fontSize: '14px',
-                          cursor: authLoading ? 'not-allowed' : 'pointer',
-                          fontWeight: '500'
-                        }}
-                      >
-                        {authLoading ? 'Sending...' : 'Send Reset Link'}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowForgotPassword(false);
-                          setAuthError("");
-                        }}
-                        style={{
-                          padding: '10px 16px',
-                          borderRadius: '8px',
-                          border: '1px solid #e9d5ff',
-                          background: 'white',
-                          color: '#7c3aed',
-                          fontSize: '14px',
-                          cursor: 'pointer',
-                          fontWeight: '500'
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1614,59 +1455,70 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <>
+                  <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
                     <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                        Session Date
-                      </h3>
-                      <input
-                        type="date"
-                        value={sessionDate}
-                        onChange={(e) => setSessionDate(e.target.value)}
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
-                      />
-                    </div>
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
+                          <Calendar size={20} />
+                          Session Date
+                        </label>
+                        <input
+                          type="date"
+                          value={sessionDate}
+                          onChange={(e) => setSessionDate(e.target.value)}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                        />
+                      </div>
 
-                    {/* Voice Recorder */}
-                    <VoiceRecorder 
-                      onTranscript={(text) => {
-                        setVoiceMemo(text);
-                        setNotes(text);
-                      }}
-                    />
+                      <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+                        How did your session go?
+                      </h2>
 
-                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                        Notes
-                      </h3>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        placeholder="What did you talk about? (or use voice memo above)"
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
+                        placeholder="What did you talk about? What came up for you?"
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                       />
-                    </div>
 
-                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                        Next steps
-                      </h3>
-                      <textarea
-                        value={nextSteps}
-                        onChange={(e) => setNextSteps(e.target.value)}
-                        placeholder="Homework, things to remember for next session..."
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
-                      />
-                    </div>
+                      <div style={{ marginBottom: '24px' }}>
+                        <VoiceInput 
+                          onTranscript={(text) => {
+                            setNotes(text);
+                          }}
+                        />
+                      </div>
 
-                    <button
-                      onClick={moveToArchive}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#7c3aed', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
-                    >
-                      <ArrowRight size={20} />
-                      Save to Archive
-                    </button>
-                  </>
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                          Next Steps
+                        </label>
+                        <textarea
+                          value={nextSteps}
+                          onChange={(e) => setNextSteps(e.target.value)}
+                          placeholder="Homework, things to work on, reminders for next time..."
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
+                        />
+                      </div>
+
+                      <button
+                        onClick={moveToArchive}
+                        disabled={!notes}
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: notes ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: notes ? '#7c3aed' : '#d1d5db', color: 'white', width: '100%', opacity: notes ? 1 : 0.5 }}
+                      >
+                        <ArrowRight size={20} />
+                        Save to Archive
+                      </button>
+
+                      <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>Your session notes are private and secure.</span>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             )}
