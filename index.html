@@ -8,7 +8,7 @@
     <title>Between - Therapy Journal</title>
     <meta name="description" content="Capture what comes up between sessions" />
     
-    <!-- Favicon and App Icons -->
+    <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
@@ -16,16 +16,19 @@
     <!-- Apple Touch Icon (iOS Home Screen) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     
-    <!-- Web App Manifest (Android/PWA) -->
-    <link rel="manifest" href="/site.webmanifest" />
+    <!-- Web App Manifest (PWA) -->
+    <link rel="manifest" href="/manifest.json" />
     
     <!-- Theme Color (Browser UI) -->
     <meta name="theme-color" content="#9333ea" />
     
-    <!-- Apple Web App Settings -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Apple Web App Settings (Updated - fixes deprecation warning) -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Between" />
+    
+    <!-- Parse SDK - REQUIRED for app to work -->
+    <script src="https://npmcdn.com/parse@5.3.0/dist/parse.min.js"></script>
   </head>
   <body>
     <div id="root"></div>
