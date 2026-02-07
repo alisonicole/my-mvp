@@ -540,7 +540,7 @@ export default function App() {
           <Logo />
         </div>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
-            Capture what comes up between sessions
+            Capture what comes up between therapy sessions and bring it into the room
           </p>
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -991,7 +991,7 @@ return (
 )}
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px' }}>
-            Capture what comes up between sessions and bring it into the room
+            Capture what comes up between therapy sessions and bring it into the room
           </p>
         </div>
 
