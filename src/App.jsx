@@ -13,6 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
+import Logo from './Logo';
 import VoiceInput from './VoiceInput';
 <VoiceInput 
      onTranscript={(text) => setEntry(p => ({ ...p, text }))}
@@ -508,7 +509,9 @@ export default function App() {
         `}</style>
 
         <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px', textAlign: 'center' }}>between</h1>
+        <div style={{ marginBottom: '32px' }}>
+          <Logo />
+        </div>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
             Capture what comes up between sessions
           </p>
