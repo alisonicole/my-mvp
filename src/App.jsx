@@ -1053,10 +1053,11 @@ export default function App() {
                     />
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                    <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
-                      What's on your mind?
-                    </h2>
+                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
+                    What's on your mind?
+                  </h2>
+
+                  <div style={{ marginBottom: '16px' }}>
                     <VoiceInput 
                       onTranscript={(text) => {
                         setEntry(prev => ({ 
@@ -1411,10 +1412,11 @@ export default function App() {
                         />
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                        <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
-                          How did your session go?
-                        </h2>
+                      <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
+                        How did your session go?
+                      </h2>
+
+                      <div style={{ marginBottom: '16px' }}>
                         <VoiceInput 
                           onTranscript={(text) => {
                             setNotes(text);
