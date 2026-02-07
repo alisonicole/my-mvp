@@ -373,43 +373,6 @@ export default function App() {
     }
   };
 
-  const refreshSessionStarter = async () => {
-    if (!entries.length) return;
-    
-    const lastSnapshot = history?.[0];
-    let entriesToAnalyze = [];
-    
-    if (lastSnapshot) {
-      const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-      const newEntries = entries.filter(e => {
-        const entryTime = new Date(e.timestamp).getTime();
-        return entryTime > snapshotTime;
-      });
-      entriesToAnalyze = newEntries.slice(0, 20);
-    } else {
-      entriesToAnalyze = entries.slice(0, 20);
-    }
-    
-    if (entriesToAnalyze.length === 0) return;
-    
-    setLoading(true);
-    try {
-      const result = await Parse.Cloud.run("generateSessionStarter", {
-        entries: entriesToAnalyze.map(e => e.text)
-      });
-
-      setAnalysis((prev) => ({
-        ...(prev ?? {}),
-        openingStatement: result.openingStatement || prev?.openingStatement || "",
-      }));
-      setAnalysisTimestamp(new Date().toISOString());
-    } catch (error) {
-      console.error("Error generating session starter:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const moveToArchive = async () => {
     if (!analysis) return;
 
@@ -1212,54 +1175,33 @@ export default function App() {
                           Session Starter
                         </h3>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={refreshSessionStarter}
-                          disabled={loading}
-                          style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: loading ? '#d1d5db' : '#7c3aed', 
-                            fontSize: '12px', 
-                            fontWeight: '500', 
-                            cursor: loading ? 'not-allowed' : 'pointer', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px', 
-                            padding: '4px 8px' 
-                          }}
-                        >
-                          <RefreshCw size={14} />
-                          Refresh
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (editStmt) {
-                              setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                              setEditStmt(false);
-                            } else {
-                              setTempStmt(analysis.openingStatement || "");
-                              setEditStmt(true);
-                            }
-                          }}
-                          disabled={loading}
-                          style={{ 
-                            background: 'none', 
-                            border: 'none', 
-                            color: loading ? '#d1d5db' : '#7c3aed', 
-                            fontSize: '12px', 
-                            fontWeight: '500', 
-                            cursor: loading ? 'not-allowed' : 'pointer', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px', 
-                            padding: '4px 8px' 
-                          }}
-                        >
-                          <Edit2 size={14} />
-                          {editStmt ? "Save" : "Edit"}
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => {
+                          if (editStmt) {
+                            setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                            setEditStmt(false);
+                          } else {
+                            setTempStmt(analysis.openingStatement || "");
+                            setEditStmt(true);
+                          }
+                        }}
+                        disabled={loading}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: loading ? '#d1d5db' : '#7c3aed', 
+                          fontSize: '12px', 
+                          fontWeight: '500', 
+                          cursor: loading ? 'not-allowed' : 'pointer', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '4px', 
+                          padding: '4px 8px' 
+                        }}
+                      >
+                        <Edit2 size={14} />
+                        {editStmt ? "Save" : "Edit"}
+                      </button>
                     </div>
 
                     {editStmt ? (
@@ -1298,7 +1240,6 @@ export default function App() {
                       marginTop: '12px',
                       marginBottom: 0
                     }}>
-                      💡 Use this to start your next therapy session
                     </p>
                   </div>
                 )}
