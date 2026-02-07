@@ -15,9 +15,7 @@ import {
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
-<VoiceInput 
-     onTranscript={(text) => setEntry(p => ({ ...p, text }))}
-   />
+
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
 
@@ -35,10 +33,10 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
-  const [entry, setEntry] = useState({ title: "", text: "" });
+  const [entry, setEntry] = useState({ text: "" });
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState({ title: "", text: "" });
+  const [editDraft, setEditDraft] = useState({ text: "" });
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [analysisTimestamp, setAnalysisTimestamp] = useState(null);
@@ -133,29 +131,30 @@ export default function App() {
   };
   
   async function handlePasswordReset() {
-  if (!email) {
-    setAuthError("Please enter your email address");
-    return;
-  }
-  
-  setAuthLoading(true);
-  setAuthError("");
-  
-  try {
-    await Parse.User.requestPasswordReset(email);
-    setResetSuccess(true);
-    setAuthError("");
-  } catch (error) {
-    console.error("Password reset error:", error);
-    if (error.message.includes("no user found")) {
-      setAuthError("No account found with this email address");
-    } else {
-      setAuthError(error.message || "Failed to send reset email. Please try again.");
+    if (!email) {
+      setAuthError("Please enter your email address");
+      return;
     }
-  } finally {
-    setAuthLoading(false);
+    
+    setAuthLoading(true);
+    setAuthError("");
+    
+    try {
+      await Parse.User.requestPasswordReset(email);
+      setResetSuccess(true);
+      setAuthError("");
+    } catch (error) {
+      console.error("Password reset error:", error);
+      if (error.message.includes("no user found")) {
+        setAuthError("No account found with this email address");
+      } else {
+        setAuthError(error.message || "Failed to send reset email. Please try again.");
+      }
+    } finally {
+      setAuthLoading(false);
+    }
   }
-}
+
   const handleLogout = async () => {
     await Parse.User.logOut();
     setCurrentUser(null);
@@ -176,7 +175,6 @@ export default function App() {
       parseId: o.id,
       id: o.get("clientId") ?? o.id,
       date: o.get("date") ?? getDate(),
-      title: o.get("title") ?? "",
       text: o.get("text") ?? "",
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
     }));
@@ -189,7 +187,6 @@ export default function App() {
     obj.set("user", currentUser);
     obj.set("clientId", eObj.id);
     obj.set("date", eObj.date);
-    obj.set("title", eObj.title || "");
     obj.set("text", eObj.text || "");
     obj.set("timestamp", eObj.timestamp || new Date().toISOString());
     const saved = await obj.save();
@@ -202,7 +199,6 @@ export default function App() {
     const q = new Parse.Query(Entry);
     q.equalTo("user", currentUser);
     const obj = await q.get(parseId);
-    if (typeof patch.title === "string") obj.set("title", patch.title);
     if (typeof patch.text === "string") obj.set("text", patch.text);
     await obj.save();
   }
@@ -536,9 +532,9 @@ export default function App() {
         `}</style>
 
         <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
-        <div style={{ marginBottom: '32px' }}>
-          <Logo />
-        </div>
+          <div style={{ marginBottom: '32px' }}>
+            <Logo />
+          </div>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
             Capture what comes up between therapy sessions and bring it into the room
           </p>
@@ -620,134 +616,136 @@ export default function App() {
                 <p style={{ color: '#dc2626', margin: 0, fontSize: '14px' }}>{authError}</p>
               </div>
             )}
-            {/* Forgot Password Link */}
-{authMode === "login" && !showForgotPassword && (
-  <div style={{ textAlign: 'right', marginBottom: '16px' }}>
-    <button
-      onClick={(e) => {
-        e.preventDefault();
-        setShowForgotPassword(true);
-        setAuthError("");
-        setResetSuccess(false);
-      }}
-      style={{
-        background: 'none',
-        border: 'none',
-        color: '#7c3aed',
-        fontSize: '14px',
-        cursor: 'pointer',
-        textDecoration: 'underline',
-        padding: 0
-      }}
-    >
-      Forgot password?
-    </button>
-  </div>
-)}
 
-{/* Forgot Password Form */}
-{showForgotPassword && (
-  <div style={{ 
-    padding: '16px', 
-    background: '#faf5ff', 
-    borderRadius: '12px', 
-    marginBottom: '16px',
-    border: '1px solid #e9d5ff'
-  }}>
-    {resetSuccess ? (
-      <div>
-        <p style={{ color: '#059669', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
-          ✓ Password reset email sent!
-        </p>
-        <p style={{ color: '#7c3aed', fontSize: '14px', marginBottom: '12px' }}>
-          Check your email for a link to reset your password.
-        </p>
-        <button
-          onClick={() => {
-            setShowForgotPassword(false);
-            setResetSuccess(false);
-            setEmail("");
-          }}
-          style={{
-            padding: '8px 16px',
-            borderRadius: '8px',
-            border: 'none',
-            background: '#9333ea',
-            color: 'white',
-            fontSize: '14px',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          Back to Login
-        </button>
-      </div>
-    ) : (
-      <div>
-        <p style={{ color: '#581c87', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
-          Reset your password
-        </p>
-        <p style={{ color: '#7c3aed', fontSize: '13px', marginBottom: '12px' }}>
-          Enter your email and we'll send you a reset link.
-        </p>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Email"
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            border: '2px solid #e9d5ff',
-            outline: 'none',
-            fontSize: '16px',
-            marginBottom: '12px',
-            background: 'white',
-            color: '#581c87'
-          }}
-        />
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={handlePasswordReset}
-            disabled={authLoading}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              borderRadius: '8px',
-              border: 'none',
-              background: authLoading ? '#d1d5db' : '#9333ea',
-              color: 'white',
-              fontSize: '14px',
-              cursor: authLoading ? 'not-allowed' : 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            {authLoading ? 'Sending...' : 'Send Reset Link'}
-          </button>
-          <button
-            onClick={() => {
-              setShowForgotPassword(false);
-              setAuthError("");
-            }}
-            style={{
-              padding: '10px 16px',
-              borderRadius: '8px',
-              border: '1px solid #e9d5ff',
-              background: 'white',
-              color: '#7c3aed',
-              fontSize: '14px',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    )}
-  </div>
-)}
+            {/* Forgot Password Link */}
+            {authMode === "login" && !showForgotPassword && (
+              <div style={{ textAlign: 'right', marginBottom: '16px' }}>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setShowForgotPassword(true);
+                    setAuthError("");
+                    setResetSuccess(false);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#7c3aed',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0
+                  }}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Forgot Password Form */}
+            {showForgotPassword && (
+              <div style={{ 
+                padding: '16px', 
+                background: '#faf5ff', 
+                borderRadius: '12px', 
+                marginBottom: '16px',
+                border: '1px solid #e9d5ff'
+              }}>
+                {resetSuccess ? (
+                  <div>
+                    <p style={{ color: '#059669', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
+                      ✓ Password reset email sent!
+                    </p>
+                    <p style={{ color: '#7c3aed', fontSize: '14px', marginBottom: '12px' }}>
+                      Check your email for a link to reset your password.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setShowForgotPassword(false);
+                        setResetSuccess(false);
+                        setEmail("");
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: '#9333ea',
+                        color: 'white',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        fontWeight: '500'
+                      }}
+                    >
+                      Back to Login
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ color: '#581c87', fontSize: '14px', marginBottom: '12px', fontWeight: '500' }}>
+                      Reset your password
+                    </p>
+                    <p style={{ color: '#7c3aed', fontSize: '13px', marginBottom: '12px' }}>
+                      Enter your email and we'll send you a reset link.
+                    </p>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Email"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        border: '2px solid #e9d5ff',
+                        outline: 'none',
+                        fontSize: '16px',
+                        marginBottom: '12px',
+                        background: 'white',
+                        color: '#581c87'
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={handlePasswordReset}
+                        disabled={authLoading}
+                        style={{
+                          flex: 1,
+                          padding: '10px 16px',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: authLoading ? '#d1d5db' : '#9333ea',
+                          color: 'white',
+                          fontSize: '14px',
+                          cursor: authLoading ? 'not-allowed' : 'pointer',
+                          fontWeight: '500'
+                        }}
+                      >
+                        {authLoading ? 'Sending...' : 'Send Reset Link'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowForgotPassword(false);
+                          setAuthError("");
+                        }}
+                        style={{
+                          padding: '10px 16px',
+                          borderRadius: '8px',
+                          border: '1px solid #e9d5ff',
+                          background: 'white',
+                          color: '#7c3aed',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          fontWeight: '500'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={authLoading}
@@ -777,10 +775,11 @@ export default function App() {
     );
   }
 
- if (showAdmin) {
-  return <AdminDashboard />;
-}
-return (
+  if (showAdmin) {
+    return <AdminDashboard />;
+  }
+
+  return (
     <div className="app-wrapper" style={{ 
       minHeight: '100vh', 
       background: '#f3e8ff',
@@ -807,13 +806,11 @@ return (
           background: #f3e8ff;
         }
         
-        /* Base layout - no width set to allow centering */
         .main-container {
           max-width: 1200px;
           padding: 32px;
         }
         
-        /* Ensure date inputs match other inputs - reset browser defaults */
         input[type="date"] {
           -webkit-appearance: none;
           -moz-appearance: none;
@@ -831,26 +828,22 @@ return (
           text-align: left;
         }
         
-        /* Ensure inputs and content don't overflow */
         input, textarea, select {
           max-width: 100%;
           box-sizing: border-box;
         }
         
-        /* Prevent text overflow in containers */
         p, li, div {
           word-wrap: break-word;
           overflow-wrap: break-word;
           max-width: 100%;
         }
         
-        /* Ensure long words break */
         .archive-card, .archive-card * {
           word-break: break-word;
           overflow-wrap: break-word;
         }
         
-        /* Mobile specific adjustments */
         @media (max-width: 768px) {
           .app-wrapper {
             padding: 12px !important;
@@ -865,7 +858,6 @@ return (
             font-size: 36px !important;
           }
           
-          /* Reduce padding on cards for mobile */
           .mobile-card {
             padding: 20px !important;
             border: 1px solid #e9d5ff !important;
@@ -879,24 +871,20 @@ return (
             max-width: 100%;
           }
           
-          /* Smaller heading on mobile */
           .mobile-heading {
             font-size: 20px !important;
           }
           
-          /* Compact last session */
           .last-session-card {
             padding: 16px !important;
           }
           
-          /* Smaller tab buttons on mobile */
           .tab-button {
             padding: 10px 16px !important;
             font-size: 14px !important;
             border-radius: 12px !important;
           }
           
-          /* Fix input overflow on mobile - CRITICAL */
           input[type="date"] {
             width: 100% !important;
             max-width: 100% !important;
@@ -922,19 +910,13 @@ return (
             box-sizing: border-box !important;
           }
           
-          /* Override 800px wrapper on mobile */
           .capture-content-wrapper {
             max-width: 100% !important;
             margin: 0 !important;
           }
         }
         
-        /* Desktop: ensure centering works with flexbox parent */
         @media (min-width: 769px) {
-          .main-container {
-            /* No width or margin needed - flexbox parent centers us */
-          }
-          
           .capture-content-wrapper {
             width: auto;
           }
@@ -964,31 +946,32 @@ return (
             <LogOut size={20} />
           </button>
 
-           {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
-  <button
-    onClick={() => setShowAdmin(!showAdmin)}
-    title="Analytics"
-    style={{
-      position: 'absolute',
-      right: '50px',
-      top: 0,
-      padding: '8px 16px',
-      borderRadius: '8px',
-      border: 'none',
-      cursor: 'pointer',
-      background: 'rgba(255,255,255,0.7)',
-      color: '#7c3aed',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '4px',
-      fontSize: '14px',
-      fontWeight: '500'
-    }}
-  >
-    📊 Analytics
-  </button>
-)}
+          {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
+            <button
+              onClick={() => setShowAdmin(!showAdmin)}
+              title="Analytics"
+              style={{
+                position: 'absolute',
+                right: '50px',
+                top: 0,
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                background: 'rgba(255,255,255,0.7)',
+                color: '#7c3aed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              📊 Analytics
+            </button>
+          )}
+
           <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
           <p style={{ color: '#7c3aed', fontSize: '16px' }}>
             Capture what comes up between therapy sessions and bring it into the room
@@ -1108,7 +1091,7 @@ return (
                               </h3>
                               <p style={{ fontSize: '14px', color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
                                 {item.type === "entry"
-                                  ? item.data.title || (item.data.text || "").substring(0, 60) + "..."
+                                  ? (item.data.text || "").substring(0, 60) + "..."
                                   : (item.data.openingStatement || "")
                                       .replace(/^I think what I'd like to talk about today is\s*/i, "")
                                       .replace(/\.$/, "")}
@@ -1122,7 +1105,7 @@ return (
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingId(item.data.parseId);
-                                  setEditDraft({ title: item.data.title || "", text: item.data.text || "" });
+                                  setEditDraft({ text: item.data.text || "" });
                                   setExpanded((p) => ({ ...p, [item.id]: true }));
                                 }}
                                 style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
@@ -1160,12 +1143,6 @@ return (
                               <>
                                 {editingId === item.data.parseId ? (
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                                    <input
-                                      value={editDraft.title}
-                                      onChange={(e) => setEditDraft((p) => ({ ...p, title: e.target.value }))}
-                                      placeholder="Title (optional)"
-                                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87', fontWeight: '500' }}
-                                    />
                                     <textarea
                                       value={editDraft.text}
                                       onChange={(e) => setEditDraft((p) => ({ ...p, text: e.target.value }))}
@@ -1175,7 +1152,7 @@ return (
                                       <button
                                         onClick={async () => {
                                           try {
-                                            await updateEntry(item.data.parseId, { title: editDraft.title, text: editDraft.text });
+                                            await updateEntry(item.data.parseId, { text: editDraft.text });
                                             setEntries(await fetchEntries());
                                             setEditingId(null);
                                           } catch (err) {
@@ -1299,31 +1276,24 @@ return (
                   What's on your mind?
                 </h2>
 
-                <input
-                  type="text"
-                  value={entry.title}
-                  onChange={(e) => setEntry((p) => ({ ...p, title: e.target.value }))}
-                  placeholder="Title (optional)"
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', fontWeight: '500' }}
-                />
-
                 <textarea
                   value={entry.text}
                   onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
                   placeholder="Start writing..."
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                 />
+
                 <div style={{ marginBottom: '16px' }}>
-             
-                <VoiceInput 
-                  onTranscript={(text) => {
-                    setEntry(prev => ({ 
-                      ...prev, 
-                      text: text  // ✅ Replace, don't append
-                    }));
-                  }}
-                />
+                  <VoiceInput 
+                    onTranscript={(text) => {
+                      setEntry(prev => ({ 
+                        ...prev, 
+                        text: text
+                      }));
+                    }}
+                  />
                 </div>
+
                 <button
                   onClick={async () => {
                     if (!entry.text) return;
@@ -1336,7 +1306,7 @@ return (
                     try {
                       await createEntry(n);
                       setEntries(await fetchEntries());
-                      setEntry({ title: "", text: "" });
+                      setEntry({ text: "" });
                       setShowArchive(true);
                     } catch (err) {
                       console.error(err);
@@ -1366,15 +1336,131 @@ return (
         {/* PREP TAB */}
         {tab === "prep" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
-                Last session
-              </h3>
-              {!lastSnapshot ? (
-                <p style={{ color: '#7c3aed', margin: 0 }}>
-                  Archive your first session snapshot to get a recap of your last session
+            
+            {/* SESSION STARTER - Moved to top */}
+            {analysis?.openingStatement && (
+              <div style={{ 
+                marginBottom: '24px',
+                padding: '24px',
+                background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                borderRadius: '16px',
+                border: '2px solid #e9d5ff'
+              }}>
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between',
+                  marginBottom: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={20} style={{ color: '#9333ea' }} />
+                    <h3 style={{ 
+                      fontSize: '18px', 
+                      fontWeight: '500', 
+                      color: '#581c87',
+                      margin: 0
+                    }}>
+                      Session Starter
+                    </h3>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={refreshSessionStarter}
+                      disabled={loading}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: loading ? '#d1d5db' : '#7c3aed', 
+                        fontSize: '12px', 
+                        fontWeight: '500', 
+                        cursor: loading ? 'not-allowed' : 'pointer', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px', 
+                        padding: '4px 8px' 
+                      }}
+                    >
+                      <RefreshCw size={14} />
+                      Refresh
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (editStmt) {
+                          setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                          setEditStmt(false);
+                        } else {
+                          setTempStmt(analysis.openingStatement || "");
+                          setEditStmt(true);
+                        }
+                      }}
+                      disabled={loading}
+                      style={{ 
+                        background: 'none', 
+                        border: 'none', 
+                        color: loading ? '#d1d5db' : '#7c3aed', 
+                        fontSize: '12px', 
+                        fontWeight: '500', 
+                        cursor: loading ? 'not-allowed' : 'pointer', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '4px', 
+                        padding: '4px 8px' 
+                      }}
+                    >
+                      <Edit2 size={14} />
+                      {editStmt ? "Save" : "Edit"}
+                    </button>
+                  </div>
+                </div>
+
+                {editStmt ? (
+                  <textarea
+                    value={tempStmt}
+                    onChange={(e) => setTempStmt(e.target.value)}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px 16px', 
+                      borderRadius: '12px', 
+                      border: '2px solid #e9d5ff', 
+                      outline: 'none', 
+                      fontSize: '16px', 
+                      resize: 'none', 
+                      background: 'white', 
+                      color: '#581c87', 
+                      height: '80px' 
+                    }}
+                    rows="3"
+                  />
+                ) : (
+                  <p style={{ 
+                    fontSize: '16px', 
+                    lineHeight: '1.6', 
+                    color: '#581c87',
+                    margin: 0,
+                    fontStyle: 'italic'
+                  }}>
+                    "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
+                  </p>
+                )}
+                
+                <p style={{ 
+                  fontSize: '13px', 
+                  color: '#7c3aed', 
+                  marginTop: '12px',
+                  marginBottom: 0
+                }}>
+                  💡 Use this to start your next therapy session
                 </p>
-              ) : (
+              </div>
+            )}
+
+            {/* LAST SESSION - Only show if exists */}
+            {history && history.length > 0 && (
+              <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
+                  Last Session
+                </h3>
+                
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ color: '#6b7280', fontSize: '13px' }}>
                     <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
@@ -1399,8 +1485,8 @@ return (
                     </p>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {loading ? (
               <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
