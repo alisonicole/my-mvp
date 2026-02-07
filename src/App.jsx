@@ -1160,14 +1160,15 @@ return (
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                 />
                 <div style={{ marginBottom: '16px' }}>
-                  <VoiceInput 
-                    onTranscript={(text) => {
-                      setEntry(prev => ({ 
-                        ...prev, 
-                        text: prev.text + text + ' ' 
-                      }));
-                    }}
-                  />
+                  // CORRECT - Just replace:
+                <VoiceInput 
+                  onTranscript={(text) => {
+                    setEntry(prev => ({ 
+                      ...prev, 
+                      text: text  // ✅ Replace, don't append
+                    }));
+                  }}
+                />
                 </div>
                 <button
                   onClick={async () => {
