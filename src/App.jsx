@@ -1053,18 +1053,10 @@ export default function App() {
                     />
                   </div>
 
-                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                    What's on your mind?
-                  </h2>
-
-                  <textarea
-                    value={entry.text}
-                    onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
-                    placeholder="Start writing..."
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
-                  />
-
-                  <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
+                      What's on your mind?
+                    </h2>
                     <VoiceInput 
                       onTranscript={(text) => {
                         setEntry(prev => ({ 
@@ -1074,6 +1066,13 @@ export default function App() {
                       }}
                     />
                   </div>
+
+                  <textarea
+                    value={entry.text}
+                    onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
+                    placeholder="Start writing..."
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
+                  />
 
                   <button
                     onClick={async () => {
@@ -1149,10 +1148,75 @@ export default function App() {
             {/* PRE-SESSION VIEW */}
             {sessionView === "pre" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {/* Session Starter - Highlighted at top */}
+                {/* 1. Last Session - Only show if exists */}
+                {history && history.length > 0 && (
+                  <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
+                      Last Session
+                    </h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
+                        {formatDate(lastSnapshot.sessionDate)}
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
+                          What you talked about
+                        </h4>
+                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {lastSnapshot.notes || "—"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
+                          Next steps
+                        </h4>
+                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {lastSnapshot.nextSteps || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Refresh Analysis Button */}
+                {loading ? (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
+                    <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Analyzing your reflections...</p>
+                  </div>
+                ) : !analysis ? (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
+                    <button
+                      onClick={genAnalysis}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
+                    >
+                      <Calendar size={20} />
+                      Prep for your next session
+                    </button>
+                    {entries.length < 3 && (
+                      <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
+                        Add at least 3 journal entries to see patterns ({entries.length}/3)
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={genAnalysis}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
+                  >
+                    <RefreshCw size={20} />
+                    Refresh Analysis
+                  </button>
+                )}
+
+                {/* 3. Session Starter - Show if analysis exists */}
                 {analysis?.openingStatement && (
                   <div style={{ 
-                    marginBottom: '0px',
                     padding: '24px',
                     background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
                     borderRadius: '16px',
@@ -1244,136 +1308,72 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Last Session - Only show if exists */}
-                {history && history.length > 0 && (
-                  <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
-                      Last Session
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                        <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
-                        {formatDate(lastSnapshot.sessionDate)}
-                      </div>
-
-                      <div>
-                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
-                          What you talked about
-                        </h4>
-                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                          {lastSnapshot.notes || "—"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
-                          Next steps
-                        </h4>
-                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                          {lastSnapshot.nextSteps || "—"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {loading ? (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                    <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
-                    <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Analyzing your reflections...</p>
-                  </div>
-                ) : !analysis ? (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                    <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
-                    <button
-                      onClick={genAnalysis}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                    >
-                      <Calendar size={20} />
-                      Prep for your next session
-                    </button>
-                    {entries.length < 3 && (
-                      <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
-                        Add at least 3 journal entries to see patterns ({entries.length}/3)
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={genAnalysis}
-                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                    >
-                      <RefreshCw size={20} />
-                      Refresh Analysis
-                    </button>
-
-                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-                        <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
-                        <div style={{ flex: 1 }}>
-                          <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
-                          {analysisTimestamp && (() => {
-                            const lastSnapshot = history?.[0];
-                            let entryCount = entries.length;
-                            if (lastSnapshot) {
-                              const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-                              const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
-                              entryCount = newEntries.length;
-                              return (
-                                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                                  {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
-                                </p>
-                              );
-                            }
+                {/* 4. Patterns - Show if analysis exists */}
+                {analysis && !loading && (
+                  <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                      <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
+                        {analysisTimestamp && (() => {
+                          const lastSnapshot = history?.[0];
+                          let entryCount = entries.length;
+                          if (lastSnapshot) {
+                            const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+                            const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
+                            entryCount = newEntries.length;
                             return (
                               <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                                Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                                {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
                               </p>
                             );
-                          })()}
-                          {analysis?.showNewEntryWarning && (
-                            <div style={{ 
-                              background: '#fef3c7', 
-                              border: '1px solid #fbbf24', 
-                              borderRadius: '8px', 
-                              padding: '8px 12px', 
-                              marginTop: '8px',
-                              fontSize: '13px',
-                              color: '#92400e'
-                            }}>
-                              💡 Enter a new journal entry to refresh your analysis and get new insights
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                        {[
-                          ["What's trying to come up", analysis.themes || []],
-                          ["Things I might be avoiding", analysis.avoiding || []],
-                          ["Questions and confusions", analysis.questions || []],
-                        ].map(([title, items]) => (
-                          <div key={title}>
-                            <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', margin: '0 0 12px 0' }}>{title}</h4>
-                            {items.length ? (
-                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                {items.map((item, i) => (
-                                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                    <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
-                                    <span style={{ color: '#7c3aed', fontSize: '16px' }}>{item}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                            )}
+                          }
+                          return (
+                            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                              Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                            </p>
+                          );
+                        })()}
+                        {analysis?.showNewEntryWarning && (
+                          <div style={{ 
+                            background: '#fef3c7', 
+                            border: '1px solid #fbbf24', 
+                            borderRadius: '8px', 
+                            padding: '8px 12px', 
+                            marginTop: '8px',
+                            fontSize: '13px',
+                            color: '#92400e'
+                          }}>
+                            💡 Enter a new journal entry to refresh your analysis and get new insights
                           </div>
-                        ))}
+                        )}
                       </div>
                     </div>
-                  </>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                      {[
+                        ["What's trying to come up", analysis.themes || []],
+                        ["Things I might be avoiding", analysis.avoiding || []],
+                        ["Questions and confusions", analysis.questions || []],
+                      ].map(([title, items]) => (
+                        <div key={title}>
+                          <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', margin: '0 0 12px 0' }}>{title}</h4>
+                          {items.length ? (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {items.map((item, i) => (
+                                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                                  <span style={{ color: '#7c3aed', fontSize: '16px' }}>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -1411,24 +1411,23 @@ export default function App() {
                         />
                       </div>
 
-                      <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                        How did your session go?
-                      </h2>
-
-                      <textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="What did you talk about? What came up for you?"
-                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
-                      />
-
-                      <div style={{ marginBottom: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>
+                          How did your session go?
+                        </h2>
                         <VoiceInput 
                           onTranscript={(text) => {
                             setNotes(text);
                           }}
                         />
                       </div>
+
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="What did you talk about? What came up for you?"
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '24px', height: '192px' }}
+                      />
 
                       <div style={{ marginBottom: '24px' }}>
                         <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
