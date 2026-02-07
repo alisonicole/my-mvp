@@ -15,6 +15,7 @@ import {
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
+import VoiceRecorder from './VoiceRecorder';
 
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
@@ -29,8 +30,15 @@ export default function App() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  const [tab, setTab] = useState("capture");
-  const [showArchive, setShowArchive] = useState(false);
+  // Main tabs: "journal" or "sessions"
+  const [tab, setTab] = useState("journal");
+  
+  // Journal sub-tabs
+  const [journalView, setJournalView] = useState("write"); // "write" or "archive"
+  
+  // Sessions sub-tabs
+  const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
+
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
   const [entry, setEntry] = useState({ text: "" });
@@ -48,13 +56,14 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
-
+  
+  // Voice memo state
+  const [voiceMemo, setVoiceMemo] = useState("");
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
   const SERVER_URL = import.meta.env.VITE_PARSE_SERVER_URL;
 
-  // Get Parse from window (loaded via CDN)
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
   const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
 
@@ -76,13 +85,9 @@ export default function App() {
     }
     
     try {
-      // Initialize Parse
       Parse.initialize(APP_ID, JS_KEY);
       Parse.serverURL = SERVER_URL;
-      
       console.log("Parse initialized successfully");
-      
-      // Check if user is already logged in
       const user = Parse.User.current();
       setCurrentUser(user);
     } catch (e) {
@@ -90,7 +95,6 @@ export default function App() {
     }
   }, [APP_ID, JS_KEY, SERVER_URL, Parse]);
 
-  // Auth functions
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError("");
@@ -295,13 +299,11 @@ export default function App() {
         setEntries(e);
         setHistory(s);
         
-        // Load saved analysis if available
         if (savedAnalysis) {
           setAnalysis(savedAnalysis);
           setAnalysisTimestamp(new Date().toISOString());
         }
         
-        // Invalidate cache when entries change
         setLastAnalyzedEntries([]);
       } catch (err) {
         console.error(err);
@@ -328,31 +330,25 @@ export default function App() {
       return;
     }
 
-    // Get the last session snapshot (if any)
     const lastSnapshot = history?.[0];
-    
-    // If we have a snapshot, only send NEW entries since that snapshot
     let entriesToAnalyze = [];
     let previousPatterns = null;
     
     if (lastSnapshot) {
-      // Get entries created AFTER the last snapshot
       const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
       const newEntries = entries.filter(e => {
         const entryTime = new Date(e.timestamp).getTime();
         return entryTime > snapshotTime;
       });
       
-      // If there are new entries, use them
       if (newEntries.length > 0) {
-        entriesToAnalyze = newEntries.slice(0, 20); // Limit to 20 most recent
+        entriesToAnalyze = newEntries.slice(0, 20);
         previousPatterns = {
           themes: lastSnapshot.themes || [],
           avoiding: lastSnapshot.avoiding || [],
           questions: lastSnapshot.questions || []
         };
       } else {
-        // No new entries since last snapshot, use cached analysis with warning
         setAnalysis((prev) => ({
           ...(prev ?? {}),
           themes: lastSnapshot.themes || [],
@@ -360,16 +356,14 @@ export default function App() {
           questions: lastSnapshot.questions || [],
           openingStatement: lastSnapshot.openingStatement || "I think what I'd like to talk about today is…",
           sessionDate: sessionDate || getDate(),
-          showNewEntryWarning: true, // Flag to show warning
+          showNewEntryWarning: true,
         }));
         return;
       }
     } else {
-      // No previous snapshot, analyze recent entries (limit to 20)
       entriesToAnalyze = entries.slice(0, 20);
     }
     
-    // Check cache - only if analyzing same entries
     const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
     if (analysis && lastAnalyzedEntries === entriesHash && !analysis.showNewEntryWarning) {
       console.log("Using cached analysis");
@@ -378,10 +372,9 @@ export default function App() {
 
     setLoading(true);
     try {
-      // Call Back4app Cloud Function with incremental analysis
       const result = await Parse.Cloud.run("analyzeJournal", {
         entries: entriesToAnalyze.map(e => e.text),
-        previousPatterns: previousPatterns, // Pass previous patterns for context
+        previousPatterns: previousPatterns,
         isIncremental: !!previousPatterns
       });
 
@@ -402,7 +395,6 @@ export default function App() {
       setAnalysisTimestamp(new Date().toISOString());
       setLastAnalyzedEntries(entriesHash);
       
-      // Save to Parse for persistence across sessions
       await saveAnalysisToUser(newAnalysis);
     } catch (error) {
       console.error("Error analyzing journal:", error);
@@ -415,14 +407,10 @@ export default function App() {
   const refreshSessionStarter = async () => {
     if (!entries.length) return;
     
-    // Get the last session snapshot (if any)
     const lastSnapshot = history?.[0];
-    
-    // Determine which entries to send
     let entriesToAnalyze = [];
     
     if (lastSnapshot) {
-      // Get entries created AFTER the last snapshot
       const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
       const newEntries = entries.filter(e => {
         const entryTime = new Date(e.timestamp).getTime();
@@ -430,18 +418,13 @@ export default function App() {
       });
       entriesToAnalyze = newEntries.slice(0, 20);
     } else {
-      // No previous snapshot, use recent entries
       entriesToAnalyze = entries.slice(0, 20);
     }
     
-    if (entriesToAnalyze.length === 0) {
-      // No new entries to analyze
-      return;
-    }
+    if (entriesToAnalyze.length === 0) return;
     
     setLoading(true);
     try {
-      // Call Back4app Cloud Function
       const result = await Parse.Cloud.run("generateSessionStarter", {
         entries: entriesToAnalyze.map(e => e.text)
       });
@@ -469,7 +452,7 @@ export default function App() {
       avoiding: analysis.avoiding || [],
       questions: analysis.questions || [],
       openingStatement: analysis.openingStatement || "",
-      notes: notes || "",
+      notes: notes || voiceMemo || "",
       nextSteps: nextSteps || "",
     };
 
@@ -479,9 +462,10 @@ export default function App() {
       setHistory(refreshed);
 
       setNotes("");
+      setVoiceMemo("");
       setNextSteps("");
-      setTab("capture");
-      setShowArchive(true);
+      setTab("journal");
+      setJournalView("archive");
     } catch (e) {
       console.error(e);
       alert("Archive failed. Check Back4App CLP for SessionSnapshot (Create).");
@@ -513,7 +497,6 @@ export default function App() {
 
   const lastSnapshot = history?.[0] ?? null;
 
-  // Show login/signup screen if not authenticated
   if (!currentUser) {
     return (
       <div style={{ 
@@ -617,7 +600,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Forgot Password Link */}
             {authMode === "login" && !showForgotPassword && (
               <div style={{ textAlign: 'right', marginBottom: '16px' }}>
                 <button
@@ -642,7 +624,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Forgot Password Form */}
             {showForgotPassword && (
               <div style={{ 
                 padding: '16px', 
@@ -978,11 +959,11 @@ export default function App() {
           </p>
         </div>
 
+        {/* MAIN TABS: Journal | Sessions */}
         <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
           {[
-            ["capture", "Between Sessions"],
-            ["prep", "Pre-session"],
-            ["during", "Post-session"],
+            ["journal", "Journal"],
+            ["sessions", "Sessions"],
           ].map(([t, label]) => (
             <button
               key={t}
@@ -1010,17 +991,18 @@ export default function App() {
           ))}
         </div>
 
-        {/* CAPTURE TAB */}
-        {tab === "capture" && (
+        {/* JOURNAL TAB */}
+        {tab === "journal" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
+            {/* Sub-tabs: Write | Archive */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
-                [false, "Journal Entry"],
-                [true, `Archive (${entries.length + history.length})`],
-              ].map(([isArchive, label]) => (
+                ["write", "Write Entry"],
+                ["archive", `Archive (${entries.length + history.length})`],
+              ].map(([view, label]) => (
                 <button
-                  key={String(isArchive)}
-                  onClick={() => setShowArchive(isArchive)}
+                  key={view}
+                  onClick={() => setJournalView(view)}
                   className="tab-button"
                   style={{
                     flex: 1,
@@ -1031,9 +1013,9 @@ export default function App() {
                     border: 'none',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    background: showArchive === isArchive ? '#9333ea' : 'rgba(255,255,255,0.6)',
-                    color: showArchive === isArchive ? 'white' : '#7c3aed',
-                    boxShadow: showArchive === isArchive ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
+                    background: journalView === view ? '#9333ea' : 'rgba(255,255,255,0.6)',
+                    color: journalView === view ? 'white' : '#7c3aed',
+                    boxShadow: journalView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
                   }}
                 >
                   {label}
@@ -1042,614 +1024,651 @@ export default function App() {
             </div>
 
             <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
+              {journalView === "archive" ? (
+                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '24px' }}>Archive</h2>
 
-            {showArchive ? (
-              <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '24px' }}>Archive</h2>
+                  {!entries.length && !history.length ? (
+                    <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
+                      No entries yet. Start journaling to build your archive.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {combined().map((item) => (
+                        <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden', maxWidth: '100%' }}>
+                          <div
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', cursor: 'pointer', gap: '8px', flexWrap: 'wrap' }}
+                            onClick={() => setExpanded((p) => ({ ...p, [item.id]: !p[item.id] }))}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '0', overflow: 'hidden' }}>
+                              {expanded[item.id] ? (
+                                <ChevronDown size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                              ) : (
+                                <ChevronRight size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                              )}
 
-                {!entries.length && !history.length ? (
-                  <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
-                    No entries yet. Start journaling to build your archive.
-                  </p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {combined().map((item) => (
-                      <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden', maxWidth: '100%' }}>
-                        <div
-                          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', cursor: 'pointer', gap: '8px', flexWrap: 'wrap' }}
-                          onClick={() => setExpanded((p) => ({ ...p, [item.id]: !p[item.id] }))}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: '0', overflow: 'hidden' }}>
-                            {expanded[item.id] ? (
-                              <ChevronDown size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
-                            ) : (
-                              <ChevronRight size={20} style={{ color: '#7c3aed', flexShrink: 0 }} />
-                            )}
-
-                            <div style={{
-                              width: '70px',
-                              height: '32px',
-                              padding: '4px 6px',
-                              borderRadius: '8px',
-                              background: item.type === "entry" ? '#dbeafe' : '#ede9fe',
-                              color: item.type === "entry" ? '#1e40af' : '#5b21b6',
-                              fontSize: '10px',
-                              fontWeight: '500',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              textAlign: 'center',
-                              flexShrink: 0,
-                              lineHeight: '1.2'
-                            }}>
-                              {item.type === "entry" ? "Journal\nEntry" : "Session\nSnapshot"}
-                            </div>
-
-                            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                              <h3 style={{ fontWeight: '500', color: '#581c87', marginBottom: '4px', margin: 0 }}>
-                                {formatDate(item.date)}
-                              </h3>
-                              <p style={{ fontSize: '14px', color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
-                                {item.type === "entry"
-                                  ? (item.data.text || "").substring(0, 60) + "..."
-                                  : (item.data.openingStatement || "")
-                                      .replace(/^I think what I'd like to talk about today is\s*/i, "")
-                                      .replace(/\.$/, "")}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                            {item.type === "entry" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingId(item.data.parseId);
-                                  setEditDraft({ text: item.data.text || "" });
-                                  setExpanded((p) => ({ ...p, [item.id]: true }));
-                                }}
-                                style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                            )}
-
-                            <button
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                try {
-                                  if (item.type === "entry") {
-                                    await deleteEntry(item.data.parseId);
-                                    setEntries(await fetchEntries());
-                                  } else {
-                                    await deleteSnapshot(item.data.parseId);
-                                    setHistory(await fetchSnapshots());
-                                  }
-                                } catch (err) {
-                                  console.error(err);
-                                  alert("Delete failed. Check Back4App permissions.");
-                                }
-                              }}
-                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {expanded[item.id] && (
-                          <div style={{ padding: '12px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
-                            {item.type === "entry" ? (
-                              <>
-                                {editingId === item.data.parseId ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
-                                    <textarea
-                                      value={editDraft.text}
-                                      onChange={(e) => setEditDraft((p) => ({ ...p, text: e.target.value }))}
-                                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '160px' }}
-                                    />
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            await updateEntry(item.data.parseId, { text: editDraft.text });
-                                            setEntries(await fetchEntries());
-                                            setEditingId(null);
-                                          } catch (err) {
-                                            console.error(err);
-                                            alert("Edit failed. Check Entry Update permission.");
-                                          }
-                                        }}
-                                        style={{ flex: 1, padding: '8px 16px', borderRadius: '12px', background: '#9333ea', color: 'white', fontWeight: '500', border: 'none', cursor: 'pointer' }}
-                                      >
-                                        Save changes
-                                      </button>
-                                      <button
-                                        onClick={() => setEditingId(null)}
-                                        style={{ flex: 1, padding: '8px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.7)', color: '#7c3aed', fontWeight: '500', border: '1px solid #e9d5ff', cursor: 'pointer' }}
-                                      >
-                                        Cancel
-                                      </button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', marginTop: '12px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                    {item.data.text}
-                                  </p>
-                                )}
-                              </>
-                            ) : (
-                              <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
-                                {/* 1. Session Starter */}
-                                <div>
-                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                    Session Starter
-                                  </h4>
-                                  <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                    {item.data.openingStatement || "—"}
-                                  </p>
-                                </div>
-                                
-                                {/* 2. Notes */}
-                                <div>
-                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                    Notes
-                                  </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                    {item.data.notes || "—"}
-                                  </p>
-                                </div>
-                                
-                                {/* 3. Next Steps */}
-                                <div>
-                                  <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                    Next Steps
-                                  </h4>
-                                  <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                    {item.data.nextSteps || "—"}
-                                  </p>
-                                </div>
-                                
-                                {/* 4. Patterns (Session Summary) */}
-                                {(item.data.themes?.length > 0 || item.data.avoiding?.length > 0 || item.data.questions?.length > 0) && (
-                                  <div>
-                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', fontSize: '14px' }}>
-                                      Session Summary
-                                    </h4>
-                                    {item.data.themes?.length > 0 && (
-                                      <div style={{ marginBottom: '12px' }}>
-                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What's trying to come up:</p>
-                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                          {item.data.themes.map((theme, i) => (
-                                            <li key={i} style={{ marginBottom: '4px' }}>{theme}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                    {item.data.avoiding?.length > 0 && (
-                                      <div style={{ marginBottom: '12px' }}>
-                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Things I might be avoiding:</p>
-                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                          {item.data.avoiding.map((avoid, i) => (
-                                            <li key={i} style={{ marginBottom: '4px' }}>{avoid}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                    {item.data.questions?.length > 0 && (
-                                      <div>
-                                        <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions and confusions:</p>
-                                        <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                          {item.data.questions.map((question, i) => (
-                                            <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                              <div style={{
+                                width: '70px',
+                                height: '32px',
+                                padding: '4px 6px',
+                                borderRadius: '8px',
+                                background: item.type === "entry" ? '#dbeafe' : '#ede9fe',
+                                color: item.type === "entry" ? '#1e40af' : '#5b21b6',
+                                fontSize: '10px',
+                                fontWeight: '500',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                textAlign: 'center',
+                                flexShrink: 0,
+                                lineHeight: '1.2'
+                              }}>
+                                {item.type === "entry" ? "Journal\nEntry" : "Session\nSnapshot"}
                               </div>
-                            )}
+
+                              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                                <h3 style={{ fontWeight: '500', color: '#581c87', marginBottom: '4px', margin: 0 }}>
+                                  {formatDate(item.date)}
+                                </h3>
+                                <p style={{ fontSize: '14px', color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
+                                  {item.type === "entry"
+                                    ? (item.data.text || "").substring(0, 60) + "..."
+                                    : (item.data.openingStatement || "")
+                                        .replace(/^I think what I'd like to talk about today is\s*/i, "")
+                                        .replace(/\.$/, "")}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                              {item.type === "entry" && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingId(item.data.parseId);
+                                    setEditDraft({ text: item.data.text || "" });
+                                    setExpanded((p) => ({ ...p, [item.id]: true }));
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                              )}
+
+                              <button
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    if (item.type === "entry") {
+                                      await deleteEntry(item.data.parseId);
+                                      setEntries(await fetchEntries());
+                                    } else {
+                                      await deleteSnapshot(item.data.parseId);
+                                      setHistory(await fetchSnapshots());
+                                    }
+                                  } catch (err) {
+                                    console.error(err);
+                                    alert("Delete failed. Check Back4App permissions.");
+                                  }
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    ))}
+
+                          {expanded[item.id] && (
+                            <div style={{ padding: '12px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
+                              {item.type === "entry" ? (
+                                <>
+                                  {editingId === item.data.parseId ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                                      <textarea
+                                        value={editDraft.text}
+                                        onChange={(e) => setEditDraft((p) => ({ ...p, text: e.target.value }))}
+                                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '160px' }}
+                                      />
+                                      <div style={{ display: 'flex', gap: '8px' }}>
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              await updateEntry(item.data.parseId, { text: editDraft.text });
+                                              setEntries(await fetchEntries());
+                                              setEditingId(null);
+                                            } catch (err) {
+                                              console.error(err);
+                                              alert("Edit failed. Check Entry Update permission.");
+                                            }
+                                          }}
+                                          style={{ flex: 1, padding: '8px 16px', borderRadius: '12px', background: '#9333ea', color: 'white', fontWeight: '500', border: 'none', cursor: 'pointer' }}
+                                        >
+                                          Save changes
+                                        </button>
+                                        <button
+                                          onClick={() => setEditingId(null)}
+                                          style={{ flex: 1, padding: '8px 16px', borderRadius: '12px', background: 'rgba(255,255,255,0.7)', color: '#7c3aed', fontWeight: '500', border: '1px solid #e9d5ff', cursor: 'pointer' }}
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', marginTop: '12px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                      {item.data.text}
+                                    </p>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                                  <div>
+                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                      Session Starter
+                                    </h4>
+                                    <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                      {item.data.openingStatement || "—"}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                      Notes
+                                    </h4>
+                                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                      {item.data.notes || "—"}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                      Next Steps
+                                    </h4>
+                                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                      {item.data.nextSteps || "—"}
+                                    </p>
+                                  </div>
+                                  
+                                  {(item.data.themes?.length > 0 || item.data.avoiding?.length > 0 || item.data.questions?.length > 0) && (
+                                    <div>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', fontSize: '14px' }}>
+                                        Session Summary
+                                      </h4>
+                                      {item.data.themes?.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What's trying to come up:</p>
+                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                            {item.data.themes.map((theme, i) => (
+                                              <li key={i} style={{ marginBottom: '4px' }}>{theme}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {item.data.avoiding?.length > 0 && (
+                                        <div style={{ marginBottom: '12px' }}>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Things I might be avoiding:</p>
+                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                            {item.data.avoiding.map((avoid, i) => (
+                                              <li key={i} style={{ marginBottom: '4px' }}>{avoid}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                      {item.data.questions?.length > 0 && (
+                                        <div>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions and confusions:</p>
+                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
+                                            {item.data.questions.map((question, i) => (
+                                              <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
+                                            ))}
+                                          </ul>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
+                      <Calendar size={20} />
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                    />
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
-                    <Calendar size={20} />
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+
+                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+                    What's on your mind?
+                  </h2>
+
+                  <textarea
+                    value={entry.text}
+                    onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
+                    placeholder="Start writing..."
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                   />
-                </div>
 
-                <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                  What's on your mind?
-                </h2>
+                  <div style={{ marginBottom: '16px' }}>
+                    <VoiceInput 
+                      onTranscript={(text) => {
+                        setEntry(prev => ({ 
+                          ...prev, 
+                          text: text
+                        }));
+                      }}
+                    />
+                  </div>
 
-                <textarea
-                  value={entry.text}
-                  onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
-                  placeholder="Start writing..."
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
-                />
-
-                <div style={{ marginBottom: '16px' }}>
-                  <VoiceInput 
-                    onTranscript={(text) => {
-                      setEntry(prev => ({ 
-                        ...prev, 
-                        text: text
-                      }));
+                  <button
+                    onClick={async () => {
+                      if (!entry.text) return;
+                      const n = {
+                        id: Date.now(),
+                        date,
+                        ...entry,
+                        timestamp: new Date().toISOString(),
+                      };
+                      try {
+                        await createEntry(n);
+                        setEntries(await fetchEntries());
+                        setEntry({ text: "" });
+                        setJournalView("archive");
+                      } catch (err) {
+                        console.error(err);
+                        alert("Save failed. Check Back4App CLP for Entry (Create).");
+                      }
                     }}
-                  />
-                </div>
+                    disabled={!entry.text}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', width: '100%', opacity: entry.text ? 1 : 0.5 }}
+                  >
+                    <Save size={20} />
+                    Save
+                  </button>
 
-                <button
-                  onClick={async () => {
-                    if (!entry.text) return;
-                    const n = {
-                      id: Date.now(),
-                      date,
-                      ...entry,
-                      timestamp: new Date().toISOString(),
-                    };
-                    try {
-                      await createEntry(n);
-                      setEntries(await fetchEntries());
-                      setEntry({ text: "" });
-                      setShowArchive(true);
-                    } catch (err) {
-                      console.error(err);
-                      alert("Save failed. Check Back4App CLP for Entry (Create).");
-                    }
-                  }}
-                  disabled={!entry.text}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', width: '100%', opacity: entry.text ? 1 : 0.5 }}
-                >
-                  <Save size={20} />
-                  Save
-                </button>
-
-                <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                  </svg>
-                  <span>Your data is private and secure.</span>
+                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <span>Your data is private and secure.</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
           </div>
         )}
 
-        {/* PREP TAB */}
-        {tab === "prep" && (
+        {/* SESSIONS TAB */}
+        {tab === "sessions" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            
-            {/* SESSION STARTER - Moved to top */}
-            {analysis?.openingStatement && (
-              <div style={{ 
-                marginBottom: '24px',
-                padding: '24px',
-                background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                borderRadius: '16px',
-                border: '2px solid #e9d5ff'
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between',
-                  marginBottom: '12px'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Sparkles size={20} style={{ color: '#9333ea' }} />
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '500', 
-                      color: '#581c87',
-                      margin: 0
-                    }}>
-                      Session Starter
-                    </h3>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={refreshSessionStarter}
-                      disabled={loading}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: loading ? '#d1d5db' : '#7c3aed', 
-                        fontSize: '12px', 
-                        fontWeight: '500', 
-                        cursor: loading ? 'not-allowed' : 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '4px', 
-                        padding: '4px 8px' 
-                      }}
-                    >
-                      <RefreshCw size={14} />
-                      Refresh
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (editStmt) {
-                          setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                          setEditStmt(false);
-                        } else {
-                          setTempStmt(analysis.openingStatement || "");
-                          setEditStmt(true);
-                        }
-                      }}
-                      disabled={loading}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: loading ? '#d1d5db' : '#7c3aed', 
-                        fontSize: '12px', 
-                        fontWeight: '500', 
-                        cursor: loading ? 'not-allowed' : 'pointer', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '4px', 
-                        padding: '4px 8px' 
-                      }}
-                    >
-                      <Edit2 size={14} />
-                      {editStmt ? "Save" : "Edit"}
-                    </button>
-                  </div>
-                </div>
+            {/* Sub-tabs: Pre-Session | Post-Session */}
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
+              {[
+                ["pre", "Pre-Session"],
+                ["post", "Post-Session"],
+              ].map(([view, label]) => (
+                <button
+                  key={view}
+                  onClick={() => setSessionView(view)}
+                  className="tab-button"
+                  style={{
+                    flex: 1,
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    fontWeight: '600',
+                    fontSize: '16px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    background: sessionView === view ? '#9333ea' : 'rgba(255,255,255,0.6)',
+                    color: sessionView === view ? 'white' : '#7c3aed',
+                    boxShadow: sessionView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-                {editStmt ? (
-                  <textarea
-                    value={tempStmt}
-                    onChange={(e) => setTempStmt(e.target.value)}
-                    style={{ 
-                      width: '100%', 
-                      padding: '12px 16px', 
-                      borderRadius: '12px', 
-                      border: '2px solid #e9d5ff', 
-                      outline: 'none', 
-                      fontSize: '16px', 
-                      resize: 'none', 
-                      background: 'white', 
-                      color: '#581c87', 
-                      height: '80px' 
-                    }}
-                    rows="3"
-                  />
-                ) : (
-                  <p style={{ 
-                    fontSize: '16px', 
-                    lineHeight: '1.6', 
-                    color: '#581c87',
-                    margin: 0,
-                    fontStyle: 'italic'
+            {/* PRE-SESSION VIEW */}
+            {sessionView === "pre" && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Session Starter - Highlighted at top */}
+                {analysis?.openingStatement && (
+                  <div style={{ 
+                    marginBottom: '0px',
+                    padding: '24px',
+                    background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                    borderRadius: '16px',
+                    border: '2px solid #e9d5ff'
                   }}>
-                    "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
-                  </p>
-                )}
-                
-                <p style={{ 
-                  fontSize: '13px', 
-                  color: '#7c3aed', 
-                  marginTop: '12px',
-                  marginBottom: 0
-                }}>
-                </p>
-              </div>
-            )}
-
-            {/* LAST SESSION - Only show if exists */}
-            {history && history.length > 0 && (
-              <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
-                  Last Session
-                </h3>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ color: '#6b7280', fontSize: '13px' }}>
-                    <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
-                    {formatDate(lastSnapshot.sessionDate)}
-                  </div>
-
-                  <div>
-                    <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
-                      What you talked about
-                    </h4>
-                    <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                      {lastSnapshot.notes || "—"}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
-                      Next steps
-                    </h4>
-                    <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                      {lastSnapshot.nextSteps || "—"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {loading ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
-                <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Analyzing your reflections...</p>
-              </div>
-            ) : !analysis ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
-                <button
-                  onClick={genAnalysis}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                >
-                  <Calendar size={20} />
-                  Prep for your next session
-                </button>
-                {entries.length < 3 && (
-                  <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
-                    Add at least 3 journal entries to see patterns ({entries.length}/3)
-                  </p>
-                )}
-              </div>
-            ) : (
-              <>
-                <button
-                  onClick={genAnalysis}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                >
-                  <RefreshCw size={20} />
-                  Refresh Analysis
-                </button>
-
-                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-                    <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
-                    <div style={{ flex: 1 }}>
-                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
-                      {analysisTimestamp && (() => {
-                        const lastSnapshot = history?.[0];
-                        let entryCount = entries.length;
-                        if (lastSnapshot) {
-                          const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-                          const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
-                          entryCount = newEntries.length;
-                          return (
-                            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                              {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
-                            </p>
-                          );
-                        }
-                        return (
-                          <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                            Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
-                          </p>
-                        );
-                      })()}
-                      {analysis?.showNewEntryWarning && (
-                        <div style={{ 
-                          background: '#fef3c7', 
-                          border: '1px solid #fbbf24', 
-                          borderRadius: '8px', 
-                          padding: '8px 12px', 
-                          marginTop: '8px',
-                          fontSize: '13px',
-                          color: '#92400e'
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Sparkles size={20} style={{ color: '#9333ea' }} />
+                        <h3 style={{ 
+                          fontSize: '18px', 
+                          fontWeight: '500', 
+                          color: '#581c87',
+                          margin: 0
                         }}>
-                          💡 Enter a new journal entry to refresh your analysis and get new insights
-                        </div>
-                      )}
+                          Session Starter
+                        </h3>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={refreshSessionStarter}
+                          disabled={loading}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: loading ? '#d1d5db' : '#7c3aed', 
+                            fontSize: '12px', 
+                            fontWeight: '500', 
+                            cursor: loading ? 'not-allowed' : 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px', 
+                            padding: '4px 8px' 
+                          }}
+                        >
+                          <RefreshCw size={14} />
+                          Refresh
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (editStmt) {
+                              setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                              setEditStmt(false);
+                            } else {
+                              setTempStmt(analysis.openingStatement || "");
+                              setEditStmt(true);
+                            }
+                          }}
+                          disabled={loading}
+                          style={{ 
+                            background: 'none', 
+                            border: 'none', 
+                            color: loading ? '#d1d5db' : '#7c3aed', 
+                            fontSize: '12px', 
+                            fontWeight: '500', 
+                            cursor: loading ? 'not-allowed' : 'pointer', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '4px', 
+                            padding: '4px 8px' 
+                          }}
+                        >
+                          <Edit2 size={14} />
+                          {editStmt ? "Save" : "Edit"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {editStmt ? (
+                      <textarea
+                        value={tempStmt}
+                        onChange={(e) => setTempStmt(e.target.value)}
+                        style={{ 
+                          width: '100%', 
+                          padding: '12px 16px', 
+                          borderRadius: '12px', 
+                          border: '2px solid #e9d5ff', 
+                          outline: 'none', 
+                          fontSize: '16px', 
+                          resize: 'none', 
+                          background: 'white', 
+                          color: '#581c87', 
+                          height: '80px' 
+                        }}
+                        rows="3"
+                      />
+                    ) : (
+                      <p style={{ 
+                        fontSize: '16px', 
+                        lineHeight: '1.6', 
+                        color: '#581c87',
+                        margin: 0,
+                        fontStyle: 'italic'
+                      }}>
+                        "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
+                      </p>
+                    )}
+                    
+                    <p style={{ 
+                      fontSize: '13px', 
+                      color: '#7c3aed', 
+                      marginTop: '12px',
+                      marginBottom: 0
+                    }}>
+                      💡 Use this to start your next therapy session
+                    </p>
+                  </div>
+                )}
+
+                {/* Last Session - Only show if exists */}
+                {history && history.length > 0 && (
+                  <div className="mobile-card last-session-card" style={{ background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px' }}>
+                    <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>
+                      Last Session
+                    </h3>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>Session Date: </span>
+                        {formatDate(lastSnapshot.sessionDate)}
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
+                          What you talked about
+                        </h4>
+                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {lastSnapshot.notes || "—"}
+                        </p>
+                      </div>
+
+                      <div>
+                        <h4 style={{ fontWeight: '600', color: '#374151', fontSize: '13px', margin: '0 0 6px 0' }}>
+                          Next steps
+                        </h4>
+                        <p style={{ color: '#6b7280', whiteSpace: 'pre-wrap', margin: 0, fontSize: '13px', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                          {lastSnapshot.nextSteps || "—"}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    {[
-                      ["What's trying to come up", analysis.themes || []],
-                      ["Things I might be avoiding", analysis.avoiding || []],
-                      ["Questions and confusions", analysis.questions || []],
-                    ].map(([title, items]) => (
-                      <div key={title}>
-                        <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', margin: '0 0 12px 0' }}>{title}</h4>
-                        {items.length ? (
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {items.map((item, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
-                                <span style={{ color: '#7c3aed', fontSize: '16px' }}>{item}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                        )}
-                      </div>
-                    ))}
+                {loading ? (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
+                    <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Analyzing your reflections...</p>
                   </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                ) : !analysis ? (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
+                    <button
+                      onClick={genAnalysis}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
+                    >
+                      <Calendar size={20} />
+                      Prep for your next session
+                    </button>
+                    {entries.length < 3 && (
+                      <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
+                        Add at least 3 journal entries to see patterns ({entries.length}/3)
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={genAnalysis}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
+                    >
+                      <RefreshCw size={20} />
+                      Refresh Analysis
+                    </button>
 
-        {/* DURING TAB */}
-        {tab === "during" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {!analysis ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
-                <p style={{ color: '#7c3aed', fontSize: '16px', marginBottom: '16px' }}>
-                  Create session prep first to use during-session tools
-                </p>
-                <button
-                  onClick={() => setTab("prep")}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                >
-                  <Calendar size={20} />
-                  Go to Prep
-                </button>
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                        <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
+                          {analysisTimestamp && (() => {
+                            const lastSnapshot = history?.[0];
+                            let entryCount = entries.length;
+                            if (lastSnapshot) {
+                              const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+                              const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
+                              entryCount = newEntries.length;
+                              return (
+                                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                                  {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
+                                </p>
+                              );
+                            }
+                            return (
+                              <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                                Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
+                              </p>
+                            );
+                          })()}
+                          {analysis?.showNewEntryWarning && (
+                            <div style={{ 
+                              background: '#fef3c7', 
+                              border: '1px solid #fbbf24', 
+                              borderRadius: '8px', 
+                              padding: '8px 12px', 
+                              marginTop: '8px',
+                              fontSize: '13px',
+                              color: '#92400e'
+                            }}>
+                              💡 Enter a new journal entry to refresh your analysis and get new insights
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                        {[
+                          ["What's trying to come up", analysis.themes || []],
+                          ["Things I might be avoiding", analysis.avoiding || []],
+                          ["Questions and confusions", analysis.questions || []],
+                        ].map(([title, items]) => (
+                          <div key={title}>
+                            <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', margin: '0 0 12px 0' }}>{title}</h4>
+                            {items.length ? (
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {items.map((item, i) => (
+                                  <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                    <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                                    <span style={{ color: '#7c3aed', fontSize: '16px' }}>{item}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            ) : (
-              <>
-                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                    Session Date
-                  </h3>
-                  <input
-                    type="date"
-                    value={sessionDate}
-                    onChange={(e) => setSessionDate(e.target.value)}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
-                  />
-                </div>
+            )}
 
-                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                    Notes
-                  </h3>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes or context for your session..."
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
-                  />
-                </div>
+            {/* POST-SESSION VIEW */}
+            {sessionView === "post" && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {!analysis ? (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
+                    <p style={{ color: '#7c3aed', fontSize: '16px', marginBottom: '16px' }}>
+                      Create session prep first to record session notes
+                    </p>
+                    <button
+                      onClick={() => setSessionView("pre")}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
+                    >
+                      <Calendar size={20} />
+                      Go to Pre-Session
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+                        Session Date
+                      </h3>
+                      <input
+                        type="date"
+                        value={sessionDate}
+                        onChange={(e) => setSessionDate(e.target.value)}
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                      />
+                    </div>
 
-                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
-                    Next steps
-                  </h3>
-                  <textarea
-                    value={nextSteps}
-                    onChange={(e) => setNextSteps(e.target.value)}
-                    placeholder="Add any next steps, homework, or things to remember for next session..."
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
-                  />
-                </div>
+                    {/* Voice Recorder */}
+                    <VoiceRecorder 
+                      onTranscript={(text) => {
+                        setVoiceMemo(text);
+                        setNotes(text);
+                      }}
+                    />
 
-                <button
-                  onClick={moveToArchive}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#7c3aed', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
-                >
-                  <ArrowRight size={20} />
-                  Move to Archive
-                </button>
-              </>
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+                        Notes
+                      </h3>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="What did you talk about? (or use voice memo above)"
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
+                      />
+                    </div>
+
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '16px' }}>
+                        Next steps
+                      </h3>
+                      <textarea
+                        value={nextSteps}
+                        onChange={(e) => setNextSteps(e.target.value)}
+                        placeholder="Homework, things to remember for next session..."
+                        style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
+                      />
+                    </div>
+
+                    <button
+                      onClick={moveToArchive}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#7c3aed', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(124,58,237,0.3)' }}
+                    >
+                      <ArrowRight size={20} />
+                      Save to Archive
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
         )}
