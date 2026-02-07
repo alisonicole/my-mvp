@@ -15,7 +15,7 @@ import {
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
-import VoiceRecorder from './VoiceRecorder';
+import VoiceRecorder from './VoiceRecorder.jsx';
 
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
