@@ -13,7 +13,10 @@ import {
   LogOut,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
-
+import VoiceInput from './VoiceInput';
+<VoiceInput 
+     onTranscript={(text) => setEntry(p => ({ ...p, text }))}
+   />
 export default function App() {
   const getDate = () => new Date().toISOString().split("T")[0];
 
