@@ -38,9 +38,16 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
       setTranscript(currentTranscript);
       
       // Call parent callback with updated transcript
-      if (finalTranscript) {
-        onTranscript(currentTranscript);
-      }
+      // Accumulate final results in a ref
+    if (finalTranscript) {
+    finalTranscriptRef.current += finalTranscript;
+    }
+
+    // Combine final + interim for LIVE display
+    const completeTranscript = finalTranscriptRef.current + interimTranscript;
+
+    // Update IMMEDIATELY - no waiting for pauses!
+    onTranscript(completeTranscript);
     };
 
     recognitionInstance.onerror = (event) => {
