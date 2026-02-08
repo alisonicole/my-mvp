@@ -561,7 +561,7 @@ export default function App() {
   }
 
   if (showAdmin) {
-    return <AdminDashboard />;
+    return <AdminDashboard onExit={() => setShowAdmin(false)} />;
   }
 
   return (
@@ -1215,8 +1215,8 @@ export default function App() {
                   </button>
                 )}
 
-                {/* 3. Session Starter - Show if analysis exists */}
-                {analysis?.openingStatement && (
+                {/* 3. Session Starter - Show if analysis exists and not loading */}
+                {analysis?.openingStatement && !loading && (
                   <div style={{ 
                     padding: '24px',
                     background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
@@ -1305,6 +1305,7 @@ export default function App() {
                       marginTop: '12px',
                       marginBottom: 0
                     }}>
+                      💡 Use this to start your next therapy session
                     </p>
                   </div>
                 )}
