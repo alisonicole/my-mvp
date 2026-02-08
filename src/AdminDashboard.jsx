@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { BarChart3, Users, FileText, Calendar, TrendingUp } from "lucide-react";
+import { BarChart3, Users, FileText, Calendar, TrendingUp, X } from "lucide-react";
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onExit }) {
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalEntries: 0,
@@ -28,16 +28,26 @@ export default function AdminDashboard() {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // Total users
-      const userQuery = new Parse.Query(Parse.User);
-      const totalUsers = await userQuery.count();
+      // Total users WHO HAD A SESSION in the past 7 days
+      const sessionQuery7 = new Parse.Query("SessionSnapshot");
+      sessionQuery7.greaterThan("createdAt", sevenDaysAgo);
+      sessionQuery7.include("user");
+      const recentSessions = await sessionQuery7.find();
+      
+      // Get unique user IDs from sessions
+      const uniqueUserIds = new Set();
+      recentSessions.forEach(session => {
+        const userId = session.get("user")?.id;
+        if (userId) uniqueUserIds.add(userId);
+      });
+      const totalUsers = uniqueUserIds.size;
 
       // Total entries
       const entryQuery = new Parse.Query("Entry");
       const totalEntries = await entryQuery.count();
 
       // Total sessions
-      const sessionQuery = new Parse.Query("Session");
+      const sessionQuery = new Parse.Query("SessionSnapshot");
       const totalSessions = await sessionQuery.count();
 
       // Active users last 7 days
@@ -134,18 +144,39 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>
-      <div style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>Between Analytics</h1>
-        <p style={{ color: '#7c3aed', fontSize: '16px' }}>Track your app's key metrics and user engagement</p>
+      <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <h1 style={{ fontSize: '32px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>Between Analytics</h1>
+          <p style={{ color: '#7c3aed', fontSize: '16px' }}>Track your app's key metrics and user engagement</p>
+        </div>
+        <button
+          onClick={onExit}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '12px',
+            border: '1px solid #e9d5ff',
+            background: 'white',
+            color: '#7c3aed',
+            fontWeight: '500',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '14px'
+          }}
+        >
+          <X size={20} />
+          Exit Analytics
+        </button>
       </div>
 
       {/* Overview Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '32px' }}>
         <StatCard 
           icon={Users} 
-          label="Total Users" 
+          label="Users with Sessions (7d)" 
           value={stats.totalUsers}
-          subtext={`${stats.activeUsersLast7Days} active in last 7 days`}
+          subtext="Users who created a session in past 7 days"
         />
         <StatCard 
           icon={FileText} 
