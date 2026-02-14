@@ -440,16 +440,17 @@ export default function App() {
       const avoiding = lastSnapshot.avoiding || [];
       
       // Create a prompt based on the most recent session
-      const themeText = themes.length > 0 ? themes[0] : '';
-      const avoidingText = avoiding.length > 0 ? avoiding[0] : '';
-      
+      const clean = (t) => t.replace(/[.!?]+$/, '').trim().toLowerCase();
+      const themeText = themes.length > 0 ? clean(themes[0]) : '';
+      const avoidingText = avoiding.length > 0 ? clean(avoiding[0]) : '';
+
       let prompt = '';
       if (themeText && avoidingText) {
-        prompt = `You mentioned ${themeText.toLowerCase()}. What might be underneath that? Especially considering you might be avoiding ${avoidingText.toLowerCase()}.`;
+        prompt = `You mentioned you're caught up in ${themeText}. What do you think is underneath that, especially given that you might be avoiding ${avoidingText}?`;
       } else if (themeText) {
-        prompt = `Reflecting on ${themeText.toLowerCase()}, what new thoughts or feelings are coming up for you today?`;
+        prompt = `You've been thinking about ${themeText}. What new thoughts or feelings are coming up around that today?`;
       } else if (avoidingText) {
-        prompt = `You've noticed you might be avoiding ${avoidingText.toLowerCase()}. What would it feel like to explore that a bit more?`;
+        prompt = `You've noticed you might be avoiding ${avoidingText}. What would it feel like to sit with that a bit more?`;
       } else {
         prompt = `Looking back at your last session, what's been on your mind since then?`;
       }
@@ -654,7 +655,8 @@ export default function App() {
         }
         
         .main-container {
-          max-width: 1200px;
+          max-width: 600px;
+          margin: 0 auto;
           padding: 32px;
         }
         
@@ -811,215 +813,49 @@ export default function App() {
         {/* HOME TAB */}
         {tab === "home" && (
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px' }}>
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              <h2 style={{ fontSize: '28px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>
-                What would you like to do?
-              </h2>
-              <p style={{ color: '#7c3aed', fontSize: '14px' }}>
-                Choose an action to get started
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gap: '16px' }}>
-              {/* Write a journal entry */}
-              <button
-                onClick={() => {
-                  setTab('journal');
-                  setJournalView('write');
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  border: '2px solid #e9d5ff',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    borderRadius: '12px', 
-                    background: '#9333ea',
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '12px'
+            }}>
+              {[
+                { label: 'Write Entry',    Icon: PenTool,      color: '#9333ea', action: () => { setTab('journal'); setJournalView('write'); } },
+                { label: 'View Archive',   Icon: Archive,      color: '#7c3aed', action: () => { setTab('journal'); setJournalView('archive'); } },
+                { label: 'Get Insights',   Icon: Sparkles,     color: '#8b5cf6', action: () => setTab('patterns') },
+                { label: 'Pre-session',    Icon: Calendar,     color: '#6d28d9', action: () => { setTab('sessions'); setSessionView('pre'); } },
+                { label: 'Post-session',   Icon: MessageSquare, color: '#a78bfa', action: () => { setTab('sessions'); setSessionView('post'); } },
+              ].map(({ label, Icon, color, action }) => (
+                <button
+                  key={label}
+                  onClick={action}
+                  style={{
+                    background: 'rgba(255,255,255,0.7)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.8)',
+                    borderRadius: '16px',
+                    padding: '20px 16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '10px',
+                    boxShadow: '0 2px 8px rgba(147,51,234,0.08)'
+                  }}
+                >
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: color,
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
+                    justifyContent: 'center'
                   }}>
-                    <PenTool size={24} color="white" />
+                    <Icon size={22} color="white" />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
-                      Write a journal entry
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
-                      Capture what's on your mind right now
-                    </p>
-                  </div>
-                  <ArrowRight size={20} color="#9333ea" />
-                </div>
-              </button>
-
-              {/* View my archive */}
-              <button
-                onClick={() => {
-                  setTab('journal');
-                  setJournalView('archive');
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  border: '2px solid #e9d5ff',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    borderRadius: '12px', 
-                    background: '#7c3aed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <Archive size={24} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
-                      View my archive
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
-                      Review past entries and sessions
-                    </p>
-                  </div>
-                  <ArrowRight size={20} color="#7c3aed" />
-                </div>
-              </button>
-
-              {/* Prep for a session */}
-              <button
-                onClick={() => {
-                  setTab('sessions');
-                  setSessionView('pre');
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  border: '2px solid #e9d5ff',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    borderRadius: '12px', 
-                    background: '#8b5cf6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <Sparkles size={24} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
-                      Prep for a session
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
-                      Get insights and a session starter
-                    </p>
-                  </div>
-                  <ArrowRight size={20} color="#8b5cf6" />
-                </div>
-              </button>
-
-              {/* Reflect on my session */}
-              <button
-                onClick={() => {
-                  setTab('sessions');
-                  setSessionView('post');
-                }}
-                style={{
-                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                  border: '2px solid #e9d5ff',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ 
-                    width: '48px', 
-                    height: '48px', 
-                    borderRadius: '12px', 
-                    background: '#a78bfa',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    <MessageSquare size={24} color="white" />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
-                      Reflect on my session
-                    </h3>
-                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
-                      Record what you talked about
-                    </p>
-                  </div>
-                  <ArrowRight size={20} color="#a78bfa" />
-                </div>
-              </button>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#581c87' }}>{label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -1454,39 +1290,6 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Generate Prompt Button - Only for paid subscribers with sessions */}
-                  {isPaidSubscriber && history && history.length > 0 && (
-                    <button
-                      onClick={handleGeneratePrompt}
-                      disabled={loading}
-                      style={{
-                        padding: '12px 20px',
-                        borderRadius: '12px',
-                        border: '1px solid #e9d5ff',
-                        background: loading ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                        color: loading ? '#9ca3af' : '#7c3aed',
-                        fontWeight: '500',
-                        fontSize: '14px',
-                        cursor: loading ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        transition: 'all 0.2s',
-                        width: '100%',
-                        marginBottom: '24px'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!loading) e.currentTarget.style.background = 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)';
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!loading) e.currentTarget.style.background = 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)';
-                      }}
-                    >
-                      <Sparkles size={18} />
-                      {loading ? 'Generating...' : 'Generate Journaling Prompt'}
-                    </button>
-                  )}
 
                   {/* Active Prompt Display */}
                   {activePrompt && (
@@ -1544,8 +1347,37 @@ export default function App() {
                     What's on your mind?
                   </h2>
 
+                  {/* Generate Journaling Prompt */}
+                  {history && history.length > 0 && (
+                    <button
+                      onClick={isPaidSubscriber ? handleGeneratePrompt : undefined}
+                      disabled={!isPaidSubscriber || loading}
+                      title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
+                      style={{
+                        padding: '12px 20px',
+                        borderRadius: '12px',
+                        border: '1px solid #e9d5ff',
+                        background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                        color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                        cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        marginBottom: '16px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {isPaidSubscriber ? <Sparkles size={18} /> : <Lock size={18} />}
+                      {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
+                    </button>
+                  )}
+
                   <div style={{ marginBottom: '16px' }}>
-                    <VoiceInput 
+                    <VoiceInput
                       currentText={entry.text}
                       onTranscript={(text) => {
                         setEntry(prev => ({ 

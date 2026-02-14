@@ -6,8 +6,9 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
   const [transcript, setTranscript] = useState('');
   const [supported, setSupported] = useState(true);
   const [baseText, setBaseText] = useState(''); // Store the text when recording started
-  
+
   const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false); // Ref so onend can check current state
 
   // Initialize recognition once
   useEffect(() => {
@@ -65,7 +66,17 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      // Mobile browsers stop recognition after short pauses — restart if still listening
+      if (isListeningRef.current) {
+        try {
+          recognition.start();
+        } catch (e) {
+          isListeningRef.current = false;
+          setIsListening(false);
+        }
+      } else {
+        setIsListening(false);
+      }
     };
   }, []); // Only set handlers once
 
@@ -83,20 +94,24 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
 
     if (isListening) {
       try {
+        isListeningRef.current = false;
         recognition.stop();
         setIsListening(false);
       } catch (e) {
         console.error('Error stopping recognition:', e);
+        isListeningRef.current = false;
         setIsListening(false);
       }
     } else {
       setBaseText(currentText);
       setTranscript('');
       try {
+        isListeningRef.current = true;
         recognition.start();
         setIsListening(true);
       } catch (e) {
         console.error('Error starting recognition:', e);
+        isListeningRef.current = false;
       }
     }
   };
