@@ -40,7 +40,7 @@ export default function App() {
   const [tab, setTab] = useState("home"); // "home", "journal", "sessions", "account"
   
   // Journal sub-tabs
-  const [journalView, setJournalView] = useState("write"); // "write" or "archive"
+  const [journalView, setJournalView] = useState("write"); // "write" or "log"
   
   // Sessions sub-tabs
   const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
@@ -63,6 +63,7 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
+  const [logFilter, setLogFilter] = useState("all"); // "all", "entries", "snapshots"
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -414,7 +415,7 @@ export default function App() {
       setNotes("");
       setNextSteps("");
       setTab("journal");
-      setJournalView("archive");
+      setJournalView("log");
     } catch (e) {
       console.error(e);
       alert("Archive failed. Check Back4App CLP for SessionSnapshot (Create).");
@@ -432,30 +433,35 @@ export default function App() {
 
   const handleGeneratePrompt = async () => {
     if (!isPaidSubscriber || !history || history.length === 0) return;
-    
+
     setLoading(true);
     try {
       const lastSnapshot = history[0];
       const themes = lastSnapshot.themes || [];
       const avoiding = lastSnapshot.avoiding || [];
-      
-      // Create a prompt based on the most recent session
+
       const clean = (t) => t.replace(/[.!?]+$/, '').trim().toLowerCase();
-      const themeText = themes.length > 0 ? clean(themes[0]) : '';
-      const avoidingText = avoiding.length > 0 ? clean(avoiding[0]) : '';
+      const toSecondPerson = (t) => t
+        .replace(/\bI'm\b/gi, "you're").replace(/\bI am\b/gi, "you are")
+        .replace(/\bI've\b/gi, "you've").replace(/\bI have\b/gi, "you have")
+        .replace(/\bI'd\b/gi, "you'd").replace(/\bI\b/g, "you")
+        .replace(/\bmy\b/gi, "your").replace(/\bme\b/gi, "you")
+        .replace(/\bmyself\b/gi, "yourself");
+
+      const themeText = themes.length > 0 ? toSecondPerson(clean(themes[0])) : '';
+      const avoidingText = avoiding.length > 0 ? toSecondPerson(clean(avoiding[0])) : '';
 
       let prompt = '';
       if (themeText && avoidingText) {
-        prompt = `You mentioned you're caught up in ${themeText}. What do you think is underneath that, especially given that you might be avoiding ${avoidingText}?`;
+        prompt = `You've been sitting with ${themeText}. What's underneath that, given you might be avoiding ${avoidingText}?`;
       } else if (themeText) {
-        prompt = `You've been thinking about ${themeText}. What new thoughts or feelings are coming up around that today?`;
+        prompt = `You've been thinking about ${themeText}. What's coming up around that today?`;
       } else if (avoidingText) {
-        prompt = `You've noticed you might be avoiding ${avoidingText}. What would it feel like to sit with that a bit more?`;
+        prompt = `You've noticed you might be avoiding ${avoidingText}. What would it feel like to sit with that?`;
       } else {
-        prompt = `Looking back at your last session, what's been on your mind since then?`;
+        prompt = `What's been on your mind since your last session?`;
       }
-      
-      // Set active prompt and navigate to journal
+
       setActivePrompt(prompt);
       setTab('journal');
       setJournalView('write');
@@ -820,7 +826,7 @@ export default function App() {
             }}>
               {[
                 { label: 'Write Entry',    Icon: PenTool,      color: '#9333ea', action: () => { setTab('journal'); setJournalView('write'); } },
-                { label: 'View Archive',   Icon: Archive,      color: '#7c3aed', action: () => { setTab('journal'); setJournalView('archive'); } },
+                { label: 'View Log',       Icon: Archive,      color: '#7c3aed', action: () => { setTab('journal'); setJournalView('log'); } },
                 { label: 'Get Insights',   Icon: Sparkles,     color: '#8b5cf6', action: () => setTab('patterns') },
                 { label: 'Pre-session',    Icon: Calendar,     color: '#6d28d9', action: () => { setTab('sessions'); setSessionView('pre'); } },
                 { label: 'Post-session',   Icon: MessageSquare, color: '#a78bfa', action: () => { setTab('sessions'); setSessionView('post'); } },
@@ -1001,11 +1007,11 @@ export default function App() {
         {/* JOURNAL TAB */}
         {tab === "journal" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {/* Sub-tabs: Write | Archive */}
+            {/* Sub-tabs: Write | Log */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["write", "Write Entry"],
-                ["archive", `Archive (${entries.length + history.length})`],
+                ["log", `Log (${entries.length + history.length})`],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -1031,17 +1037,50 @@ export default function App() {
             </div>
 
             <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-              {journalView === "archive" ? (
+              {journalView === "log" ? (
                 <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '24px' }}>Archive</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+                    <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Log</h2>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"]].map(([f, label]) => (
+                        <button
+                          key={f}
+                          onClick={() => setLogFilter(f)}
+                          style={{
+                            padding: '5px 12px',
+                            borderRadius: '20px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            background: logFilter === f ? '#9333ea' : 'rgba(147,51,234,0.08)',
+                            color: logFilter === f ? 'white' : '#7c3aed',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
                   {!entries.length && !history.length ? (
                     <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
-                      No entries yet. Start journaling to build your archive.
+                      No entries yet. Start journaling to build your log.
                     </p>
-                  ) : (
+                  ) : (() => {
+                    const filtered = combined.filter(item => {
+                      if (logFilter === "entries") return item.type === "entry";
+                      if (logFilter === "snapshots") return item.type === "snap";
+                      return true;
+                    });
+                    return filtered.length === 0 ? (
+                      <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
+                        No {logFilter === "entries" ? "journal entries" : "session snapshots"} yet.
+                      </p>
+                    ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {combined.map((item) => (
+                      {filtered.map((item) => (
                         <div key={item.id} style={{ background: 'rgba(255,255,255,0.6)', borderRadius: '16px', border: '1px solid #e9d5ff', overflow: 'hidden', maxWidth: '100%' }}>
                           <div
                             style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', cursor: 'pointer', gap: '8px', flexWrap: 'wrap' }}
@@ -1273,7 +1312,8 @@ export default function App() {
                         </div>
                       ))}
                     </div>
-                  )}
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
@@ -1294,51 +1334,35 @@ export default function App() {
                   {/* Active Prompt Display */}
                   {activePrompt && (
                     <div style={{
-                      marginBottom: '24px',
-                      padding: '20px',
+                      marginBottom: '16px',
+                      padding: '12px 14px',
                       background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                      border: '2px solid #e9d5ff',
-                      borderRadius: '16px',
+                      border: '1px solid #e9d5ff',
+                      borderRadius: '12px',
                       position: 'relative'
                     }}>
                       <button
                         onClick={() => setActivePrompt('')}
                         style={{
                           position: 'absolute',
-                          top: '12px',
-                          right: '12px',
+                          top: '8px',
+                          right: '8px',
                           background: 'none',
                           border: 'none',
                           color: '#9ca3af',
                           cursor: 'pointer',
-                          fontSize: '20px',
-                          padding: '4px',
+                          fontSize: '16px',
+                          padding: '2px',
                           lineHeight: 1
                         }}
                       >
                         ×
                       </button>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '8px',
-                          background: '#9333ea',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <Sparkles size={18} color="white" />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            AI Prompt
-                          </div>
-                          <p style={{ fontSize: '16px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>
-                            {activePrompt}
-                          </p>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingRight: '16px' }}>
+                        <Sparkles size={14} style={{ color: '#9333ea', flexShrink: 0, marginTop: '2px' }} />
+                        <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>
+                          {activePrompt}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1354,24 +1378,22 @@ export default function App() {
                       disabled={!isPaidSubscriber || loading}
                       title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
                       style={{
-                        padding: '12px 20px',
-                        borderRadius: '12px',
+                        padding: '7px 14px',
+                        borderRadius: '20px',
                         border: '1px solid #e9d5ff',
                         background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
                         color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
                         fontWeight: '500',
-                        fontSize: '14px',
+                        fontSize: '12px',
                         cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        marginBottom: '16px',
+                        gap: '6px',
+                        marginBottom: '12px',
                         transition: 'all 0.2s'
                       }}
                     >
-                      {isPaidSubscriber ? <Sparkles size={18} /> : <Lock size={18} />}
+                      {isPaidSubscriber ? <Sparkles size={14} /> : <Lock size={14} />}
                       {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
                     </button>
                   )}
@@ -1410,7 +1432,7 @@ export default function App() {
                         setEntries(await fetchEntries());
                         setEntry({ text: "", prompt: "" });
                         setActivePrompt(""); // Clear the active prompt
-                        setJournalView("archive");
+                        setJournalView("log");
                       } catch (err) {
                         console.error(err);
                         alert("Save failed. Check Back4App CLP for Entry (Create).");
@@ -1505,12 +1527,18 @@ export default function App() {
                     </div>
                     {(analysis.themes || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {(analysis.themes || []).map((item, i) => (
+                        {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
                           </li>
                         ))}
+                        {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
+                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.themes || []).length - 2} more — upgrade to unlock</span>
+                          </li>
+                        )}
                       </ul>
                     ) : (
                       <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
@@ -1527,12 +1555,18 @@ export default function App() {
                     </div>
                     {(analysis.avoiding || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {(analysis.avoiding || []).map((item, i) => (
+                        {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
                           </li>
                         ))}
+                        {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
+                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.avoiding || []).length - 2} more — upgrade to unlock</span>
+                          </li>
+                        )}
                       </ul>
                     ) : (
                       <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
@@ -1554,28 +1588,38 @@ export default function App() {
                     )}
                     {(analysis.questions || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {(analysis.questions || []).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                            <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
-                            <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                            {isPaidSubscriber ? (
-                              <button
-                                onClick={() => handleReplyToQuestion(item)}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #9333ea', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s', flexShrink: 0 }}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}
-                              >
-                                <MessageCircle size={14} />
-                                Reply
-                              </button>
-                            ) : (
-                              <div title="Paid subscription feature" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed', flexShrink: 0 }}>
-                                <Lock size={14} />
-                                Reply
-                              </div>
-                            )}
+                        {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
+                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              {isPaidSubscriber ? (
+                                <button
+                                  onClick={() => handleReplyToQuestion(item)}
+                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #9333ea', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}
+                                >
+                                  <MessageCircle size={14} />
+                                  Reply
+                                </button>
+                              ) : (
+                                <div title="Paid subscription feature" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
+                                  <Lock size={14} />
+                                  Reply
+                                </div>
+                              )}
+                            </div>
                           </li>
                         ))}
+                        {!isPaidSubscriber && (analysis.questions || []).length > 2 && (
+                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.questions || []).length - 2} more — upgrade to unlock</span>
+                          </li>
+                        )}
                       </ul>
                     ) : (
                       <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
@@ -1644,15 +1688,7 @@ export default function App() {
                       </p>
                     )}
                   </div>
-                ) : (
-                  <button
-                    onClick={genAnalysis}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', width: '100%', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                  >
-                    <RefreshCw size={20} />
-                    Refresh Analysis
-                  </button>
-                )}
+                ) : null}
 
                 {/* Combined Session Starter + Last Session */}
                 {!loading && (analysis || lastSnapshot) && (
@@ -1684,33 +1720,54 @@ export default function App() {
                                 Session Starter
                               </h3>
                             </div>
-                            <button
-                              onClick={() => {
-                                if (editStmt) {
-                                  setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                                  setEditStmt(false);
-                                } else {
-                                  setTempStmt(analysis.openingStatement || "");
-                                  setEditStmt(true);
-                                }
-                              }}
-                              disabled={loading}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: loading ? '#d1d5db' : '#7c3aed',
-                                fontSize: '12px',
-                                fontWeight: '500',
-                                cursor: loading ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px'
-                              }}
-                            >
-                              <Edit2 size={14} />
-                              {editStmt ? "Save" : "Edit"}
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <button
+                                onClick={genAnalysis}
+                                disabled={loading}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: loading ? '#d1d5db' : '#7c3aed',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  cursor: loading ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 8px'
+                                }}
+                              >
+                                <RefreshCw size={14} />
+                                Refresh
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (editStmt) {
+                                    setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                                    setEditStmt(false);
+                                  } else {
+                                    setTempStmt(analysis.openingStatement || "");
+                                    setEditStmt(true);
+                                  }
+                                }}
+                                disabled={loading}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: loading ? '#d1d5db' : '#7c3aed',
+                                  fontSize: '12px',
+                                  fontWeight: '500',
+                                  cursor: loading ? 'not-allowed' : 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 8px'
+                                }}
+                              >
+                                <Edit2 size={14} />
+                                {editStmt ? "Save" : "Edit"}
+                              </button>
+                            </div>
                           </div>
 
                           {editStmt ? (
@@ -1874,7 +1931,7 @@ export default function App() {
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: notes ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: notes ? '#7c3aed' : '#d1d5db', color: 'white', width: '100%', opacity: notes ? 1 : 0.5 }}
                       >
                         <ArrowRight size={20} />
-                        Save to Archive
+                        Save to Log
                       </button>
 
                       <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
