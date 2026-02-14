@@ -18,6 +18,8 @@ import {
   Archive,
   MessageSquare,
   PenTool,
+  Lock,
+  MessageCircle,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -67,6 +69,11 @@ export default function App() {
 
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
   const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
+
+  // Check if user is a paid subscriber (you can add more emails or use a database field)
+  const isPaidSubscriber = currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
+
+  const [generatedPrompt, setGeneratedPrompt] = useState("");
 
   const formatDate = (d) =>
     new Date(d + "T12:00").toLocaleDateString("en-US", {
@@ -410,6 +417,50 @@ export default function App() {
     }
   };
 
+  const handleReplyToQuestion = (question) => {
+    if (!isPaidSubscriber) return; // Only for paid users
+    
+    // Pre-fill the journal entry with the question
+    setEntry({ text: question });
+    setTab('journal');
+    setJournalView('write');
+  };
+
+  const handleGeneratePrompt = async () => {
+    if (!isPaidSubscriber || !history || history.length === 0) return;
+    
+    setLoading(true);
+    try {
+      const lastSnapshot = history[0];
+      const themes = lastSnapshot.themes || [];
+      const avoiding = lastSnapshot.avoiding || [];
+      
+      // Create a prompt based on the most recent session
+      const themeText = themes.length > 0 ? themes[0] : '';
+      const avoidingText = avoiding.length > 0 ? avoiding[0] : '';
+      
+      let prompt = '';
+      if (themeText && avoidingText) {
+        prompt = `You mentioned ${themeText.toLowerCase()}. What might be underneath that? Especially considering you might be avoiding ${avoidingText.toLowerCase()}.`;
+      } else if (themeText) {
+        prompt = `Reflecting on ${themeText.toLowerCase()}, what new thoughts or feelings are coming up for you today?`;
+      } else if (avoidingText) {
+        prompt = `You've noticed you might be avoiding ${avoidingText.toLowerCase()}. What would it feel like to explore that a bit more?`;
+      } else {
+        prompt = `Looking back at your last session, what's been on your mind since then?`;
+      }
+      
+      setGeneratedPrompt(prompt);
+      setEntry({ text: prompt });
+      setTab('journal');
+      setJournalView('write');
+    } catch (error) {
+      console.error('Error generating prompt:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const combined = () => {
     const items = [
       ...entries.map((e) => ({
@@ -718,34 +769,13 @@ export default function App() {
       <div className="main-container">
         {/* Header with logo and account buttons */}
         <div style={{ textAlign: 'center', marginBottom: '48px', position: 'relative' }}>
-          <button
-            onClick={handleLogout}
-            title="Log out"
-            style={{
-              position: 'absolute',
-              right: 0,
-              top: 0,
-              padding: '8px',
-              borderRadius: '8px',
-              border: 'none',
-              cursor: 'pointer',
-              background: 'rgba(255,255,255,0.7)',
-              color: '#7c3aed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <LogOut size={20} />
-          </button>
-
           {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
             <button
               onClick={() => setShowAdmin(!showAdmin)}
               title="Analytics"
               style={{
                 position: 'absolute',
-                right: '50px',
+                right: 0,
                 top: 0,
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -1352,7 +1382,7 @@ export default function App() {
                                       )}
                                       {item.data.questions?.length > 0 && (
                                         <div>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions and confusions:</p>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions:</p>
                                           <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
                                             {item.data.questions.map((question, i) => (
                                               <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
@@ -1646,70 +1676,191 @@ export default function App() {
 
                 {/* 4. Patterns - Show if analysis exists */}
                 {analysis && !loading && (
-                  <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
-                      <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Patterns</h3>
-                        {analysisTimestamp && (() => {
-                          const lastSnapshot = history?.[0];
-                          let entryCount = entries.length;
-                          if (lastSnapshot) {
-                            const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-                            const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
-                            entryCount = newEntries.length;
+                  <>
+                    {/* Generate Prompt Button - Only for paid subscribers */}
+                    {isPaidSubscriber && history && history.length > 0 && (
+                      <button
+                        onClick={handleGeneratePrompt}
+                        style={{
+                          padding: '14px 20px',
+                          borderRadius: '12px',
+                          border: '1px solid #e9d5ff',
+                          background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                          color: '#7c3aed',
+                          fontWeight: '500',
+                          fontSize: '15px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          transition: 'all 0.2s',
+                          width: '100%'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)';
+                        }}
+                      >
+                        <Sparkles size={18} />
+                        Generate Journaling Prompt
+                      </button>
+                    )}
+
+                    {/* What's trying to come up */}
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                        <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>What's trying to come up</h3>
+                          {analysisTimestamp && (() => {
+                            const lastSnapshot = history?.[0];
+                            let entryCount = entries.length;
+                            if (lastSnapshot) {
+                              const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+                              const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
+                              entryCount = newEntries.length;
+                              return (
+                                <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
+                                  {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
+                                </p>
+                              );
+                            }
                             return (
                               <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                                {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
+                                Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
                               </p>
                             );
-                          }
-                          return (
-                            <p style={{ fontSize: '12px', color: '#9ca3af', margin: '4px 0 0 0' }}>
-                              Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
-                            </p>
-                          );
-                        })()}
-                        {analysis?.showNewEntryWarning && (
-                          <div style={{ 
-                            background: '#fef3c7', 
-                            border: '1px solid #fbbf24', 
-                            borderRadius: '8px', 
-                            padding: '8px 12px', 
-                            marginTop: '8px',
-                            fontSize: '13px',
-                            color: '#92400e'
-                          }}>
-                            💡 Enter a new journal entry to refresh your analysis and get new insights
-                          </div>
-                        )}
+                          })()}
+                        </div>
                       </div>
+                      {(analysis.themes || []).length ? (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {(analysis.themes || []).map((item, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                              <span style={{ color: '#7c3aed', fontSize: '16px', flex: 1 }}>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      {[
-                        ["What's trying to come up", analysis.themes || []],
-                        ["Things I might be avoiding", analysis.avoiding || []],
-                        ["Questions and confusions", analysis.questions || []],
-                      ].map(([title, items]) => (
-                        <div key={title}>
-                          <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', margin: '0 0 12px 0' }}>{title}</h4>
-                          {items.length ? (
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                              {items.map((item, i) => (
-                                <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
-                                  <span style={{ color: '#7c3aed', fontSize: '16px' }}>{item}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                          )}
-                        </div>
-                      ))}
+                    {/* Things I might be avoiding */}
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                        <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
+                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>Things I might be avoiding</h3>
+                      </div>
+                      {(analysis.avoiding || []).length ? (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {(analysis.avoiding || []).map((item, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                              <span style={{ color: '#7c3aed', fontSize: '16px', flex: 1 }}>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                      )}
                     </div>
-                  </div>
+
+                    {/* Questions */}
+                    <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '16px' }}>
+                        <Sparkles size={20} style={{ color: '#7c3aed', marginTop: '4px' }} />
+                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>Questions</h3>
+                      </div>
+                      {analysis?.showNewEntryWarning && (
+                        <div style={{ 
+                          background: '#fef3c7', 
+                          border: '1px solid #fbbf24', 
+                          borderRadius: '8px', 
+                          padding: '8px 12px', 
+                          marginBottom: '16px',
+                          fontSize: '13px',
+                          color: '#92400e'
+                        }}>
+                          💡 Enter a new journal entry to refresh your analysis and get new insights
+                        </div>
+                      )}
+                      {(analysis.questions || []).length ? (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {(analysis.questions || []).map((item, i) => (
+                            <li key={i} style={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '12px',
+                              padding: '12px',
+                              background: 'rgba(147,51,234,0.05)',
+                              borderRadius: '8px',
+                              border: '1px solid rgba(147,51,234,0.1)'
+                            }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                              <span style={{ color: '#7c3aed', fontSize: '16px', flex: 1 }}>{item}</span>
+                              {isPaidSubscriber ? (
+                                <button
+                                  onClick={() => handleReplyToQuestion(item)}
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #9333ea',
+                                    background: '#9333ea',
+                                    color: 'white',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    transition: 'all 0.2s',
+                                    flexShrink: 0
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#7c3aed';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#9333ea';
+                                  }}
+                                >
+                                  <MessageCircle size={14} />
+                                  Reply
+                                </button>
+                              ) : (
+                                <div 
+                                  title="Paid subscription feature"
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid #d1d5db',
+                                    background: '#f3f4f6',
+                                    color: '#6b7280',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    cursor: 'not-allowed',
+                                    flexShrink: 0
+                                  }}
+                                >
+                                  <Lock size={14} />
+                                  Reply
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             )}
