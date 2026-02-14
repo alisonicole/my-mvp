@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 
 export default function VoiceInput({ onTranscript, currentText = "", placeholder = "Start speaking..." }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [recognition, setRecognition] = useState(null);
   const [supported, setSupported] = useState(true);
   const [baseText, setBaseText] = useState(''); // Store the text when recording started
+  
+  const recognitionRef = useRef(null);
 
+  // Initialize recognition once
   useEffect(() => {
-    // Check if browser supports Speech Recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -18,71 +19,85 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     }
 
     const recognitionInstance = new SpeechRecognition();
-    recognitionInstance.continuous = true; // Keep listening
-    recognitionInstance.interimResults = true; // Show results as you speak
+    recognitionInstance.continuous = true;
+    recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
+    
+    recognitionRef.current = recognitionInstance;
 
-    recognitionInstance.onresult = (event) => {
+    return () => {
+      if (recognitionInstance) {
+        try {
+          recognitionInstance.stop();
+        } catch (e) {
+          // Ignore errors on cleanup
+        }
+      }
+    };
+  }, []); // Only run once on mount
+
+  // Set up event handlers
+  useEffect(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+
+    recognition.onresult = (event) => {
       let finalTranscript = '';
-      let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPiece = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
           finalTranscript += transcriptPiece + ' ';
-        } else {
-          interimTranscript += transcriptPiece;
         }
       }
 
-      const currentTranscript = transcript + finalTranscript;
-      setTranscript(currentTranscript);
-      
-      // Append to base text (what was already there when recording started)
-      const combinedText = baseText + (baseText && currentTranscript ? ' ' : '') + currentTranscript;
-      
-      // Call parent callback with combined text
       if (finalTranscript) {
-        onTranscript(combinedText);
+        setTranscript(prev => prev + finalTranscript);
       }
     };
 
-    recognitionInstance.onerror = (event) => {
+    recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       if (event.error === 'no-speech') {
-        // Just keep listening
         return;
       }
       setIsListening(false);
     };
 
-    recognitionInstance.onend = () => {
-      if (isListening) {
-        // Restart if still listening (browser auto-stops after ~60s)
-        recognitionInstance.start();
-      }
+    recognition.onend = () => {
+      setIsListening(false);
     };
+  }, []); // Only set handlers once
 
-    setRecognition(recognitionInstance);
-
-    return () => {
-      if (recognitionInstance) {
-        recognitionInstance.stop();
-      }
-    };
+  // Update parent when transcript changes
+  useEffect(() => {
+    if (transcript && isListening) {
+      const combinedText = baseText + (baseText && transcript ? ' ' : '') + transcript;
+      onTranscript(combinedText);
+    }
   }, [transcript, baseText, isListening, onTranscript]);
 
   const toggleListening = () => {
+    const recognition = recognitionRef.current;
     if (!recognition) return;
 
     if (isListening) {
-      recognition.stop();
-      setIsListening(false);
+      try {
+        recognition.stop();
+        setIsListening(false);
+      } catch (e) {
+        console.error('Error stopping recognition:', e);
+        setIsListening(false);
+      }
     } else {
-      setBaseText(currentText); // Save what's currently in the text box
-      setTranscript(''); // Clear the voice transcript (but keep base text)
-      recognition.start();
-      setIsListening(true);
+      setBaseText(currentText);
+      setTranscript('');
+      try {
+        recognition.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error('Error starting recognition:', e);
+      }
     }
   };
 

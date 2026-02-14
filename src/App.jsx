@@ -44,10 +44,12 @@ export default function App() {
   
   // Sessions sub-tabs
   const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
+  const [preSessionTab, setPreSessionTab] = useState("starter"); // "last" | "starter" | "patterns"
 
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
-  const [entry, setEntry] = useState({ text: "" });
+  const [entry, setEntry] = useState({ text: "", prompt: "" }); // Add prompt field
+  const [activePrompt, setActivePrompt] = useState(""); // Currently displayed prompt
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ text: "" });
@@ -163,6 +165,7 @@ export default function App() {
       id: o.get("clientId") ?? o.id,
       date: o.get("date") ?? getDate(),
       text: o.get("text") ?? "",
+      prompt: o.get("prompt") ?? "", // Include prompt
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
     }));
   }
@@ -175,6 +178,7 @@ export default function App() {
     obj.set("clientId", eObj.id);
     obj.set("date", eObj.date);
     obj.set("text", eObj.text || "");
+    obj.set("prompt", eObj.prompt || ""); // Save the AI prompt
     obj.set("timestamp", eObj.timestamp || new Date().toISOString());
     const saved = await obj.save();
     return { ...eObj, parseId: saved.id };
@@ -420,8 +424,8 @@ export default function App() {
   const handleReplyToQuestion = (question) => {
     if (!isPaidSubscriber) return; // Only for paid users
     
-    // Pre-fill the journal entry with the question
-    setEntry({ text: question });
+    // Set the active prompt (don't pre-fill text)
+    setActivePrompt(question);
     setTab('journal');
     setJournalView('write');
   };
@@ -450,8 +454,8 @@ export default function App() {
         prompt = `Looking back at your last session, what's been on your mind since then?`;
       }
       
-      setGeneratedPrompt(prompt);
-      setEntry({ text: prompt });
+      // Set active prompt and navigate to journal
+      setActivePrompt(prompt);
       setTab('journal');
       setJournalView('write');
     } catch (error) {
@@ -1289,6 +1293,40 @@ export default function App() {
                             <div style={{ padding: '12px', paddingTop: 0, borderTop: '1px solid #e9d5ff', maxWidth: '100%', overflow: 'hidden' }}>
                               {item.type === "entry" ? (
                                 <>
+                                  {/* Show AI Prompt if exists */}
+                                  {item.data.prompt && (
+                                    <div style={{
+                                      marginTop: '12px',
+                                      padding: '16px',
+                                      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                                      border: '1px solid #e9d5ff',
+                                      borderRadius: '12px'
+                                    }}>
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                        <div style={{
+                                          width: '24px',
+                                          height: '24px',
+                                          borderRadius: '6px',
+                                          background: '#9333ea',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          flexShrink: 0
+                                        }}>
+                                          <Sparkles size={14} color="white" />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                          <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                            AI Prompt
+                                          </div>
+                                          <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>
+                                            {item.data.prompt}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
                                   {editingId === item.data.parseId ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
                                       <textarea
@@ -1416,6 +1454,92 @@ export default function App() {
                     />
                   </div>
 
+                  {/* Generate Prompt Button - Only for paid subscribers with sessions */}
+                  {isPaidSubscriber && history && history.length > 0 && (
+                    <button
+                      onClick={handleGeneratePrompt}
+                      disabled={loading}
+                      style={{
+                        padding: '12px 20px',
+                        borderRadius: '12px',
+                        border: '1px solid #e9d5ff',
+                        background: loading ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                        color: loading ? '#9ca3af' : '#7c3aed',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        transition: 'all 0.2s',
+                        width: '100%',
+                        marginBottom: '24px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!loading) e.currentTarget.style.background = 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!loading) e.currentTarget.style.background = 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)';
+                      }}
+                    >
+                      <Sparkles size={18} />
+                      {loading ? 'Generating...' : 'Generate Journaling Prompt'}
+                    </button>
+                  )}
+
+                  {/* Active Prompt Display */}
+                  {activePrompt && (
+                    <div style={{
+                      marginBottom: '24px',
+                      padding: '20px',
+                      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                      border: '2px solid #e9d5ff',
+                      borderRadius: '16px',
+                      position: 'relative'
+                    }}>
+                      <button
+                        onClick={() => setActivePrompt('')}
+                        style={{
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          background: 'none',
+                          border: 'none',
+                          color: '#9ca3af',
+                          cursor: 'pointer',
+                          fontSize: '20px',
+                          padding: '4px',
+                          lineHeight: 1
+                        }}
+                      >
+                        ×
+                      </button>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          background: '#9333ea',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <Sparkles size={18} color="white" />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            AI Prompt
+                          </div>
+                          <p style={{ fontSize: '16px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>
+                            {activePrompt}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
                     What's on your mind?
                   </h2>
@@ -1445,13 +1569,15 @@ export default function App() {
                       const n = {
                         id: Date.now(),
                         date,
-                        ...entry,
+                        text: entry.text,
+                        prompt: activePrompt, // Include the AI prompt
                         timestamp: new Date().toISOString(),
                       };
                       try {
                         await createEntry(n);
                         setEntries(await fetchEntries());
-                        setEntry({ text: "" });
+                        setEntry({ text: "", prompt: "" });
+                        setActivePrompt(""); // Clear the active prompt
                         setJournalView("archive");
                       } catch (err) {
                         console.error(err);
