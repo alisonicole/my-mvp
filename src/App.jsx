@@ -49,6 +49,7 @@ export default function App() {
   const [date, setDate] = useState(getDate());
   const [entry, setEntry] = useState({ text: "", prompt: "" }); // Add prompt field
   const [activePrompt, setActivePrompt] = useState(""); // Currently displayed prompt
+  const [promptIndex, setPromptIndex] = useState(0); // For cycling through prompt variations
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ text: "" });
@@ -151,6 +152,7 @@ export default function App() {
     setEntries([]);
     setHistory([]);
     setAnalysis(null);
+    setActivePrompt("");
   };
 
   async function fetchEntries() {
@@ -431,45 +433,69 @@ export default function App() {
     setJournalView('write');
   };
 
-  const handleGeneratePrompt = async () => {
+  const handleGeneratePrompt = () => {
     if (!isPaidSubscriber || !history || history.length === 0) return;
 
-    setLoading(true);
-    try {
-      const lastSnapshot = history[0];
-      const themes = lastSnapshot.themes || [];
-      const avoiding = lastSnapshot.avoiding || [];
+    const lastSnapshot = history[0];
+    const themes = lastSnapshot.themes || [];
+    const avoiding = lastSnapshot.avoiding || [];
 
-      const clean = (t) => t.replace(/[.!?]+$/, '').trim().toLowerCase();
-      const toSecondPerson = (t) => t
-        .replace(/\bI'm\b/gi, "you're").replace(/\bI am\b/gi, "you are")
-        .replace(/\bI've\b/gi, "you've").replace(/\bI have\b/gi, "you have")
-        .replace(/\bI'd\b/gi, "you'd").replace(/\bI\b/g, "you")
-        .replace(/\bmy\b/gi, "your").replace(/\bme\b/gi, "you")
-        .replace(/\bmyself\b/gi, "yourself");
+    const clean = (t) => t.replace(/[.!?]+$/, '').trim().toLowerCase();
+    const toSecondPerson = (t) => t
+      .replace(/\bI'm\b/gi, "you're").replace(/\bI am\b/gi, "you are")
+      .replace(/\bI've\b/gi, "you've").replace(/\bI have\b/gi, "you have")
+      .replace(/\bI'd\b/gi, "you'd").replace(/\bI\b/g, "you")
+      .replace(/\bmy\b/gi, "your").replace(/\bme\b/gi, "you")
+      .replace(/\bmyself\b/gi, "yourself");
 
-      const themeText = themes.length > 0 ? toSecondPerson(clean(themes[0])) : '';
-      const avoidingText = avoiding.length > 0 ? toSecondPerson(clean(avoiding[0])) : '';
+    const newIdx = promptIndex + 1;
+    setPromptIndex(newIdx);
 
-      let prompt = '';
-      if (themeText && avoidingText) {
-        prompt = `You've been sitting with ${themeText}. What's underneath that, given you might be avoiding ${avoidingText}?`;
-      } else if (themeText) {
-        prompt = `You've been thinking about ${themeText}. What's coming up around that today?`;
-      } else if (avoidingText) {
-        prompt = `You've noticed you might be avoiding ${avoidingText}. What would it feel like to sit with that?`;
-      } else {
-        prompt = `What's been on your mind since your last session?`;
-      }
+    // Cycle through different themes/avoiding items on each press
+    const themeItem = themes.length > 0 ? themes[newIdx % themes.length] : null;
+    const avoidItem = avoiding.length > 0 ? avoiding[(newIdx + 1) % avoiding.length] : null;
+    const themeText = themeItem ? toSecondPerson(clean(themeItem)) : '';
+    const avoidingText = avoidItem ? toSecondPerson(clean(avoidItem)) : '';
+    const t = newIdx % 4; // cycle through 4 template variants
 
-      setActivePrompt(prompt);
-      setTab('journal');
-      setJournalView('write');
-    } catch (error) {
-      console.error('Error generating prompt:', error);
-    } finally {
-      setLoading(false);
+    let prompt = '';
+    if (themeText && avoidingText) {
+      const opts = [
+        `What's underneath ${themeText} for you right now? What would it take to stop avoiding ${avoidingText}?`,
+        `What part of ${themeText} feels hardest to sit with? And what does ${avoidingText} have to do with that?`,
+        `If you weren't sidestepping ${avoidingText}, what would you be facing about ${themeText}?`,
+        `What does ${themeText} look like from the inside? And what would change if you faced ${avoidingText} directly?`,
+      ];
+      prompt = opts[t];
+    } else if (themeText) {
+      const opts = [
+        `What's really going on beneath ${themeText}? What part of it haven't you fully said yet?`,
+        `What would it look like to actually resolve ${themeText} — not just manage it?`,
+        `What are you telling yourself about ${themeText} that might not be the whole truth?`,
+        `What do you need to say about ${themeText} that you've been holding back?`,
+      ];
+      prompt = opts[t];
+    } else if (avoidingText) {
+      const opts = [
+        `What would it feel like to stop putting off ${avoidingText}?`,
+        `What's the story you're telling yourself about ${avoidingText}?`,
+        `If you sat with ${avoidingText} for a few minutes today, what might come up?`,
+        `What's one small step you could take toward ${avoidingText} — even if it feels uncomfortable?`,
+      ];
+      prompt = opts[t];
+    } else {
+      const opts = [
+        `What's been most present for you since your last session?`,
+        `What do you need to say out loud that you haven't been saying?`,
+        `Where are you feeling the most tension right now, and what's underneath it?`,
+        `What's one thing you've been carrying lately that hasn't been examined?`,
+      ];
+      prompt = opts[newIdx % 4];
     }
+
+    setActivePrompt(prompt);
+    setTab('journal');
+    setJournalView('write');
   };
 
   const combined = useMemo(() => {
@@ -1375,17 +1401,17 @@ export default function App() {
                   {history && history.length > 0 && (
                     <button
                       onClick={isPaidSubscriber ? handleGeneratePrompt : undefined}
-                      disabled={!isPaidSubscriber || loading}
+                      disabled={!isPaidSubscriber}
                       title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
                       style={{
                         padding: '7px 14px',
                         borderRadius: '20px',
                         border: '1px solid #e9d5ff',
-                        background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                        color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
+                        background: !isPaidSubscriber ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                        color: !isPaidSubscriber ? '#9ca3af' : '#7c3aed',
                         fontWeight: '500',
                         fontSize: '12px',
-                        cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
+                        cursor: !isPaidSubscriber ? 'not-allowed' : 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
@@ -1394,7 +1420,7 @@ export default function App() {
                       }}
                     >
                       {isPaidSubscriber ? <Sparkles size={14} /> : <Lock size={14} />}
-                      {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
+                      Generate Journaling Prompt
                     </button>
                   )}
 
@@ -1606,7 +1632,7 @@ export default function App() {
                                   Reply
                                 </button>
                               ) : (
-                                <div title="Paid subscription feature" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
+                                <div title="Upgrade to unlock" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
                                   <Lock size={14} />
                                   Reply
                                 </div>
