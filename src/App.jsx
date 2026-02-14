@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
   FileText,
+  Home,
+  User,
   Sparkles,
   ArrowRight,
   Save,
@@ -12,6 +14,10 @@ import {
   ChevronRight,
   RefreshCw,
   LogOut,
+  BookOpen,
+  Archive,
+  MessageSquare,
+  PenTool,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -29,7 +35,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Main tabs: "journal" or "sessions"
-  const [tab, setTab] = useState("journal");
+  const [tab, setTab] = useState("home"); // "home", "journal", "sessions", "account"
   
   // Journal sub-tabs
   const [journalView, setJournalView] = useState("write"); // "write" or "archive"
@@ -768,6 +774,360 @@ export default function App() {
         {/* Content area with more bottom padding for nav bar */}
         <div style={{ paddingBottom: '100px' }}>
 
+        {/* HOME TAB */}
+        {tab === "home" && (
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '28px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>
+                What would you like to do?
+              </h2>
+              <p style={{ color: '#7c3aed', fontSize: '14px' }}>
+                Choose an action to get started
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '16px' }}>
+              {/* Write a journal entry */}
+              <button
+                onClick={() => {
+                  setTab('journal');
+                  setJournalView('write');
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  border: '2px solid #e9d5ff',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    borderRadius: '12px', 
+                    background: '#9333ea',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <PenTool size={24} color="white" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
+                      Write a journal entry
+                    </h3>
+                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
+                      Capture what's on your mind right now
+                    </p>
+                  </div>
+                  <ArrowRight size={20} color="#9333ea" />
+                </div>
+              </button>
+
+              {/* View my archive */}
+              <button
+                onClick={() => {
+                  setTab('journal');
+                  setJournalView('archive');
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  border: '2px solid #e9d5ff',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    borderRadius: '12px', 
+                    background: '#7c3aed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Archive size={24} color="white" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
+                      View my archive
+                    </h3>
+                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
+                      Review past entries and sessions
+                    </p>
+                  </div>
+                  <ArrowRight size={20} color="#7c3aed" />
+                </div>
+              </button>
+
+              {/* Prep for a session */}
+              <button
+                onClick={() => {
+                  setTab('sessions');
+                  setSessionView('pre');
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  border: '2px solid #e9d5ff',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    borderRadius: '12px', 
+                    background: '#8b5cf6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <Sparkles size={24} color="white" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
+                      Prep for a session
+                    </h3>
+                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
+                      Get insights and a session starter
+                    </p>
+                  </div>
+                  <ArrowRight size={20} color="#8b5cf6" />
+                </div>
+              </button>
+
+              {/* Reflect on my session */}
+              <button
+                onClick={() => {
+                  setTab('sessions');
+                  setSessionView('post');
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                  border: '2px solid #e9d5ff',
+                  borderRadius: '16px',
+                  padding: '24px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 8px rgba(147,51,234,0.1)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(147,51,234,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(147,51,234,0.1)';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ 
+                    width: '48px', 
+                    height: '48px', 
+                    borderRadius: '12px', 
+                    background: '#a78bfa',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <MessageSquare size={24} color="white" />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#581c87', margin: '0 0 4px 0' }}>
+                      Reflect on my session
+                    </h3>
+                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0 }}>
+                      Record what you talked about
+                    </p>
+                  </div>
+                  <ArrowRight size={20} color="#a78bfa" />
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ACCOUNT TAB */}
+        {tab === "account" && (
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h2 style={{ fontSize: '28px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>
+                Account
+              </h2>
+              <p style={{ color: '#7c3aed', fontSize: '14px' }}>
+                Your profile and settings
+              </p>
+            </div>
+
+            <div style={{ 
+              background: 'rgba(255,255,255,0.7)', 
+              backdropFilter: 'blur(10px)', 
+              border: '1px solid rgba(255,255,255,0.8)', 
+              borderRadius: '24px', 
+              padding: '32px', 
+              boxShadow: '0 10px 40px rgba(0,0,0,0.1)' 
+            }}>
+              {/* Profile Section */}
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                <div style={{
+                  width: '80px',
+                  height: '80px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px'
+                }}>
+                  <User size={40} color="white" />
+                </div>
+                <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '4px' }}>
+                  {currentUser?.get('username') || 'User'}
+                </h3>
+              </div>
+
+              {/* Account Details */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ 
+                  padding: '16px', 
+                  background: 'rgba(147,51,234,0.05)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(147,51,234,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#7c3aed', marginBottom: '4px', fontWeight: '500' }}>
+                    Email
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#581c87' }}>
+                    {currentUser?.get('username') || 'Not available'}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  padding: '16px', 
+                  background: 'rgba(147,51,234,0.05)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(147,51,234,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#7c3aed', marginBottom: '4px', fontWeight: '500' }}>
+                    Member Since
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#581c87' }}>
+                    {currentUser?.get('createdAt') 
+                      ? new Date(currentUser.get('createdAt')).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })
+                      : 'Not available'}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  padding: '16px', 
+                  background: 'rgba(147,51,234,0.05)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(147,51,234,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#7c3aed', marginBottom: '4px', fontWeight: '500' }}>
+                    Journal Entries
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#581c87' }}>
+                    {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  padding: '16px', 
+                  background: 'rgba(147,51,234,0.05)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(147,51,234,0.1)'
+                }}>
+                  <div style={{ fontSize: '12px', color: '#7c3aed', marginBottom: '4px', fontWeight: '500' }}>
+                    Sessions Recorded
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#581c87' }}>
+                    {history.length} {history.length === 1 ? 'session' : 'sessions'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                style={{
+                  width: '100%',
+                  marginTop: '24px',
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: '1px solid #e9d5ff',
+                  background: 'white',
+                  color: '#7c3aed',
+                  fontWeight: '500',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#faf5ff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'white';
+                }}
+              >
+                <LogOut size={20} />
+                Log Out
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* JOURNAL TAB */}
         {tab === "journal" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
@@ -1455,7 +1815,7 @@ export default function App() {
           background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(10px)',
           borderTop: '1px solid rgba(147,51,234,0.2)',
-          padding: '12px 16px 24px 16px',
+          padding: '8px 16px 20px 16px',
           boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
           zIndex: 1000
         }}>
@@ -1463,12 +1823,14 @@ export default function App() {
             maxWidth: '600px',
             margin: '0 auto',
             display: 'flex',
-            gap: '12px',
-            justifyContent: 'center'
+            gap: '4px',
+            justifyContent: 'space-around'
           }}>
             {[
+              ["home", "Home", Home],
               ["journal", "Journal", FileText],
               ["sessions", "Sessions", Calendar],
+              ["account", "Account", User],
             ].map(([t, label, Icon]) => (
               <button
                 key={t}
@@ -1482,18 +1844,19 @@ export default function App() {
                   flexDirection: 'column',
                   alignItems: 'center',
                   gap: '4px',
-                  padding: '12px',
+                  padding: '8px 4px',
                   borderRadius: '12px',
                   fontWeight: tab === t ? '600' : '500',
-                  fontSize: '14px',
+                  fontSize: '12px',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
                   background: tab === t ? '#9333ea' : 'transparent',
-                  color: tab === t ? 'white' : '#7c3aed'
+                  color: tab === t ? 'white' : '#7c3aed',
+                  minWidth: '60px'
                 }}
               >
-                <Icon size={24} />
+                <Icon size={22} />
                 <span>{label}</span>
               </button>
             ))}
