@@ -1,25 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 
-export default function VoiceInput({ onTranscript, placeholder = "Start speaking..." }) {
+export default function VoiceInput({ onTranscript, currentText = "", placeholder = "Start speaking..." }) {
   const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
   const [recognition, setRecognition] = useState(null);
   const [supported, setSupported] = useState(true);
-  
-  // Use refs to avoid stale closures
-  const finalTranscriptRef = useRef('');
-  const isListeningRef = useRef(false);
-  const onTranscriptRef = useRef(onTranscript);
-
-  // Keep callback ref updated
-  useEffect(() => {
-    onTranscriptRef.current = onTranscript;
-  }, [onTranscript]);
-
-  // Update listening ref
-  useEffect(() => {
-    isListeningRef.current = isListening;
-  }, [isListening]);
+  const [baseText, setBaseText] = useState(''); // Store the text when recording started
 
   useEffect(() => {
     // Check if browser supports Speech Recognition
@@ -31,13 +18,13 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
     }
 
     const recognitionInstance = new SpeechRecognition();
-    recognitionInstance.continuous = true;
-    recognitionInstance.interimResults = true;
+    recognitionInstance.continuous = true; // Keep listening
+    recognitionInstance.interimResults = true; // Show results as you speak
     recognitionInstance.lang = 'en-US';
 
     recognitionInstance.onresult = (event) => {
-      let interimTranscript = '';
       let finalTranscript = '';
+      let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPiece = event.results[i][0].transcript;
@@ -48,35 +35,31 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
         }
       }
 
-      // Accumulate final results
-      if (finalTranscript) {
-        finalTranscriptRef.current += finalTranscript;
-      }
-
-      // Combine accumulated final + current interim for LIVE display
-      const completeTranscript = finalTranscriptRef.current + interimTranscript;
+      const currentTranscript = transcript + finalTranscript;
+      setTranscript(currentTranscript);
       
-      // Call the current callback with the complete transcript
-      if (onTranscriptRef.current) {
-        onTranscriptRef.current(completeTranscript);
+      // Append to base text (what was already there when recording started)
+      const combinedText = baseText + (baseText && currentTranscript ? ' ' : '') + currentTranscript;
+      
+      // Call parent callback with combined text
+      if (finalTranscript) {
+        onTranscript(combinedText);
       }
     };
 
     recognitionInstance.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       if (event.error === 'no-speech') {
+        // Just keep listening
         return;
       }
       setIsListening(false);
     };
 
     recognitionInstance.onend = () => {
-      if (isListeningRef.current) {
-        try {
-          recognitionInstance.start();
-        } catch (e) {
-          console.error('Failed to restart recognition:', e);
-        }
+      if (isListening) {
+        // Restart if still listening (browser auto-stops after ~60s)
+        recognitionInstance.start();
       }
     };
 
@@ -84,34 +67,22 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
 
     return () => {
       if (recognitionInstance) {
-        try {
-          recognitionInstance.stop();
-        } catch (e) {
-          // Already stopped
-        }
+        recognitionInstance.stop();
       }
     };
-  }, []); // Empty dependency array - only run once!
+  }, [transcript, baseText, isListening, onTranscript]);
 
   const toggleListening = () => {
     if (!recognition) return;
 
     if (isListening) {
-      try {
-        recognition.stop();
-        setIsListening(false);
-      } catch (e) {
-        console.error('Error stopping recognition:', e);
-      }
+      recognition.stop();
+      setIsListening(false);
     } else {
-      try {
-        finalTranscriptRef.current = '';
-        recognition.start();
-        setIsListening(true);
-      } catch (e) {
-        console.error('Error starting recognition:', e);
-        alert('Microphone permission required. Please allow microphone access and try again.');
-      }
+      setBaseText(currentText); // Save what's currently in the text box
+      setTranscript(''); // Clear the voice transcript (but keep base text)
+      recognition.start();
+      setIsListening(true);
     }
   };
 
@@ -146,11 +117,11 @@ export default function VoiceInput({ onTranscript, placeholder = "Start speaking
           fontSize: '16px',
           cursor: 'pointer',
           transition: 'all 0.2s',
-          background: isListening ? '#ef4444' : '#ddd6fe',
-          color: isListening ? 'white' : '#581c87',
+          background: isListening ? '#ef4444' : '#9333ea',
+          color: 'white',
           boxShadow: isListening 
             ? '0 4px 12px rgba(239,68,68,0.3)' 
-            : '0 4px 12px rgba(221,214,254,0.4)'
+            : '0 4px 12px rgba(147,51,234,0.3)'
         }}
       >
         {isListening ? (

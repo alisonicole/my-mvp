@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Calendar,
+  FileText,
   Sparkles,
   ArrowRight,
   Save,
@@ -709,7 +710,8 @@ export default function App() {
       `}</style>
 
       <div className="main-container">
-        <div style={{ textAlign: 'center', marginBottom: '32px', position: 'relative' }}>
+        {/* Header with logo and account buttons */}
+        <div style={{ textAlign: 'center', marginBottom: '48px', position: 'relative' }}>
           <button
             onClick={handleLogout}
             title="Log out"
@@ -763,37 +765,8 @@ export default function App() {
           </p>
         </div>
 
-        {/* MAIN TABS: Journal | Sessions */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px' }}>
-          {[
-            ["journal", "Journal"],
-            ["sessions", "Sessions"],
-          ].map(([t, label]) => (
-            <button
-              key={t}
-              onClick={() => {
-                setTab(t);
-                setExpanded({});
-              }}
-              style={{
-                flex: 1,
-                padding: '12px 20px',
-                borderRadius: '16px',
-                fontWeight: '500',
-                fontSize: '16px',
-                border: tab === t ? '1px solid rgba(255,255,255,0.8)' : 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                background: tab === t ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.4)',
-                backdropFilter: tab === t ? 'blur(10px)' : 'none',
-                color: tab === t ? '#581c87' : '#7c3aed',
-                boxShadow: tab === t ? '0 4px 12px rgba(0,0,0,0.1)' : 'none'
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Content area with more bottom padding for nav bar */}
+        <div style={{ paddingBottom: '100px' }}>
 
         {/* JOURNAL TAB */}
         {tab === "journal" && (
@@ -1059,6 +1032,7 @@ export default function App() {
 
                   <div style={{ marginBottom: '16px' }}>
                     <VoiceInput 
+                      currentText={entry.text}
                       onTranscript={(text) => {
                         setEntry(prev => ({ 
                           ...prev, 
@@ -1419,6 +1393,7 @@ export default function App() {
 
                       <div style={{ marginBottom: '16px' }}>
                         <VoiceInput 
+                          currentText={notes}
                           onTranscript={(text) => {
                             setNotes(text);
                           }}
@@ -1467,6 +1442,63 @@ export default function App() {
             )}
           </div>
         )}
+
+        {/* Close content area */}
+        </div>
+
+        {/* BOTTOM NAVIGATION BAR */}
+        <div style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: 'rgba(255,255,255,0.95)',
+          backdropFilter: 'blur(10px)',
+          borderTop: '1px solid rgba(147,51,234,0.2)',
+          padding: '12px 16px 24px 16px',
+          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
+          zIndex: 1000
+        }}>
+          <div style={{
+            maxWidth: '600px',
+            margin: '0 auto',
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'center'
+          }}>
+            {[
+              ["journal", "Journal", FileText],
+              ["sessions", "Sessions", Calendar],
+            ].map(([t, label, Icon]) => (
+              <button
+                key={t}
+                onClick={() => {
+                  setTab(t);
+                  setExpanded({});
+                }}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  fontWeight: tab === t ? '600' : '500',
+                  fontSize: '14px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: tab === t ? '#9333ea' : 'transparent',
+                  color: tab === t ? 'white' : '#7c3aed'
+                }}
+              >
+                <Icon size={24} />
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
