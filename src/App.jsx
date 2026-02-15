@@ -114,6 +114,7 @@ export default function App() {
     try {
       const user = await Parse.User.logIn(email, password);
       setCurrentUser(user);
+      setTab("home");
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -136,6 +137,7 @@ export default function App() {
       
       await user.signUp();
       setCurrentUser(user);
+      setTab("home");
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -1474,6 +1476,12 @@ export default function App() {
               </button>
             )}
 
+            {analysis?.showNewEntryWarning && !loading && (
+              <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#92400e' }}>
+                💡 Enter a new journal entry to refresh your analysis and get new insights
+              </div>
+            )}
+
             {analysis && !loading && (
               <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
@@ -1554,19 +1562,14 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Questions */}
+                  {/* Open Questions */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                       <Sparkles size={18} style={{ color: '#9333ea' }} />
                       <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        Questions
+                        Open Questions
                       </h4>
                     </div>
-                    {analysis?.showNewEntryWarning && (
-                      <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', marginBottom: '16px', fontSize: '13px', color: '#92400e' }}>
-                        💡 Enter a new journal entry to refresh your analysis and get new insights
-                      </div>
-                    )}
                     {(analysis.questions || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
@@ -1964,6 +1967,8 @@ export default function App() {
                 key={t}
                 onClick={() => {
                   setTab(t);
+                  if (t === 'journal') setJournalView('write');
+                  if (t === 'sessions') setSessionView('pre');
                   setExpanded({});
                 }}
                 style={{

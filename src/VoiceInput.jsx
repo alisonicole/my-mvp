@@ -5,15 +5,16 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [supported, setSupported] = useState(true);
-  const [baseText, setBaseText] = useState(''); // Store the text when recording started
+  const [baseText, setBaseText] = useState('');
 
   const recognitionRef = useRef(null);
-  const isListeningRef = useRef(false); // Ref so onend can check current state
+  const isListeningRef = useRef(false);
+  const restartTimerRef = useRef(null);
 
   // Initialize recognition once
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
+
     if (!SpeechRecognition) {
       setSupported(false);
       return;
@@ -23,19 +24,15 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     recognitionInstance.continuous = true;
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
-    
+
     recognitionRef.current = recognitionInstance;
 
     return () => {
-      if (recognitionInstance) {
-        try {
-          recognitionInstance.stop();
-        } catch (e) {
-          // Ignore errors on cleanup
-        }
-      }
+      clearTimeout(restartTimerRef.current);
+      isListeningRef.current = false;
+      try { recognitionInstance.abort(); } catch (e) {}
     };
-  }, []); // Only run once on mount
+  }, []);
 
   // Set up event handlers
   useEffect(() => {
@@ -44,41 +41,41 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
 
     recognition.onresult = (event) => {
       let finalTranscript = '';
-
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcriptPiece = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcriptPiece + ' ';
+          finalTranscript += event.results[i][0].transcript + ' ';
         }
       }
-
       if (finalTranscript) {
         setTranscript(prev => prev + finalTranscript);
       }
     };
 
     recognition.onerror = (event) => {
+      // Ignore expected non-fatal errors
+      if (event.error === 'no-speech' || event.error === 'aborted') return;
       console.error('Speech recognition error:', event.error);
-      if (event.error === 'no-speech') {
-        return;
-      }
+      isListeningRef.current = false;
       setIsListening(false);
     };
 
     recognition.onend = () => {
-      // Mobile browsers stop recognition after short pauses — restart if still listening
-      if (isListeningRef.current) {
+      if (!isListeningRef.current) {
+        setIsListening(false);
+        return;
+      }
+      // Delay restart slightly to avoid race conditions on mobile
+      restartTimerRef.current = setTimeout(() => {
+        if (!isListeningRef.current) return;
         try {
           recognition.start();
         } catch (e) {
           isListeningRef.current = false;
           setIsListening(false);
         }
-      } else {
-        setIsListening(false);
-      }
+      }, 150);
     };
-  }, []); // Only set handlers once
+  }, []);
 
   // Update parent when transcript changes
   useEffect(() => {
@@ -93,35 +90,36 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     if (!recognition) return;
 
     if (isListening) {
+      // Update state immediately so the UI unfreezes at once
+      clearTimeout(restartTimerRef.current);
+      isListeningRef.current = false;
+      setIsListening(false);
       try {
-        isListeningRef.current = false;
-        recognition.stop();
-        setIsListening(false);
+        recognition.abort();
       } catch (e) {
-        console.error('Error stopping recognition:', e);
-        isListeningRef.current = false;
-        setIsListening(false);
+        // already stopped, nothing to do
       }
     } else {
       setBaseText(currentText);
       setTranscript('');
+      isListeningRef.current = true;
+      setIsListening(true);
       try {
-        isListeningRef.current = true;
         recognition.start();
-        setIsListening(true);
       } catch (e) {
         console.error('Error starting recognition:', e);
         isListeningRef.current = false;
+        setIsListening(false);
       }
     }
   };
 
   if (!supported) {
     return (
-      <div style={{ 
-        padding: '12px', 
-        background: '#fef3c7', 
-        border: '1px solid #fbbf24', 
+      <div style={{
+        padding: '12px',
+        background: '#fef3c7',
+        border: '1px solid #fbbf24',
         borderRadius: '12px',
         fontSize: '14px',
         color: '#92400e'
@@ -149,8 +147,8 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
           transition: 'all 0.2s',
           background: isListening ? '#ef4444' : '#9333ea',
           color: 'white',
-          boxShadow: isListening 
-            ? '0 4px 12px rgba(239,68,68,0.3)' 
+          boxShadow: isListening
+            ? '0 4px 12px rgba(239,68,68,0.3)'
             : '0 4px 12px rgba(147,51,234,0.3)'
         }}
       >
