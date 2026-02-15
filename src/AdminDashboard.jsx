@@ -6,7 +6,8 @@ export default function AdminDashboard({ onExit }) {
     totalUsers: 0,
     totalEntries: 0,
     totalSessions: 0,
-    avgEntriesPerUser: 0,
+    meanEntriesPerUser: 0,
+    medianEntriesPerUser: 0,
     activeUsersLast7Days: 0,
     activeUsersLast30Days: 0,
     entriesLast7Days: 0,
@@ -28,19 +29,9 @@ export default function AdminDashboard({ onExit }) {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // Total users WHO HAD A SESSION in the past 7 days
-      const sessionQuery7 = new Parse.Query("SessionSnapshot");
-      sessionQuery7.greaterThan("createdAt", sevenDaysAgo);
-      sessionQuery7.include("user");
-      const recentSessions = await sessionQuery7.find();
-      
-      // Get unique user IDs from sessions
-      const uniqueUserIds = new Set();
-      recentSessions.forEach(session => {
-        const userId = session.get("user")?.id;
-        if (userId) uniqueUserIds.add(userId);
-      });
-      const totalUsers = uniqueUserIds.size;
+      // Total users across the whole database
+      const allUsersQuery = new Parse.Query(Parse.User);
+      const totalUsers = await allUsersQuery.count();
 
       // Total entries
       const entryQuery = new Parse.Query("Entry");
@@ -50,7 +41,7 @@ export default function AdminDashboard({ onExit }) {
       const sessionQuery = new Parse.Query("SessionSnapshot");
       const totalSessions = await sessionQuery.count();
 
-      // Active users last 7 days
+      // Active users last 7 days (updated their account/data)
       const activeUsers7Query = new Parse.Query(Parse.User);
       activeUsers7Query.greaterThan("updatedAt", sevenDaysAgo);
       const activeUsersLast7Days = await activeUsers7Query.count();
@@ -70,16 +61,12 @@ export default function AdminDashboard({ onExit }) {
       entries30Query.greaterThan("createdAt", thirtyDaysAgo);
       const entriesLast30Days = await entries30Query.count();
 
-      // Average entries per user
-      const avgEntriesPerUser = totalUsers > 0 ? (totalEntries / totalUsers).toFixed(1) : 0;
-
-      // Top users by entry count (requires aggregation pipeline)
+      // Per-user entry counts (for mean, median, top users)
       const topUsersQuery = new Parse.Query("Entry");
       topUsersQuery.include("user");
-      topUsersQuery.limit(1000); // Get recent entries
+      topUsersQuery.limit(1000);
       const allEntries = await topUsersQuery.find();
-      
-      // Count entries per user
+
       const userEntryCount = {};
       allEntries.forEach(entry => {
         const userId = entry.get("user")?.id;
@@ -92,7 +79,20 @@ export default function AdminDashboard({ onExit }) {
         }
       });
 
-      // Sort and get top 10
+      // Mean entries per user (over all DB users)
+      const meanEntriesPerUser = totalUsers > 0 ? (totalEntries / totalUsers).toFixed(1) : 0;
+
+      // Median entries per user (over users who have at least 1 entry)
+      const countValues = Object.values(userEntryCount).map(d => d.count).sort((a, b) => a - b);
+      let medianEntriesPerUser = 0;
+      if (countValues.length > 0) {
+        const mid = Math.floor(countValues.length / 2);
+        medianEntriesPerUser = countValues.length % 2 === 0
+          ? ((countValues[mid - 1] + countValues[mid]) / 2).toFixed(1)
+          : countValues[mid].toFixed(1);
+      }
+
+      // Top 10 users by entry count
       const topUsers = Object.entries(userEntryCount)
         .map(([id, data]) => ({ id, email: data.email, count: data.count }))
         .sort((a, b) => b.count - a.count)
@@ -102,7 +102,8 @@ export default function AdminDashboard({ onExit }) {
         totalUsers,
         totalEntries,
         totalSessions,
-        avgEntriesPerUser,
+        meanEntriesPerUser,
+        medianEntriesPerUser,
         activeUsersLast7Days,
         activeUsersLast30Days,
         entriesLast7Days,
@@ -171,72 +172,48 @@ export default function AdminDashboard({ onExit }) {
       </div>
 
       {/* Overview Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard 
-          icon={Users} 
-          label="Users with Sessions (7d)" 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+        <StatCard
+          icon={Users}
+          label="Total Users"
           value={stats.totalUsers}
-          subtext="Users who created a session in past 7 days"
+          subtext="All registered accounts"
         />
-        <StatCard 
-          icon={FileText} 
-          label="Total Journal Entries" 
+        <StatCard
+          icon={Users}
+          label="Active Users (7d)"
+          value={stats.activeUsersLast7Days}
+          subtext="Accounts updated in last 7 days"
+        />
+        <StatCard
+          icon={FileText}
+          label="Total Journal Entries"
           value={stats.totalEntries}
-          subtext={`${stats.entriesLast7Days} created in last 7 days`}
+          subtext={`${stats.entriesLast7Days} in last 7 days`}
         />
-        <StatCard 
-          icon={Calendar} 
-          label="Total Sessions" 
+        <StatCard
+          icon={Calendar}
+          label="Total Sessions"
           value={stats.totalSessions}
         />
-        <StatCard 
-          icon={TrendingUp} 
-          label="Avg Entries/User" 
-          value={stats.avgEntriesPerUser}
+        <StatCard
+          icon={TrendingUp}
+          label="Mean Entries / User"
+          value={stats.meanEntriesPerUser}
+          subtext="Across all users"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Median Entries / User"
+          value={stats.medianEntriesPerUser}
+          subtext="Among users with entries"
         />
       </div>
 
-      {/* Activity Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <div style={{ 
-          background: 'rgba(255,255,255,0.9)', 
-          border: '1px solid #e9d5ff', 
-          borderRadius: '16px', 
-          padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>7-Day Activity</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Active Users</p>
-              <p style={{ fontSize: '24px', fontWeight: '600', color: '#581c87', margin: 0 }}>{stats.activeUsersLast7Days}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>New Entries</p>
-              <p style={{ fontSize: '24px', fontWeight: '600', color: '#581c87', margin: 0 }}>{stats.entriesLast7Days}</p>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ 
-          background: 'rgba(255,255,255,0.9)', 
-          border: '1px solid #e9d5ff', 
-          borderRadius: '16px', 
-          padding: '24px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-        }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>30-Day Activity</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>Active Users</p>
-              <p style={{ fontSize: '24px', fontWeight: '600', color: '#581c87', margin: 0 }}>{stats.activeUsersLast30Days}</p>
-            </div>
-            <div>
-              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 4px 0' }}>New Entries</p>
-              <p style={{ fontSize: '24px', fontWeight: '600', color: '#581c87', margin: 0 }}>{stats.entriesLast30Days}</p>
-            </div>
-          </div>
-        </div>
+      {/* 30-Day Activity */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+        <StatCard icon={Users}    label="Active Users (30d)"  value={stats.activeUsersLast30Days} subtext="Accounts updated in last 30 days" />
+        <StatCard icon={FileText} label="Entries (30d)"        value={stats.entriesLast30Days}     subtext="Journal entries in last 30 days" />
       </div>
 
       {/* Top Users */}

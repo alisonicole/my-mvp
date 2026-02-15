@@ -645,6 +645,7 @@ export default function App() {
         
         .main-container {
           max-width: 600px;
+          width: 100%;
           margin: 0 auto;
           padding: 32px;
         }
@@ -1612,6 +1613,23 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {analysis && !loading && (
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px' }}>
+                <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
+                <div>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#92400e', lineHeight: '1.5' }}>
+                    Save your patterns when you log a session snapshot to keep a record of your progress.
+                  </p>
+                  <button
+                    onClick={() => { setTab('sessions'); setSessionView('post'); }}
+                    style={{ padding: '7px 14px', borderRadius: '20px', border: 'none', background: '#f59e0b', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    Log a Session Snapshot →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1674,20 +1692,18 @@ export default function App() {
                   </div>
                 ) : null}
 
-                {/* Combined Session Starter + Last Session */}
-                {!loading && (analysis || lastSnapshot) && (
+                {/* SESSION STARTER */}
+                {!loading && analysis && (
                   <div style={{
-                    background: 'rgba(255,255,255,0.7)',
-                    backdropFilter: 'blur(10px)',
+                    background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                    border: '1px solid #ddd6fe',
                     borderRadius: '24px',
                     overflow: 'hidden',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                    boxShadow: '0 4px 16px rgba(147,51,234,0.1)'
                   }}>
-                    <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                      {/* SESSION STARTER */}
-                      {analysis && (
-                        <div>
-                          <div style={{
+                    <div style={{ padding: '32px' }}>
+                      <div>
+                        <div style={{
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
@@ -1794,50 +1810,53 @@ export default function App() {
                             💡 Use this to start your next therapy session
                           </p>
                         </div>
-                      )}
+                    </div>
+                  </div>
+                )}
 
-                      {/* Divider */}
-                      {analysis && lastSnapshot && (
-                        <hr style={{ border: 'none', borderTop: '1px solid rgba(147,51,234,0.15)', margin: 0 }} />
-                      )}
-
-                      {/* LAST SESSION */}
-                      {lastSnapshot && (
+                {/* LAST SESSION */}
+                {!loading && lastSnapshot && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.7)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid rgba(255,255,255,0.8)',
+                    borderRadius: '24px',
+                    overflow: 'hidden',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ padding: '32px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <Archive size={20} style={{ color: '#9333ea' }} />
+                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
+                          Last Session
+                        </h3>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <Archive size={20} style={{ color: '#9333ea' }} />
-                            <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                              Last Session
-                            </h3>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Session Date
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                              <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                Session Date
-                              </div>
-                              <div style={{ fontSize: '16px', color: '#581c87' }}>
-                                {formatDate(lastSnapshot?.sessionDate || getDate())}
-                              </div>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                What you talked about
-                              </div>
-                              <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                {lastSnapshot?.notes || "—"}
-                              </p>
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                Next steps
-                              </div>
-                              <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                {lastSnapshot?.nextSteps || "—"}
-                              </p>
-                            </div>
+                          <div style={{ fontSize: '16px', color: '#581c87' }}>
+                            {formatDate(lastSnapshot?.sessionDate || getDate())}
                           </div>
                         </div>
-                      )}
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            What you talked about
+                          </div>
+                          <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                            {lastSnapshot?.notes || "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Next steps
+                          </div>
+                          <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                            {lastSnapshot?.nextSteps || "—"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
