@@ -80,7 +80,6 @@ export default function App() {
     return count;
   }, [entries]);
 
-  const totalEntryDays = useMemo(() => new Set(entries.map(e => e.date)).size, [entries]);
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -832,139 +831,134 @@ export default function App() {
         <div style={{ paddingBottom: '100px' }}>
 
         {/* HOME TAB */}
-        {tab === "home" && (
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {tab === "home" && (() => {
+          const raw = currentUser?.get('username') || '';
+          const firstName = raw.split('@')[0].split('.')[0];
+          const name = firstName.charAt(0).toUpperCase() + firstName.slice(1);
 
-            {/* Greeting */}
-            <div style={{ marginBottom: '4px' }}>
-              {(() => {
-                const raw = currentUser?.get('username') || '';
-                const firstName = raw.split('@')[0].split('.')[0];
-                const name = firstName.charAt(0).toUpperCase() + firstName.slice(1);
-                return (
-                  <>
-                    <h2 style={{ fontSize: '26px', fontWeight: '300', color: '#581c87', margin: '0 0 4px 0' }}>
-                      Hi {name} 👋
-                    </h2>
-                    {analysis?.themes?.length > 0 && (
-                      <div style={{ marginTop: '8px' }}>
-                        <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 8px 0' }}>
-                          We've read between the lines. Here's what's been on your mind:
-                        </p>
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {(analysis.themes || []).slice(0, isPaidSubscriber ? 3 : 2).map((t, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px', color: '#581c87' }}>
-                              <span style={{ color: '#9333ea' }}>•</span>
-                              <span>{t}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
+          const prompts = [
+            "What's on your mind today?",
+            "How are you feeling right now?",
+            "What's one thing you'd like to process?",
+            "What came up for you today?",
+            "What are you carrying with you right now?",
+          ];
+          const todayPrompt = prompts[new Date().getDay() % prompts.length];
 
-            {/* Stats */}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              {[
-                { label: 'Streak', value: streak === 0 ? '—' : `${streak}d`, sub: 'days' },
-                { label: 'Entries', value: entries.length, sub: 'total' },
-                { label: 'Days', value: totalEntryDays, sub: 'journaled' },
-              ].map(({ label, value, sub }) => (
-                <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '22px', fontWeight: '600', color: '#581c87' }}>{value}</div>
-                  <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '500' }}>{sub}</div>
-                </div>
-              ))}
-            </div>
+          const lastEntry = entries[0];
+          const lastEntryAgo = lastEntry ? (() => {
+            const diff = Date.now() - new Date(lastEntry.timestamp).getTime();
+            const hours = Math.floor(diff / 3600000);
+            if (hours < 1) return 'just now';
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            return `${days}d ago`;
+          })() : null;
 
-            {/* Weekly Calendar */}
-            {(() => {
-              const today = new Date();
-              const startOfWeek = new Date(today);
-              startOfWeek.setDate(today.getDate() - today.getDay());
-              const days = ['S','M','T','W','T','F','S'];
-              const entryDateSet = new Set(entries.map(e => e.date));
-              const todayStr = today.toISOString().split('T')[0];
-              return (
-                <div>
-                  <p style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>This Week</p>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {days.map((d, i) => {
-                      const date = new Date(startOfWeek);
-                      date.setDate(startOfWeek.getDate() + i);
-                      const dateStr = date.toISOString().split('T')[0];
-                      const hasEntry = entryDateSet.has(dateStr);
-                      const isToday = dateStr === todayStr;
-                      return (
-                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                          <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500' }}>{d}</span>
-                          <div style={{
-                            width: '32px', height: '32px', borderRadius: '50%',
-                            background: hasEntry ? '#9333ea' : isToday ? '#f3e8ff' : 'rgba(255,255,255,0.5)',
-                            border: isToday ? '2px solid #9333ea' : '1px solid #e9d5ff',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}>
-                            {hasEntry && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />}
-                          </div>
-                          <span style={{ fontSize: '9px', color: '#9ca3af' }}>{date.getDate()}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
+          return (
+            <div style={{ maxWidth: '500px', margin: '0 auto', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-            {/* Action Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '12px'
-            }}>
-              {[
-                { label: 'Write Entry',    Icon: PenTool,      color: '#9333ea', action: () => { setTab('journal'); setJournalView('write'); } },
-                { label: 'View Log',       Icon: Archive,      color: '#7c3aed', action: () => { setTab('journal'); setJournalView('log'); } },
-                { label: 'Get Insights',   Icon: Sparkles,     color: '#8b5cf6', action: () => setTab('patterns') },
-                { label: 'Prep for Session',      Icon: Calendar,     color: '#6d28d9', action: () => { setTab('sessions'); setSessionView('pre'); } },
-                { label: 'Reflect on Session',   Icon: MessageSquare, color: '#a78bfa', action: () => { setTab('sessions'); setSessionView('post'); } },
-              ].map(({ label, Icon, color, action }) => (
+              {/* Greeting */}
+              <div>
+                <h2 style={{ fontSize: '28px', fontWeight: '300', color: '#581c87', margin: '0 0 6px 0' }}>
+                  Hi {name} 👋
+                </h2>
+                <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0 }}>{todayPrompt}</p>
+              </div>
+
+              {/* Primary CTA */}
+              <button
+                onClick={() => { setTab('journal'); setJournalView('write'); }}
+                style={{
+                  width: '100%',
+                  height: '64px',
+                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '18px',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  boxShadow: '0 6px 20px rgba(147,51,234,0.35)',
+                  transition: 'transform 0.15s, box-shadow 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(147,51,234,0.4)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(147,51,234,0.35)'; }}
+              >
+                <PenTool size={22} />
+                Write Journal Entry
+              </button>
+
+              {/* Secondary CTA — voice (paid only) */}
+              {isPaidSubscriber && (
                 <button
-                  key={label}
-                  onClick={action}
+                  onClick={() => { setTab('journal'); setJournalView('write'); }}
                   style={{
-                    background: 'rgba(255,255,255,0.7)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.8)',
-                    borderRadius: '16px',
-                    padding: '20px 16px',
+                    width: '100%',
+                    height: '48px',
+                    background: 'rgba(147,51,234,0.08)',
+                    color: '#7c3aed',
+                    border: '1px solid rgba(147,51,234,0.2)',
+                    borderRadius: '14px',
+                    fontSize: '15px',
+                    fontWeight: '500',
                     cursor: 'pointer',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '10px',
-                    boxShadow: '0 2px 8px rgba(147,51,234,0.08)'
+                    justifyContent: 'center',
+                    gap: '8px',
+                    transition: 'background 0.15s'
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(147,51,234,0.14)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(147,51,234,0.08)'; }}
                 >
-                  <div style={{
-                    width: '44px',
-                    height: '44px',
-                    borderRadius: '12px',
-                    background: color,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <Icon size={22} color="white" />
-                  </div>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#581c87' }}>{label}</span>
+                  🎤 Start Voice Entry
                 </button>
-              ))}
+              )}
+
+              {/* Tertiary actions */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                  <div style={{ flex: 1, height: '1px', background: '#e9d5ff' }} />
+                  <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>or explore</span>
+                  <div style={{ flex: 1, height: '1px', background: '#e9d5ff' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setTab('patterns')}
+                    style={{ flex: 1, height: '44px', background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '12px', fontSize: '13px', fontWeight: '500', color: '#581c87', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Sparkles size={15} />
+                    View Patterns
+                  </button>
+                  <button
+                    onClick={() => { setTab('sessions'); setSessionView('pre'); }}
+                    style={{ flex: 1, height: '44px', background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '12px', fontSize: '13px', fontWeight: '500', color: '#581c87', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Calendar size={15} />
+                    Prep for Session
+                  </button>
+                </div>
+              </div>
+
+              {/* Minimal stats */}
+              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                {streak > 0 && (
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>🔥 {streak} day streak</span>
+                )}
+                <span style={{ fontSize: '13px', color: '#9ca3af' }}>📊 {entries.length} total {entries.length === 1 ? 'entry' : 'entries'}</span>
+                {lastEntryAgo && (
+                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>💜 Last entry {lastEntryAgo}</span>
+                )}
+              </div>
+
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ACCOUNT TAB */}
         {tab === "account" && (
