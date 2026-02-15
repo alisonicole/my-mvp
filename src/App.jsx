@@ -34,6 +34,7 @@ export default function App() {
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [signupName, setSignupName] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -65,8 +66,13 @@ export default function App() {
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
   const [logFilter, setLogFilter] = useState("all"); // "all", "entries", "snapshots"
-  const [favoritedPatterns, setFavoritedPatterns] = useState(new Set());
+  const [favoritedPatterns, setFavoritedPatterns] = useState([]); // [{text, favoritedAt}]
   const [showWelcome, setShowWelcome] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [savedPrompts, setSavedPrompts] = useState([]); // [{text, savedAt}]
+  const [showMyPrompts, setShowMyPrompts] = useState(false);
 
   const streak = useMemo(() => {
     const dateSet = new Set(entries.map(e => e.date));
@@ -150,9 +156,11 @@ export default function App() {
       user.set("username", email);
       user.set("email", email);
       user.set("password", password);
-      
+      if (signupName.trim()) user.set("displayName", signupName.trim());
+
       await user.signUp();
       setCurrentUser(user);
+      if (signupName.trim()) setDisplayName(signupName.trim());
       setTab("journal");
       setJournalView("log");
       setShowWelcome(true);
@@ -172,6 +180,9 @@ export default function App() {
     setHistory([]);
     setAnalysis(null);
     setActivePrompt("");
+    setDisplayName("");
+    setSavedPrompts([]);
+    setFavoritedPatterns([]);
   };
 
   async function fetchEntries() {
@@ -314,8 +325,19 @@ export default function App() {
           setAnalysisTimestamp(new Date().toISOString());
         }
 
-        const savedFavorites = currentUser.get("favoritedPatterns");
-        if (savedFavorites) setFavoritedPatterns(new Set(savedFavorites));
+        const savedFavs = currentUser.get("favoritedPatterns");
+        if (Array.isArray(savedFavs)) {
+          // Support both old Set-style (array of strings) and new object format
+          setFavoritedPatterns(savedFavs.map(f =>
+            typeof f === 'string' ? { text: f, favoritedAt: new Date().toISOString() } : f
+          ));
+        }
+
+        const dn = currentUser.get("displayName");
+        if (dn) setDisplayName(dn);
+
+        const sp = currentUser.get("savedPrompts");
+        if (Array.isArray(sp)) setSavedPrompts(sp);
 
         setLastAnalyzedEntries([]);
       } catch (err) {
@@ -478,12 +500,37 @@ export default function App() {
     }
   };
 
-  const toggleFavorite = (item) => {
+  const toggleFavorite = (text) => {
     setFavoritedPatterns(prev => {
-      const next = new Set(prev);
-      next.has(item) ? next.delete(item) : next.add(item);
+      const alreadyFaved = prev.some(f => f.text === text);
+      const next = alreadyFaved
+        ? prev.filter(f => f.text !== text)
+        : [...prev, { text, favoritedAt: new Date().toISOString() }];
       if (currentUser && Parse) {
-        currentUser.set("favoritedPatterns", [...next]);
+        currentUser.set("favoritedPatterns", next);
+        currentUser.save().catch(() => {});
+      }
+      return next;
+    });
+  };
+
+  const savePromptForLater = (text) => {
+    setSavedPrompts(prev => {
+      if (prev.some(p => p.text === text)) return prev;
+      const next = [...prev, { text, savedAt: new Date().toISOString() }];
+      if (currentUser && Parse) {
+        currentUser.set("savedPrompts", next);
+        currentUser.save().catch(() => {});
+      }
+      return next;
+    });
+  };
+
+  const removeSavedPrompt = (text) => {
+    setSavedPrompts(prev => {
+      const next = prev.filter(p => p.text !== text);
+      if (currentUser && Parse) {
+        currentUser.set("savedPrompts", next);
         currentUser.save().catch(() => {});
       }
       return next;
@@ -584,6 +631,20 @@ export default function App() {
           </div>
 
           <form onSubmit={authMode === "login" ? handleLogin : handleSignup}>
+            {authMode === "signup" && (
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                  What can we call you?
+                </label>
+                <input
+                  type="text"
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  placeholder="Your first name"
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87' }}
+                />
+              </div>
+            )}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
                 Email
@@ -834,7 +895,8 @@ export default function App() {
         {tab === "home" && (() => {
           const raw = currentUser?.get('username') || '';
           const firstName = raw.split('@')[0].split('.')[0];
-          const name = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+          const fallbackName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+          const name = displayName || fallbackName;
 
           const prompts = [
             "What's on your mind today?",
@@ -945,15 +1007,18 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Minimal stats */}
-              <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {/* Stats row */}
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                 {streak > 0 && (
-                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>🔥 {streak} day streak</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '6px 14px' }}>
+                    <span style={{ fontSize: '16px' }}>🔥</span>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>{streak} day{streak !== 1 ? 's' : ''} in a row</span>
+                  </div>
                 )}
-                <span style={{ fontSize: '13px', color: '#9ca3af' }}>📊 {entries.length} total {entries.length === 1 ? 'entry' : 'entries'}</span>
-                {lastEntryAgo && (
-                  <span style={{ fontSize: '13px', color: '#9ca3af' }}>💜 Last entry {lastEntryAgo}</span>
-                )}
+                <div style={{ display: 'flex', gap: '12px', marginLeft: streak > 0 ? 'auto' : 0 }}>
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {entries.length} entries</span>
+                  {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
+                </div>
               </div>
 
             </div>
@@ -992,18 +1057,64 @@ export default function App() {
                   justifyContent: 'center',
                   margin: '0 auto 16px'
                 }}>
-                  <User size={40} color="white" />
+                  {displayName ? (
+                    <span style={{ fontSize: '32px', fontWeight: '600', color: 'white' }}>
+                      {displayName.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <User size={40} color="white" />
+                  )}
                 </div>
                 <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '4px' }}>
-                  {currentUser?.get('username') || 'User'}
+                  {displayName || currentUser?.get('username') || 'User'}
                 </h3>
               </div>
 
               {/* Account Details */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ 
-                  padding: '16px', 
-                  background: 'rgba(147,51,234,0.05)', 
+                {/* Name field */}
+                <div style={{ padding: '16px', background: 'rgba(147,51,234,0.05)', borderRadius: '12px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>Name</div>
+                    <button
+                      onClick={() => {
+                        if (editingName) {
+                          const trimmed = nameInput.trim();
+                          setDisplayName(trimmed);
+                          setEditingName(false);
+                          if (currentUser && Parse) {
+                            currentUser.set("displayName", trimmed);
+                            currentUser.save().catch(() => {});
+                          }
+                        } else {
+                          setNameInput(displayName);
+                          setEditingName(true);
+                        }
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '2px 6px' }}
+                    >
+                      {editingName ? 'Save' : 'Edit'}
+                    </button>
+                  </div>
+                  {editingName ? (
+                    <input
+                      type="text"
+                      value={nameInput}
+                      onChange={e => setNameInput(e.target.value)}
+                      placeholder="Your first name"
+                      autoFocus
+                      style={{ width: '100%', padding: '8px 0', border: 'none', borderBottom: '2px solid #9333ea', outline: 'none', fontSize: '16px', background: 'transparent', color: '#581c87' }}
+                    />
+                  ) : (
+                    <div style={{ fontSize: '16px', color: '#581c87' }}>
+                      {displayName || <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(147,51,234,0.05)',
                   borderRadius: '12px',
                   border: '1px solid rgba(147,51,234,0.1)'
                 }}>
@@ -1150,7 +1261,7 @@ export default function App() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Log</h2>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"]].map(([f, label]) => (
+                      {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
                         <button
                           key={f}
                           onClick={() => setLogFilter(f)}
@@ -1172,7 +1283,37 @@ export default function App() {
                     </div>
                   </div>
 
-                  {!entries.length && !history.length ? (
+                  {logFilter === "favorites" ? (
+                    favoritedPatterns.length === 0 ? (
+                      <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
+                        No favorites yet. Star patterns in the Patterns tab to save them here.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {[...favoritedPatterns].reverse().map((fav, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', background: 'rgba(255,255,255,0.6)', borderRadius: '12px', border: '1px solid #e9d5ff', padding: '12px 14px' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(147,51,234,0.08)', borderRadius: '20px', padding: '2px 8px', marginBottom: '6px' }}>
+                                <Star size={10} fill="#9333ea" style={{ color: '#9333ea' }} />
+                                <span style={{ fontSize: '10px', fontWeight: '600', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Favorite Pattern</span>
+                              </div>
+                              <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 4px 0', lineHeight: '1.5' }}>{fav.text}</p>
+                              <p style={{ fontSize: '11px', color: '#9ca3af', margin: 0 }}>
+                                Saved {new Date(fav.favoritedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => toggleFavorite(fav.text)}
+                              title="Remove from favorites"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: '#f59e0b' }}
+                            >
+                              <Star size={16} fill="#f59e0b" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : !entries.length && !history.length ? (
                     <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
                       No entries yet. Start journaling to build your log.
                     </p>
@@ -1485,31 +1626,83 @@ export default function App() {
                     What's on your mind?
                   </h2>
 
-                  {/* Generate Journaling Prompt */}
-                  {history && history.length > 0 && (
-                    <button
-                      onClick={isPaidSubscriber ? handleGeneratePrompt : undefined}
-                      disabled={!isPaidSubscriber || loading}
-                      title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
-                      style={{
-                        padding: '7px 14px',
-                        borderRadius: '20px',
-                        border: '1px solid #e9d5ff',
-                        background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                        color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
-                        fontWeight: '500',
-                        fontSize: '12px',
-                        cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        marginBottom: '12px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      {isPaidSubscriber ? <Sparkles size={14} /> : <Lock size={14} />}
-                      {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
-                    </button>
+                  {/* Generate Journaling Prompt + My Prompts */}
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {history && history.length > 0 && (
+                      <button
+                        onClick={isPaidSubscriber ? handleGeneratePrompt : undefined}
+                        disabled={!isPaidSubscriber || loading}
+                        title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '20px',
+                          border: '1px solid #e9d5ff',
+                          background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                          color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {isPaidSubscriber ? <Sparkles size={14} /> : <Lock size={14} />}
+                        {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
+                      </button>
+                    )}
+                    {savedPrompts.length > 0 && (
+                      <button
+                        onClick={() => setShowMyPrompts(p => !p)}
+                        style={{
+                          padding: '7px 14px',
+                          borderRadius: '20px',
+                          border: '1px solid #e9d5ff',
+                          background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
+                          color: showMyPrompts ? 'white' : '#7c3aed',
+                          fontWeight: '500',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <BookOpen size={14} />
+                        My Prompts ({savedPrompts.length})
+                      </button>
+                    )}
+                  </div>
+
+                  {/* My Prompts panel */}
+                  {showMyPrompts && savedPrompts.length > 0 && (
+                    <div style={{ marginBottom: '12px', border: '1px solid #e9d5ff', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #e9d5ff', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <BookOpen size={12} />
+                        Saved Prompts — tap to use
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {savedPrompts.map((p, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', padding: '10px 14px', borderBottom: i < savedPrompts.length - 1 ? '1px solid #f3f4f6' : 'none', background: 'white' }}>
+                            <button
+                              onClick={() => { setActivePrompt(p.text); setShowMyPrompts(false); }}
+                              style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#581c87', lineHeight: '1.5', padding: 0 }}
+                            >
+                              {p.text}
+                            </button>
+                            <button
+                              onClick={() => removeSavedPrompt(p.text)}
+                              title="Remove"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '2px', flexShrink: 0 }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
 
                   <div style={{ marginBottom: '16px' }}>
@@ -1651,8 +1844,8 @@ export default function App() {
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
-                              <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                              <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                             </button>
                           </li>
                         ))}
@@ -1682,8 +1875,8 @@ export default function App() {
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
-                              <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                              <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                             </button>
                           </li>
                         ))}
@@ -1714,11 +1907,20 @@ export default function App() {
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                               <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                               <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
-                                <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                               </button>
                             </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                              <button
+                                onClick={() => savePromptForLater(item)}
+                                disabled={savedPrompts.some(p => p.text === item)}
+                                title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Save for later'}
+                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#f3f4f6' : 'white', color: savedPrompts.some(p => p.text === item) ? '#9ca3af' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: savedPrompts.some(p => p.text === item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <BookOpen size={14} />
+                                {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Save for Later'}
+                              </button>
                               {isPaidSubscriber ? (
                                 <button
                                   onClick={() => handleReplyToQuestion(item)}
