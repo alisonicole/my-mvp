@@ -76,15 +76,26 @@ export default function App() {
 
   const streak = useMemo(() => {
     const dateSet = new Set(entries.map(e => e.date));
+    // Also include session snapshot dates in the streak
+    history.forEach(s => {
+      const d = s.sessionDate || s.timestamp?.split('T')[0];
+      if (d) dateSet.add(d);
+    });
+    // Only count today if there's been activity in the last 24 hours
+    const now = Date.now();
+    const recentEntry = entries.find(e => now - new Date(e.timestamp).getTime() < 86400000);
+    const recentSnapshot = history.find(s => now - new Date(s.timestamp).getTime() < 86400000);
+    const hasActivityToday = !!(recentEntry || recentSnapshot);
     let count = 0;
     const d = new Date();
+    if (!hasActivityToday) d.setDate(d.getDate() - 1); // start from yesterday
     while (true) {
       const dateStr = d.toISOString().split('T')[0];
       if (dateSet.has(dateStr)) { count++; d.setDate(d.getDate() - 1); }
       else break;
     }
     return count;
-  }, [entries]);
+  }, [entries, history]);
 
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
@@ -1008,17 +1019,15 @@ export default function App() {
               </div>
 
               {/* Stats row */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
                 {streak > 0 && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '6px 14px' }}>
                     <span style={{ fontSize: '16px' }}>🔥</span>
                     <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>{streak} day{streak !== 1 ? 's' : ''} in a row</span>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '12px', marginLeft: streak > 0 ? 'auto' : 0 }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {entries.length} entries</span>
-                  {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
-                </div>
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {entries.length} entries</span>
+                {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
               </div>
 
             </div>
@@ -1652,28 +1661,27 @@ export default function App() {
                         {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
                       </button>
                     )}
-                    {savedPrompts.length > 0 && (
-                      <button
-                        onClick={() => setShowMyPrompts(p => !p)}
-                        style={{
-                          padding: '7px 14px',
-                          borderRadius: '20px',
-                          border: '1px solid #e9d5ff',
-                          background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
-                          color: showMyPrompts ? 'white' : '#7c3aed',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <BookOpen size={14} />
-                        My Prompts ({savedPrompts.length})
-                      </button>
-                    )}
+                    <button
+                      onClick={isPaidSubscriber ? () => setShowMyPrompts(p => !p) : undefined}
+                      title={!isPaidSubscriber ? 'Upgrade to save and access prompts' : ''}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: '20px',
+                        border: '1px solid #e9d5ff',
+                        background: !isPaidSubscriber ? '#f3f4f6' : showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
+                        color: !isPaidSubscriber ? '#9ca3af' : showMyPrompts ? 'white' : '#7c3aed',
+                        fontWeight: '500',
+                        fontSize: '12px',
+                        cursor: !isPaidSubscriber ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {!isPaidSubscriber ? <Lock size={14} /> : <BookOpen size={14} />}
+                      My Prompts {isPaidSubscriber ? `(${savedPrompts.length})` : ''}
+                    </button>
                   </div>
 
                   {/* My Prompts panel */}
@@ -1912,15 +1920,22 @@ export default function App() {
                               </button>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                              <button
-                                onClick={() => savePromptForLater(item)}
-                                disabled={savedPrompts.some(p => p.text === item)}
-                                title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Save for later'}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#f3f4f6' : 'white', color: savedPrompts.some(p => p.text === item) ? '#9ca3af' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: savedPrompts.some(p => p.text === item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              >
-                                <BookOpen size={14} />
-                                {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Save for Later'}
-                              </button>
+                              {isPaidSubscriber ? (
+                                <button
+                                  onClick={() => savePromptForLater(item)}
+                                  disabled={savedPrompts.some(p => p.text === item)}
+                                  title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Save for later'}
+                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#f3f4f6' : 'white', color: savedPrompts.some(p => p.text === item) ? '#9ca3af' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: savedPrompts.some(p => p.text === item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  <BookOpen size={14} />
+                                  {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Save for Later'}
+                                </button>
+                              ) : (
+                                <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
+                                  <Lock size={14} />
+                                  Save for Later
+                                </div>
+                              )}
                               {isPaidSubscriber ? (
                                 <button
                                   onClick={() => handleReplyToQuestion(item)}
@@ -2138,7 +2153,7 @@ export default function App() {
                             />
                           ) : (
                             <p style={{
-                              fontSize: '17px',
+                              fontSize: '14px',
                               lineHeight: '1.7',
                               color: '#581c87',
                               margin: 0,
