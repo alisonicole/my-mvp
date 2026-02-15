@@ -20,6 +20,7 @@ import {
   PenTool,
   Lock,
   MessageCircle,
+  Star,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -64,6 +65,22 @@ export default function App() {
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
   const [logFilter, setLogFilter] = useState("all"); // "all", "entries", "snapshots"
+  const [favoritedPatterns, setFavoritedPatterns] = useState(new Set());
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  const streak = useMemo(() => {
+    const dateSet = new Set(entries.map(e => e.date));
+    let count = 0;
+    const d = new Date();
+    while (true) {
+      const dateStr = d.toISOString().split('T')[0];
+      if (dateSet.has(dateStr)) { count++; d.setDate(d.getDate() - 1); }
+      else break;
+    }
+    return count;
+  }, [entries]);
+
+  const totalEntryDays = useMemo(() => new Set(entries.map(e => e.date)).size, [entries]);
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -137,7 +154,9 @@ export default function App() {
       
       await user.signUp();
       setCurrentUser(user);
-      setTab("home");
+      setTab("journal");
+      setJournalView("log");
+      setShowWelcome(true);
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -195,6 +214,7 @@ export default function App() {
     q.equalTo("user", currentUser);
     const obj = await q.get(parseId);
     if (typeof patch.text === "string") obj.set("text", patch.text);
+    if (typeof patch.date === "string") obj.set("date", patch.date);
     await obj.save();
   }
 
@@ -294,7 +314,10 @@ export default function App() {
           setAnalysis(savedAnalysis);
           setAnalysisTimestamp(new Date().toISOString());
         }
-        
+
+        const savedFavorites = currentUser.get("favoritedPatterns");
+        if (savedFavorites) setFavoritedPatterns(new Set(savedFavorites));
+
         setLastAnalyzedEntries([]);
       } catch (err) {
         console.error(err);
@@ -398,13 +421,14 @@ export default function App() {
   const moveToArchive = async () => {
     if (!analysis) return;
 
+    const visibleSlice = (arr) => isPaidSubscriber ? (arr || []) : (arr || []).slice(0, 2);
     const payload = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       sessionDate: sessionDate || getDate(),
-      themes: analysis.themes || [],
-      avoiding: analysis.avoiding || [],
-      questions: analysis.questions || [],
+      themes: visibleSlice(analysis.themes),
+      avoiding: visibleSlice(analysis.avoiding),
+      questions: visibleSlice(analysis.questions),
       openingStatement: analysis.openingStatement || "",
       notes: notes || "",
       nextSteps: nextSteps || "",
@@ -453,6 +477,18 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleFavorite = (item) => {
+    setFavoritedPatterns(prev => {
+      const next = new Set(prev);
+      next.has(item) ? next.delete(item) : next.add(item);
+      if (currentUser && Parse) {
+        currentUser.set("favoritedPatterns", [...next]);
+        currentUser.save().catch(() => {});
+      }
+      return next;
+    });
   };
 
   const combined = useMemo(() => {
@@ -763,38 +799,33 @@ export default function App() {
       `}</style>
 
       <div className="main-container">
-        {/* Header with logo and account buttons */}
-        <div style={{ textAlign: 'center', marginBottom: '48px', position: 'relative' }}>
-          {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
+        {/* Header with logo and account icon */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+          <div style={{ width: '72px' }} />
+          <div style={{ textAlign: 'center', flex: 1 }}>
+            <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
+            <p style={{ color: '#7c3aed', fontSize: '16px' }}>
+              Capture what comes up between therapy sessions and bring it into the room
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '72px' }}>
             <button
-              onClick={() => setShowAdmin(!showAdmin)}
-              title="Analytics"
-              style={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                padding: '8px 16px',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                background: 'rgba(255,255,255,0.7)',
-                color: '#7c3aed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
+              onClick={() => setTab('account')}
+              title="Account"
+              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#7c3aed' }}
             >
-              📊 Analytics
+              <User size={20} />
             </button>
-          )}
-
-          <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
-          <p style={{ color: '#7c3aed', fontSize: '16px' }}>
-            Capture what comes up between therapy sessions and bring it into the room
-          </p>
+            {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
+              <button
+                onClick={() => setShowAdmin(!showAdmin)}
+                title="Analytics"
+                style={{ background: 'rgba(255,255,255,0.7)', border: 'none', borderRadius: '8px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: '#7c3aed', fontSize: '12px', fontWeight: '500' }}
+              >
+                📊
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Content area with more bottom padding for nav bar */}
@@ -802,7 +833,92 @@ export default function App() {
 
         {/* HOME TAB */}
         {tab === "home" && (
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px' }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Greeting */}
+            <div style={{ marginBottom: '4px' }}>
+              {(() => {
+                const raw = currentUser?.get('username') || '';
+                const firstName = raw.split('@')[0].split('.')[0];
+                const name = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+                return (
+                  <>
+                    <h2 style={{ fontSize: '26px', fontWeight: '300', color: '#581c87', margin: '0 0 4px 0' }}>
+                      Hi {name} 👋
+                    </h2>
+                    {analysis?.themes?.length > 0 && (
+                      <div style={{ marginTop: '8px' }}>
+                        <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 8px 0' }}>
+                          We've read between the lines. Here's what's been on your mind:
+                        </p>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {(analysis.themes || []).slice(0, isPaidSubscriber ? 3 : 2).map((t, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px', color: '#581c87' }}>
+                              <span style={{ color: '#9333ea' }}>•</span>
+                              <span>{t}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              {[
+                { label: 'Streak', value: streak === 0 ? '—' : `${streak}d`, sub: 'days' },
+                { label: 'Entries', value: entries.length, sub: 'total' },
+                { label: 'Days', value: totalEntryDays, sub: 'journaled' },
+              ].map(({ label, value, sub }) => (
+                <div key={label} style={{ flex: 1, background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '22px', fontWeight: '600', color: '#581c87' }}>{value}</div>
+                  <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: '500' }}>{sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Weekly Calendar */}
+            {(() => {
+              const today = new Date();
+              const startOfWeek = new Date(today);
+              startOfWeek.setDate(today.getDate() - today.getDay());
+              const days = ['S','M','T','W','T','F','S'];
+              const entryDateSet = new Set(entries.map(e => e.date));
+              const todayStr = today.toISOString().split('T')[0];
+              return (
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 8px 0' }}>This Week</p>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    {days.map((d, i) => {
+                      const date = new Date(startOfWeek);
+                      date.setDate(startOfWeek.getDate() + i);
+                      const dateStr = date.toISOString().split('T')[0];
+                      const hasEntry = entryDateSet.has(dateStr);
+                      const isToday = dateStr === todayStr;
+                      return (
+                        <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '10px', color: '#9ca3af', fontWeight: '500' }}>{d}</span>
+                          <div style={{
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            background: hasEntry ? '#9333ea' : isToday ? '#f3e8ff' : 'rgba(255,255,255,0.5)',
+                            border: isToday ? '2px solid #9333ea' : '1px solid #e9d5ff',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}>
+                            {hasEntry && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'white' }} />}
+                          </div>
+                          <span style={{ fontSize: '9px', color: '#9ca3af' }}>{date.getDate()}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Action Grid */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -812,8 +928,8 @@ export default function App() {
                 { label: 'Write Entry',    Icon: PenTool,      color: '#9333ea', action: () => { setTab('journal'); setJournalView('write'); } },
                 { label: 'View Log',       Icon: Archive,      color: '#7c3aed', action: () => { setTab('journal'); setJournalView('log'); } },
                 { label: 'Get Insights',   Icon: Sparkles,     color: '#8b5cf6', action: () => setTab('patterns') },
-                { label: 'Pre-session',    Icon: Calendar,     color: '#6d28d9', action: () => { setTab('sessions'); setSessionView('pre'); } },
-                { label: 'Post-session',   Icon: MessageSquare, color: '#a78bfa', action: () => { setTab('sessions'); setSessionView('post'); } },
+                { label: 'Prep for Session',      Icon: Calendar,     color: '#6d28d9', action: () => { setTab('sessions'); setSessionView('pre'); } },
+                { label: 'Reflect on Session',   Icon: MessageSquare, color: '#a78bfa', action: () => { setTab('sessions'); setSessionView('post'); } },
               ].map(({ label, Icon, color, action }) => (
                 <button
                   key={label}
@@ -1023,6 +1139,20 @@ export default function App() {
             <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
               {journalView === "log" ? (
                 <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  {showWelcome && (
+                    <div style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe', borderRadius: '16px', padding: '20px', marginBottom: '20px', position: 'relative' }}>
+                      <button onClick={() => setShowWelcome(false)} style={{ position: 'absolute', top: '10px', right: '12px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '18px', lineHeight: 1 }}>×</button>
+                      <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: '0 0 8px 0' }}>Welcome to between 👋</h3>
+                      <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 12px 0', lineHeight: '1.6' }}>
+                        Start your journaling journey with between and invite clarity, gratitude, and reflection.
+                      </p>
+                      <div style={{ fontSize: '13px', color: '#6b7280', lineHeight: '1.7' }}>
+                        <strong style={{ color: '#581c87' }}>Between Basic</strong> is free — journal entries, session snapshots, and core pattern analysis.<br />
+                        <strong style={{ color: '#9333ea' }}>Between Premium</strong> includes AI journaling prompts, full pattern analysis (all themes, avoidances & open questions), and the ability to reply to open questions.
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Log</h2>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -1116,7 +1246,7 @@ export default function App() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setEditingId(item.data.parseId);
-                                    setEditDraft({ text: item.data.text || "" });
+                                    setEditDraft({ text: item.data.text || "", date: item.data.date || getDate() });
                                     setExpanded((p) => ({ ...p, [item.id]: true }));
                                   }}
                                   style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', padding: '4px', flexShrink: 0 }}
@@ -1188,6 +1318,12 @@ export default function App() {
                                   
                                   {editingId === item.data.parseId ? (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+                                      <input
+                                        type="date"
+                                        value={editDraft.date}
+                                        onChange={(e) => setEditDraft((p) => ({ ...p, date: e.target.value }))}
+                                        style={{ width: '100%', padding: '10px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                                      />
                                       <textarea
                                         value={editDraft.text}
                                         onChange={(e) => setEditDraft((p) => ({ ...p, text: e.target.value }))}
@@ -1197,7 +1333,7 @@ export default function App() {
                                         <button
                                           onClick={async () => {
                                             try {
-                                              await updateEntry(item.data.parseId, { text: editDraft.text });
+                                              await updateEntry(item.data.parseId, { text: editDraft.text, date: editDraft.date });
                                               setEntries(await fetchEntries());
                                               setEditingId(null);
                                             } catch (err) {
@@ -1519,8 +1655,11 @@ export default function App() {
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                            <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
+                              <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                            </button>
                           </li>
                         ))}
                         {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
@@ -1547,8 +1686,11 @@ export default function App() {
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                            <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
+                              <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                            </button>
                           </li>
                         ))}
                         {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
@@ -1576,8 +1718,11 @@ export default function App() {
                         {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
                           <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                              <span style={{ color: '#8b5cf6', fontSize: '16px' }}>•</span>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                               <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.has(item) ? '#f59e0b' : '#d1d5db' }}>
+                                <Star size={14} fill={favoritedPatterns.has(item) ? '#f59e0b' : 'none'} />
+                              </button>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               {isPaidSubscriber ? (
@@ -1691,6 +1836,12 @@ export default function App() {
                     )}
                   </div>
                 ) : null}
+
+                {analysis?.showNewEntryWarning && !loading && (
+                  <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#92400e' }}>
+                    💡 Enter a new journal entry to refresh your analysis and get new insights
+                  </div>
+                )}
 
                 {/* SESSION STARTER */}
                 {!loading && analysis && (
@@ -1980,7 +2131,6 @@ export default function App() {
               ["journal", "Journal", FileText],
               ["patterns", "Patterns", Sparkles],
               ["sessions", "Sessions", Calendar],
-              ["account", "Account", User],
             ].map(([t, label, Icon]) => (
               <button
                 key={t}
