@@ -368,8 +368,8 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!currentUser) return;
-    
+    if (!currentUser || !userEncryptionKey) return;
+
     const load = async () => {
       try {
         const [e, s, savedAnalysis] = await Promise.all([
@@ -405,7 +405,7 @@ export default function App() {
       }
     };
     load();
-  }, [PARSE_READY, currentUser]);
+  }, [PARSE_READY, currentUser, userEncryptionKey]);
 
   useEffect(() => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
