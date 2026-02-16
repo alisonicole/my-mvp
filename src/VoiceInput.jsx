@@ -5,7 +5,7 @@ import { Mic, MicOff, Volume2 } from 'lucide-react';
 const isIOS = /iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '');
 const RESTART_DELAY = isIOS ? 600 : 150;
 
-export default function VoiceInput({ onTranscript, currentText = "", placeholder = "Start speaking..." }) {
+export default function VoiceInput({ onTranscript, currentText = "", placeholder = "Start speaking...", compact = false }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [supported, setSupported] = useState(true);
@@ -172,18 +172,18 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            padding: '12px 20px',
+            padding: compact ? '10px 20px' : '12px 20px',
             borderRadius: '12px',
-            border: 'none',
             fontWeight: '500',
             fontSize: '16px',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            background: isListening ? '#ef4444' : '#9333ea',
-            color: 'white',
+            background: isListening ? '#ef4444' : compact ? 'transparent' : '#9333ea',
+            color: isListening ? 'white' : compact ? '#7c3aed' : 'white',
+            border: compact && !isListening ? '1px solid #e9d5ff' : 'none',
             boxShadow: isListening
               ? '0 4px 12px rgba(239,68,68,0.3)'
-              : '0 4px 12px rgba(147,51,234,0.3)'
+              : compact ? 'none' : '0 4px 12px rgba(147,51,234,0.3)'
           }}
         >
           {isListening ? (

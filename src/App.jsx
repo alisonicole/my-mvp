@@ -872,8 +872,8 @@ export default function App() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
           <div style={{ width: '72px' }} />
           <div style={{ textAlign: 'center', flex: 1 }}>
-            <h1 style={{ fontSize: '48px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>between</h1>
-            <p style={{ color: '#7c3aed', fontSize: '16px' }}>
+            <h1 style={{ fontSize: '36px', fontWeight: '300', color: '#581c87', marginBottom: '6px' }}>between</h1>
+            <p style={{ color: '#7c3aed', fontSize: '14px' }}>
               Capture what comes up between therapy sessions and bring it into the room
             </p>
           </div>
@@ -927,11 +927,11 @@ export default function App() {
           })() : null;
 
           return (
-            <div style={{ maxWidth: '500px', margin: '0 auto', padding: '0 8px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
               {/* Greeting */}
               <div>
-                <h2 style={{ fontSize: '28px', fontWeight: '300', color: '#581c87', margin: '0 0 6px 0' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '500', color: '#581c87', margin: '0 0 6px 0' }}>
                   Hi {name} 👋
                 </h2>
                 <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0 }}>{todayPrompt}</p>
@@ -942,7 +942,7 @@ export default function App() {
                 onClick={() => { setTab('journal'); setJournalView('write'); }}
                 style={{
                   width: '100%',
-                  height: '64px',
+                  height: '70px',
                   background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
                   color: 'white',
                   border: 'none',
@@ -1218,35 +1218,7 @@ export default function App() {
 
         {/* JOURNAL TAB */}
         {tab === "journal" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {/* Sub-tabs: Write | Log */}
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
-              {[
-                ["write", "Write Entry"],
-                ["log", `Log (${entries.length + history.length})`],
-              ].map(([view, label]) => (
-                <button
-                  key={view}
-                  onClick={() => setJournalView(view)}
-                  className="tab-button"
-                  style={{
-                    flex: 1,
-                    padding: '12px 24px',
-                    borderRadius: '16px',
-                    fontWeight: '600',
-                    fontSize: '16px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: journalView === view ? '#9333ea' : 'rgba(255,255,255,0.6)',
-                    color: journalView === view ? 'white' : '#7c3aed',
-                    boxShadow: journalView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', minHeight: '600px' }}>
 
             <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
               {journalView === "log" ? (
@@ -1578,113 +1550,104 @@ export default function App() {
                   })()}
                 </div>
               ) : (
-                <div className="mobile-card" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <div style={{ marginBottom: '24px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
-                      <Calendar size={20} />
-                      Date
+                <div className="mobile-card" style={{ position: 'relative', background: 'white', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+                  {/* Log link — top-right */}
+                  <button
+                    onClick={() => setJournalView('log')}
+                    style={{ position: 'absolute', top: '20px', right: '24px', background: 'none', border: 'none', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    View Log ({entries.length + history.length}) →
+                  </button>
+
+                  {/* Date picker (compact) */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#9ca3af', fontWeight: '600', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      📅 Date
                     </label>
                     <input
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                      style={{ width: '100%', height: '40px', padding: '0 14px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', background: 'white', color: '#581c87', boxSizing: 'border-box' }}
                     />
                   </div>
 
+                  {/* Heading */}
+                  <h2 style={{ fontSize: '28px', fontWeight: '500', color: '#581c87', margin: 0, lineHeight: '1.2' }}>
+                    What's on your mind?
+                  </h2>
 
                   {/* Active Prompt Display */}
                   {activePrompt && (
-                    <div style={{
-                      marginBottom: '16px',
-                      padding: '12px 14px',
-                      background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                      border: '1px solid #e9d5ff',
-                      borderRadius: '12px',
-                      position: 'relative'
-                    }}>
+                    <div style={{ padding: '12px 14px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '12px', position: 'relative' }}>
                       <button
                         onClick={() => setActivePrompt('')}
-                        style={{
-                          position: 'absolute',
-                          top: '8px',
-                          right: '8px',
-                          background: 'none',
-                          border: 'none',
-                          color: '#9ca3af',
-                          cursor: 'pointer',
-                          fontSize: '16px',
-                          padding: '2px',
-                          lineHeight: 1
-                        }}
+                        style={{ position: 'absolute', top: '8px', right: '8px', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '16px', padding: '2px', lineHeight: 1 }}
                       >
                         ×
                       </button>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', paddingRight: '16px' }}>
                         <Sparkles size={14} style={{ color: '#9333ea', flexShrink: 0, marginTop: '2px' }} />
-                        <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>
-                          {activePrompt}
-                        </p>
+                        <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>{activePrompt}</p>
                       </div>
                     </div>
                   )}
 
-                  <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
-                    What's on your mind?
-                  </h2>
+                  {/* Generate Journaling Prompt — FEATURED full-width */}
+                  <button
+                    onClick={handleGeneratePrompt}
+                    disabled={loading || !history || history.length === 0}
+                    title={!history || history.length === 0 ? 'Log a session snapshot first to unlock personalized prompts' : ''}
+                    style={{
+                      height: '52px',
+                      width: '100%',
+                      background: loading ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                      border: '2px solid #e9d5ff',
+                      color: loading ? '#9ca3af' : '#7c3aed',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      borderRadius: '12px',
+                      cursor: loading || !history || history.length === 0 ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      transition: 'all 0.2s',
+                      opacity: !history || history.length === 0 ? 0.6 : 1
+                    }}
+                  >
+                    <Sparkles size={18} />
+                    {loading ? 'Generating...' : '✨ Generate Journaling Prompt'}
+                  </button>
 
-                  {/* Generate Journaling Prompt + My Prompts */}
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                    {history && history.length > 0 && (
-                      <button
-                        onClick={isPaidSubscriber ? handleGeneratePrompt : undefined}
-                        disabled={!isPaidSubscriber || loading}
-                        title={!isPaidSubscriber ? 'Upgrade to unlock AI journaling prompts' : ''}
-                        style={{
-                          padding: '7px 14px',
-                          borderRadius: '20px',
-                          border: '1px solid #e9d5ff',
-                          background: (!isPaidSubscriber || loading) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                          color: (!isPaidSubscriber || loading) ? '#9ca3af' : '#7c3aed',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          cursor: (!isPaidSubscriber || loading) ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {isPaidSubscriber ? <Sparkles size={14} /> : <Lock size={14} />}
-                        {loading && isPaidSubscriber ? 'Generating...' : 'Generate Journaling Prompt'}
-                      </button>
-                    )}
+                  {/* My Prompts toggle */}
+                  {savedPrompts.length > 0 && (
                     <button
-                      onClick={isPaidSubscriber ? () => setShowMyPrompts(p => !p) : undefined}
-                      title={!isPaidSubscriber ? 'Upgrade to save and access prompts' : ''}
+                      onClick={() => setShowMyPrompts(p => !p)}
                       style={{
-                        padding: '7px 14px',
-                        borderRadius: '20px',
+                        padding: '8px 16px',
+                        borderRadius: '10px',
                         border: '1px solid #e9d5ff',
-                        background: !isPaidSubscriber ? '#f3f4f6' : showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
-                        color: !isPaidSubscriber ? '#9ca3af' : showMyPrompts ? 'white' : '#7c3aed',
+                        background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
+                        color: showMyPrompts ? 'white' : '#7c3aed',
                         fontWeight: '500',
-                        fontSize: '12px',
-                        cursor: !isPaidSubscriber ? 'not-allowed' : 'pointer',
+                        fontSize: '13px',
+                        cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
-                        transition: 'all 0.2s'
+                        alignSelf: 'flex-start'
                       }}
                     >
-                      {!isPaidSubscriber ? <Lock size={14} /> : <BookOpen size={14} />}
-                      My Prompts {isPaidSubscriber ? `(${savedPrompts.length})` : ''}
+                      <BookOpen size={14} />
+                      My Prompts ({savedPrompts.length})
                     </button>
-                  </div>
+                  )}
 
                   {/* My Prompts panel */}
                   {showMyPrompts && savedPrompts.length > 0 && (
-                    <div style={{ marginBottom: '12px', border: '1px solid #e9d5ff', borderRadius: '12px', overflow: 'hidden' }}>
+                    <div style={{ border: '1px solid #e9d5ff', borderRadius: '12px', overflow: 'hidden' }}>
                       <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #e9d5ff', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <BookOpen size={12} />
                         Saved Prompts — tap to use
@@ -1711,25 +1674,23 @@ export default function App() {
                     </div>
                   )}
 
-                  <div style={{ marginBottom: '16px' }}>
-                    <VoiceInput
-                      currentText={entry.text}
-                      onTranscript={(text) => {
-                        setEntry(prev => ({ 
-                          ...prev, 
-                          text: text
-                        }));
-                      }}
-                    />
-                  </div>
+                  {/* Voice Input (compact/secondary) */}
+                  <VoiceInput
+                    compact
+                    currentText={entry.text}
+                    onTranscript={(text) => setEntry(prev => ({ ...prev, text }))}
+                  />
 
+                  {/* Main textarea */}
                   <textarea
+                    autoFocus
                     value={entry.text}
                     onChange={(e) => setEntry((p) => ({ ...p, text: e.target.value }))}
                     placeholder="Start writing..."
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
+                    style={{ width: '100%', minHeight: '250px', padding: '16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', lineHeight: '1.6', resize: 'none', background: 'white', color: '#581c87', boxSizing: 'border-box' }}
                   />
 
+                  {/* Save button */}
                   <button
                     onClick={async () => {
                       if (!entry.text) return;
@@ -1737,14 +1698,14 @@ export default function App() {
                         id: Date.now(),
                         date,
                         text: entry.text,
-                        prompt: activePrompt, // Include the AI prompt
+                        prompt: activePrompt,
                         timestamp: new Date().toISOString(),
                       };
                       try {
                         await createEntry(n);
                         setEntries(await fetchEntries());
                         setEntry({ text: "", prompt: "" });
-                        setActivePrompt(""); // Clear the active prompt
+                        setActivePrompt("");
                         setJournalView("log");
                       } catch (err) {
                         console.error(err);
@@ -1752,13 +1713,13 @@ export default function App() {
                       }
                     }}
                     disabled={!entry.text}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', width: '100%', opacity: entry.text ? 1 : 0.5 }}
+                    style={{ height: '48px', width: '100%', borderRadius: '12px', border: 'none', fontWeight: '600', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   >
                     <Save size={20} />
-                    Save
+                    Save Entry
                   </button>
 
-                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#9ca3af', fontSize: '12px' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
