@@ -105,9 +105,7 @@ export default function App() {
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
   const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
 
-  // TODO: enforce paid access server-side (e.g. Parse Cloud Function or ACL).
-  // Client-side checks can be bypassed in the browser.
-  const isPaidSubscriber = currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
+  const isPaidSubscriber = true; // All features enabled for all users
 
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
