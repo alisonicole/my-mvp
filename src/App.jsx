@@ -808,7 +808,7 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
         }
         
         .main-container {
-          max-width: 600px;
+          max-width: 800px;
           width: 100%;
           margin: 0 auto;
           padding: 32px;
