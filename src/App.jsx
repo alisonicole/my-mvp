@@ -808,10 +808,10 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
         }
         
         .main-container {
-          max-width: 800px;
+          max-width: 1000px;
           width: 100%;
           margin: 0 auto;
-          padding: 32px;
+          padding: 28px;
         }
         
         input[type="date"] {
@@ -953,9 +953,9 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
             <button
               onClick={() => setTab('account')}
               title="Account"
-              style={{ background: displayName ? 'linear-gradient(135deg, #9333ea, #7c3aed)' : 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: displayName ? 'white' : '#7c3aed', fontWeight: '600', fontSize: '16px' }}
+              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#7c3aed' }}
             >
-              {displayName ? displayName.charAt(0).toUpperCase() : <User size={20} />}
+              <User size={20} />
             </button>
             {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
               <button
@@ -1090,9 +1090,9 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
 
               {/* Stats row */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: streak > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(147,51,234,0.06)', border: `1px solid ${streak > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(147,51,234,0.15)'}`, borderRadius: '20px', padding: '6px 14px' }}>
-                  <span style={{ fontSize: '16px' }}>{streak > 0 ? '🔥' : '✍️'}</span>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: streak > 0 ? '#92400e' : '#7c3aed' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '6px 14px' }}>
+                  <span style={{ fontSize: '16px' }}>🔥</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>
                     {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''} in a row` : 'Start your streak today'}
                   </span>
                 </div>
