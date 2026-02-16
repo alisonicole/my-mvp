@@ -73,6 +73,7 @@ export default function App() {
   const [nameInput, setNameInput] = useState("");
   const [savedPrompts, setSavedPrompts] = useState([]); // [{text, savedAt}]
   const [showMyPrompts, setShowMyPrompts] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
 
   const streak = useMemo(() => {
     const dateSet = new Set(entries.map(e => e.date));
@@ -326,9 +327,51 @@ export default function App() {
           fetchSnapshots(),
           loadAnalysisFromUser()
         ]);
-        setEntries(e);
+        // Create welcome entry for brand-new users
+        let finalEntries = e;
+        if (e.length === 0) {
+          const welcomeEntry = {
+            id: Date.now(),
+            date: getDate(),
+            text: `Welcome to Between! 👋
+
+Here's how to get the most out of your journaling practice:
+
+📝 Write Between Sessions
+Capture thoughts, feelings, and moments as they come up between therapy sessions. Don't wait until your next appointment - write when something resonates.
+
+✨ Get AI Insights
+After writing a few entries, go to the Patterns tab to see what themes are emerging. The AI will help you spot patterns you might miss on your own.
+
+💬 Prep for Therapy
+Before your session, tap the Sessions tab to review what you've been working through and get an AI-generated conversation starter.
+
+🎤 Use Voice Input
+Don't feel like typing? Use voice input to speak your thoughts. Sometimes talking feels easier than writing.
+
+📊 Track Your Progress
+Watch your streak build as you journal consistently. Small entries count — even a few sentences help.
+
+🔒 Your Privacy Matters
+Everything you write is private and secure. Your therapist doesn't see this unless you choose to share it.
+
+---
+
+Ready to start? Tap the Journal tab below and write about what's on your mind today.`,
+            prompt: "",
+            timestamp: new Date().toISOString(),
+          };
+          try {
+            await createEntry(welcomeEntry);
+            finalEntries = await fetchEntries();
+          } catch (err) {
+            console.error("Welcome entry failed:", err);
+          }
+        }
+
+        setEntries(finalEntries);
         setHistory(s);
-        
+
         if (savedAnalysis) {
           setAnalysis(savedAnalysis);
           setAnalysisTimestamp(new Date().toISOString());
@@ -355,6 +398,16 @@ export default function App() {
     };
     load();
   }, [PARSE_READY, currentUser]);
+
+  useEffect(() => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const hasSeenPrompt = localStorage.getItem('hasSeenInstallPrompt');
+    const isInstalled = window.matchMedia('(display-mode: standalone)').matches;
+    if (isMobile && !hasSeenPrompt && !isInstalled && currentUser) {
+      const t = setTimeout(() => setShowInstallPrompt(true), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [currentUser]);
 
   const genAnalysis = async () => {
     if (entries.length < 3) {
@@ -742,6 +795,7 @@ export default function App() {
         h1, h2, h3, .serif { font-family: 'Crimson Pro', serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
         .animate-spin { animation: spin 1s linear infinite; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
         body {
           margin: 0;
@@ -896,9 +950,9 @@ export default function App() {
             <button
               onClick={() => setTab('account')}
               title="Account"
-              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#7c3aed' }}
+              style={{ background: displayName ? 'linear-gradient(135deg, #9333ea, #7c3aed)' : 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: displayName ? 'white' : '#7c3aed', fontWeight: '600', fontSize: '16px' }}
             >
-              <User size={20} />
+              {displayName ? displayName.charAt(0).toUpperCase() : <User size={20} />}
             </button>
             {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
               <button
@@ -2301,6 +2355,45 @@ export default function App() {
 
         {/* Close content area */}
         </div>
+
+        {/* INSTALL PROMPT */}
+        {showInstallPrompt && (
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', padding: '24px', boxShadow: '0 -4px 20px rgba(0,0,0,0.2)', zIndex: 9999, borderTopLeftRadius: '24px', borderTopRightRadius: '24px', animation: 'slideUp 0.3s ease-out' }}>
+            <button
+              onClick={() => { setShowInstallPrompt(false); localStorage.setItem('hasSeenInstallPrompt', 'true'); }}
+              style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', fontSize: '24px', color: '#9ca3af', cursor: 'pointer', padding: '4px' }}
+            >
+              ×
+            </button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>📱</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#581c87', marginBottom: '8px' }}>Add Between to Your Home Screen</h3>
+              <p style={{ fontSize: '15px', color: '#7c3aed', marginBottom: '16px', lineHeight: '1.5' }}>Get quick access to your journal anytime</p>
+              {/iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+                <div style={{ background: '#faf5ff', padding: '16px', borderRadius: '12px', textAlign: 'left', fontSize: '14px', color: '#581c87', lineHeight: '1.6' }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '600' }}>How to install:</p>
+                  <p style={{ margin: '4px 0' }}>1. Tap the Share button ⬆️</p>
+                  <p style={{ margin: '4px 0' }}>2. Scroll down and tap "Add to Home Screen"</p>
+                  <p style={{ margin: '4px 0' }}>3. Tap "Add" in the top right</p>
+                </div>
+              )}
+              {/Android/i.test(navigator.userAgent) && (
+                <div style={{ background: '#faf5ff', padding: '16px', borderRadius: '12px', textAlign: 'left', fontSize: '14px', color: '#581c87', lineHeight: '1.6' }}>
+                  <p style={{ margin: '0 0 8px 0', fontWeight: '600' }}>How to install:</p>
+                  <p style={{ margin: '4px 0' }}>1. Tap the menu button (⋮)</p>
+                  <p style={{ margin: '4px 0' }}>2. Tap "Add to Home screen" or "Install app"</p>
+                  <p style={{ margin: '4px 0' }}>3. Tap "Add" or "Install"</p>
+                </div>
+              )}
+              <button
+                onClick={() => { setShowInstallPrompt(false); localStorage.setItem('hasSeenInstallPrompt', 'true'); }}
+                style={{ marginTop: '16px', padding: '12px 24px', background: 'transparent', border: '1px solid #e9d5ff', borderRadius: '12px', color: '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', width: '100%' }}
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* BOTTOM NAVIGATION BAR */}
         <div style={{
