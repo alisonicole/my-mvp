@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import CryptoJS from 'crypto-js';
 import {
   Calendar,
   FileText,
@@ -74,6 +75,7 @@ export default function App() {
   const [savedPrompts, setSavedPrompts] = useState([]); // [{text, savedAt}]
   const [showMyPrompts, setShowMyPrompts] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
   const streak = useMemo(() => {
     const dateSet = new Set(entries.map(e => e.date));
@@ -98,6 +100,27 @@ export default function App() {
     return count;
   }, [entries, history]);
 
+
+  // Encryption helpers — key derived from user's password
+  const generateEncryptionKey = (userPassword) =>
+    CryptoJS.SHA256(userPassword + "between-app-salt-2026").toString();
+
+  const encryptText = (text, key) => {
+    if (!text || !key) return text || "";
+    return CryptoJS.AES.encrypt(text, key).toString();
+  };
+
+  const decryptText = (encryptedText, key) => {
+    if (!encryptedText || !key) return encryptedText || "";
+    try {
+      const bytes = CryptoJS.AES.decrypt(encryptedText, key);
+      const decoded = bytes.toString(CryptoJS.enc.Utf8);
+      // If decryption returns empty string, text was stored unencrypted (legacy) — return as-is
+      return decoded || encryptedText;
+    } catch (e) {
+      return encryptedText; // Legacy plaintext — return as-is
+    }
+  };
 
   const APP_ID = import.meta.env.VITE_PARSE_APP_ID;
   const JS_KEY = import.meta.env.VITE_PARSE_JS_KEY;
@@ -138,14 +161,25 @@ export default function App() {
     }
   }, [APP_ID, JS_KEY, SERVER_URL, Parse]);
 
+  // Restore encryption key from session storage on page reload
+  useEffect(() => {
+    if (currentUser) {
+      const storedKey = sessionStorage.getItem('encKey');
+      if (storedKey) setUserEncryptionKey(storedKey);
+    }
+  }, [currentUser]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setAuthError("");
     setAuthLoading(true);
-    
+
     try {
       const user = await Parse.User.logIn(email, password);
       setCurrentUser(user);
+      const encKey = generateEncryptionKey(password);
+      setUserEncryptionKey(encKey);
+      sessionStorage.setItem('encKey', encKey);
       setTab("home");
       setEmail("");
       setPassword("");
@@ -171,6 +205,9 @@ export default function App() {
       await user.signUp();
       setCurrentUser(user);
       if (signupName.trim()) setDisplayName(signupName.trim());
+      const encKey = generateEncryptionKey(password);
+      setUserEncryptionKey(encKey);
+      sessionStorage.setItem('encKey', encKey);
       setTab("journal");
       setJournalView("log");
       setShowWelcome(true);
@@ -186,6 +223,8 @@ export default function App() {
   const handleLogout = async () => {
     await Parse.User.logOut();
     setCurrentUser(null);
+    setUserEncryptionKey(null);
+    sessionStorage.removeItem('encKey');
     setEntries([]);
     setHistory([]);
     setAnalysis(null);
@@ -207,8 +246,8 @@ export default function App() {
       parseId: o.id,
       id: o.get("clientId") ?? o.id,
       date: o.get("date") ?? getDate(),
-      text: o.get("text") ?? "",
-      prompt: o.get("prompt") ?? "", // Include prompt
+      text: decryptText(o.get("text") ?? "", userEncryptionKey),
+      prompt: decryptText(o.get("prompt") ?? "", userEncryptionKey),
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
     }));
   }
@@ -220,8 +259,8 @@ export default function App() {
     obj.set("user", currentUser);
     obj.set("clientId", eObj.id);
     obj.set("date", eObj.date);
-    obj.set("text", eObj.text || "");
-    obj.set("prompt", eObj.prompt || ""); // Save the AI prompt
+    obj.set("text", encryptText(eObj.text || "", userEncryptionKey));
+    obj.set("prompt", encryptText(eObj.prompt || "", userEncryptionKey));
     obj.set("timestamp", eObj.timestamp || new Date().toISOString());
     const saved = await obj.save();
     return { ...eObj, parseId: saved.id };
@@ -233,7 +272,7 @@ export default function App() {
     const q = new Parse.Query(Entry);
     q.equalTo("user", currentUser);
     const obj = await q.get(parseId);
-    if (typeof patch.text === "string") obj.set("text", patch.text);
+    if (typeof patch.text === "string") obj.set("text", encryptText(patch.text, userEncryptionKey));
     if (typeof patch.date === "string") obj.set("date", patch.date);
     await obj.save();
   }
@@ -263,9 +302,9 @@ export default function App() {
       themes: o.get("themes") ?? [],
       avoiding: o.get("avoiding") ?? [],
       questions: o.get("questions") ?? [],
-      openingStatement: o.get("openingStatement") ?? "",
-      notes: o.get("notes") ?? "",
-      nextSteps: o.get("nextSteps") ?? "",
+      openingStatement: decryptText(o.get("openingStatement") ?? "", userEncryptionKey),
+      notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
+      nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
     }));
   }
 
@@ -280,9 +319,9 @@ export default function App() {
     obj.set("themes", payload.themes ?? []);
     obj.set("avoiding", payload.avoiding ?? []);
     obj.set("questions", payload.questions ?? []);
-    obj.set("openingStatement", payload.openingStatement ?? "");
-    obj.set("notes", payload.notes ?? "");
-    obj.set("nextSteps", payload.nextSteps ?? "");
+    obj.set("openingStatement", encryptText(payload.openingStatement ?? "", userEncryptionKey));
+    obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
+    obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
     const saved = await obj.save();
     return { ...payload, parseId: saved.id };
   }
@@ -738,6 +777,11 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
                 required
                 style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87' }}
               />
+              {authMode === "signup" && (
+                <div style={{ marginTop: '8px', padding: '10px 12px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', fontSize: '12px', color: '#92400e', lineHeight: '1.5' }}>
+                  🔒 Your entries are encrypted with your password. If you forget your password, your data cannot be recovered.
+                </div>
+              )}
             </div>
 
             {authError && (
@@ -777,6 +821,24 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
 
   if (showAdmin) {
     return <AdminDashboard onExit={() => setShowAdmin(false)} />;
+  }
+
+  // If logged in but encryption key lost (e.g. different tab), prompt re-login
+  if (currentUser && !userEncryptionKey) {
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+        <div style={{ background: 'white', padding: '32px', borderRadius: '24px', maxWidth: '400px', textAlign: 'center', margin: '16px' }}>
+          <h2 style={{ fontSize: '24px', color: '#581c87', marginBottom: '12px' }}>Session Expired</h2>
+          <p style={{ color: '#7c3aed', marginBottom: '24px', fontSize: '15px' }}>Please log in again to decrypt your entries.</p>
+          <button
+            onClick={handleLogout}
+            style={{ padding: '12px 24px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            Log In Again
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -953,9 +1015,9 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
             <button
               onClick={() => setTab('account')}
               title="Account"
-              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#7c3aed' }}
+              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
             >
-              <User size={20} />
+              <User size={20} color="#7c3aed" />
             </button>
             {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
               <button
