@@ -344,16 +344,16 @@ Capture thoughts, feelings, and moments as they come up between therapy sessions
 After writing a few entries, go to the Patterns tab to see what themes are emerging. The AI will help you spot patterns you might miss on your own.
 
 💬 Prep for Therapy
-Before your session, tap the Sessions tab to review what you've been working through and get an AI-generated conversation starter.
+Before your session, tap the Sessions tab to review what you've been working through and get a suggested conversation starter.
 
 🎤 Use Voice Input
 Don't feel like typing? Use voice input to speak your thoughts. Sometimes talking feels easier than writing.
 
 📊 Track Your Progress
-Watch your streak build as you journal consistently. Small entries count — even a few sentences help.
+Watch your streak build as you journal consistently. Small entries count - even a few sentences help.
 
 🔒 Your Privacy Matters
-Everything you write is private and secure. Your therapist doesn't see this unless you choose to share it.
+Everything you write is private and secure. This is your space.
 
 ---
 
@@ -428,16 +428,19 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
     }
 
     const lastSnapshot = history?.[0];
+    // Filter out the auto-generated welcome entry
+    const journalEntries = entries.filter(e => !e.text.startsWith('Welcome to Between! 👋'));
+
     let entriesToAnalyze = [];
     let previousPatterns = null;
-    
+
     if (lastSnapshot) {
       const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-      const newEntries = entries.filter(e => {
+      const newEntries = journalEntries.filter(e => {
         const entryTime = new Date(e.timestamp).getTime();
         return entryTime > snapshotTime;
       });
-      
+
       if (newEntries.length > 0) {
         entriesToAnalyze = newEntries.slice(0, 20);
         previousPatterns = {
@@ -458,7 +461,7 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
         return;
       }
     } else {
-      entriesToAnalyze = entries.slice(0, 20);
+      entriesToAnalyze = journalEntries.slice(0, 20);
     }
     
     const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
@@ -1087,12 +1090,12 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
 
               {/* Stats row */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                {streak > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '6px 14px' }}>
-                    <span style={{ fontSize: '16px' }}>🔥</span>
-                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>{streak} day{streak !== 1 ? 's' : ''} in a row</span>
-                  </div>
-                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: streak > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(147,51,234,0.06)', border: `1px solid ${streak > 0 ? 'rgba(245,158,11,0.3)' : 'rgba(147,51,234,0.15)'}`, borderRadius: '20px', padding: '6px 14px' }}>
+                  <span style={{ fontSize: '16px' }}>{streak > 0 ? '🔥' : '✍️'}</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: streak > 0 ? '#92400e' : '#7c3aed' }}>
+                    {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''} in a row` : 'Start your streak today'}
+                  </span>
+                </div>
                 <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {entries.length} entries</span>
                 {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
               </div>
@@ -1681,29 +1684,33 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
 
                   {/* Generate Journaling Prompt + My Prompts */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                    {history && history.length > 0 && (
-                      <button
-                        onClick={handleGeneratePrompt}
-                        disabled={loading}
-                        style={{
-                          padding: '7px 14px',
-                          borderRadius: '20px',
-                          border: '1px solid #e9d5ff',
-                          background: loading ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                          color: loading ? '#9ca3af' : '#7c3aed',
-                          fontWeight: '500',
-                          fontSize: '12px',
-                          cursor: loading ? 'not-allowed' : 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        <Sparkles size={14} />
-                        {loading ? 'Generating...' : 'Generate Journaling Prompt'}
-                      </button>
-                    )}
+                    {(() => {
+                      const noSession = !history || history.length === 0;
+                      return (
+                        <button
+                          onClick={noSession ? undefined : handleGeneratePrompt}
+                          disabled={loading || noSession}
+                          title={noSession ? 'Log your first session to get a custom journal prompt' : ''}
+                          style={{
+                            padding: '7px 14px',
+                            borderRadius: '20px',
+                            border: '1px solid #e9d5ff',
+                            background: (loading || noSession) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
+                            color: (loading || noSession) ? '#9ca3af' : '#7c3aed',
+                            fontWeight: '500',
+                            fontSize: '12px',
+                            cursor: (loading || noSession) ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s'
+                          }}
+                        >
+                          {noSession ? <Lock size={14} /> : <Sparkles size={14} />}
+                          {loading && !noSession ? 'Generating...' : 'Generate Journaling Prompt'}
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={() => setShowMyPrompts(p => !p)}
                       style={{
@@ -2373,7 +2380,7 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
                 <div style={{ background: '#faf5ff', padding: '16px', borderRadius: '12px', textAlign: 'left', fontSize: '14px', color: '#581c87', lineHeight: '1.6' }}>
                   <p style={{ margin: '0 0 8px 0', fontWeight: '600' }}>How to install:</p>
                   <p style={{ margin: '4px 0' }}>1. Tap the Share button ⬆️</p>
-                  <p style={{ margin: '4px 0' }}>2. Scroll down and tap "Add to Home Screen"</p>
+                  <p style={{ margin: '4px 0' }}>2. Click '...' and tap "Add to Home Screen"</p>
                   <p style={{ margin: '4px 0' }}>3. Tap "Add" in the top right</p>
                 </div>
               )}
