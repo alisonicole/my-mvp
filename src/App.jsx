@@ -480,7 +480,9 @@ export default function App() {
     setLoading(true);
     try {
       const result = await Parse.Cloud.run("analyzeJournal", {
-        entries: entriesToAnalyze.map(e => e.text),
+        entries: entriesToAnalyze.map(e =>
+          e.prompt ? `Prompt: ${e.prompt}\n\nEntry: ${e.text}` : e.text
+        ),
         previousPatterns: previousPatterns,
         isIncremental: !!previousPatterns
       });
