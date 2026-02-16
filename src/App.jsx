@@ -869,21 +869,11 @@ export default function App() {
         @media (min-width: 1024px) {
           body {
             background: #f3e8ff;
-            display: flex;
-            justify-content: center;
           }
           #root {
-            max-width: 1200px;
             width: 100%;
             background: #f3e8ff;
-            box-shadow: 0 0 60px rgba(88, 28, 135, 0.15);
             min-height: 100vh;
-          }
-        }
-
-        @media (min-width: 1600px) {
-          #root {
-            max-width: 1000px;
           }
         }
       `}</style>
