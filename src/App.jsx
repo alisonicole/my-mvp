@@ -377,7 +377,50 @@ export default function App() {
           fetchSnapshots(),
           loadAnalysisFromUser()
         ]);
-        setEntries(e);
+        // Replace any old welcome entries with the current welcome entry
+        const oldWelcome = e.filter(entry => entry.text.startsWith('Welcome to Between! 👋'));
+        const realEntries = e.filter(entry => !entry.text.startsWith('Welcome to Between! 👋'));
+        if (oldWelcome.length > 0) {
+          await Promise.all(oldWelcome.map(entry => deleteEntry(entry.parseId).catch(() => {})));
+        }
+        // Create welcome entry for brand-new users (no real entries)
+        let finalEntries = realEntries;
+        if (realEntries.length === 0) {
+          const welcomeEntry = {
+            id: Date.now(),
+            date: getDate(),
+            text: `Welcome to Between! 👋
+
+Here's how to get the most out of your journaling practice:
+
+📝 Write Between Sessions
+Capture thoughts, feelings, and moments as they come up between therapy sessions. Don't wait until your next appointment — write when something resonates.
+
+✨ Get AI Insights
+After a few entries, go to the Patterns tab to see what themes are emerging in your life.
+
+💬 Prep for Therapy
+Before your session, tap Sessions to review what you've been working through and get a suggested conversation starter.
+
+🎤 Use Voice Input
+Don't feel like typing? Use voice input to speak your thoughts.
+
+📊 Track Your Progress
+Watch your streak build as you journal consistently.
+
+🔒 Your Privacy Matters
+Everything you write is end-to-end encrypted and private.`,
+            prompt: "",
+            timestamp: new Date().toISOString(),
+          };
+          try {
+            await createEntry(welcomeEntry);
+            finalEntries = await fetchEntries();
+          } catch (err) {
+            console.error("Welcome entry failed:", err);
+          }
+        }
+        setEntries(finalEntries);
         setHistory(s);
 
         if (savedAnalysis) {
@@ -2048,7 +2091,7 @@ export default function App() {
               </div>
             )}
 
-            {analysis && !loading && (
+            {analysis && !loading && history.length === 0 && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px' }}>
                 <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
                 <div>
