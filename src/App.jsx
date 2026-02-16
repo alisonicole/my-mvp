@@ -573,13 +573,15 @@ export default function App() {
 
   if (!currentUser) {
     return (
-      <div style={{ 
+      <div style={{
         minHeight: '100vh',
-        background: '#f3e8ff', 
-        padding: '24px', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center' 
+        width: '100%',
+        background: '#f3e8ff',
+        padding: '24px',
+        boxSizing: 'border-box',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
