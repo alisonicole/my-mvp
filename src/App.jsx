@@ -299,9 +299,9 @@ export default function App() {
       id: o.get("clientId") ?? o.id,
       sessionDate: o.get("sessionDate") ?? getDate(),
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
-      themes: o.get("themes") ?? [],
-      avoiding: o.get("avoiding") ?? [],
-      questions: o.get("questions") ?? [],
+      themes: (() => { try { const v = decryptText(o.get("themes") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("themes") ?? []; } })(),
+      avoiding: (() => { try { const v = decryptText(o.get("avoiding") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("avoiding") ?? []; } })(),
+      questions: (() => { try { const v = decryptText(o.get("questions") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("questions") ?? []; } })(),
       openingStatement: decryptText(o.get("openingStatement") ?? "", userEncryptionKey),
       notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
       nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
@@ -316,9 +316,9 @@ export default function App() {
     obj.set("clientId", payload.id ?? Date.now());
     obj.set("sessionDate", payload.sessionDate ?? getDate());
     obj.set("timestamp", payload.timestamp ?? new Date().toISOString());
-    obj.set("themes", payload.themes ?? []);
-    obj.set("avoiding", payload.avoiding ?? []);
-    obj.set("questions", payload.questions ?? []);
+    obj.set("themes", encryptText(JSON.stringify(payload.themes ?? []), userEncryptionKey));
+    obj.set("avoiding", encryptText(JSON.stringify(payload.avoiding ?? []), userEncryptionKey));
+    obj.set("questions", encryptText(JSON.stringify(payload.questions ?? []), userEncryptionKey));
     obj.set("openingStatement", encryptText(payload.openingStatement ?? "", userEncryptionKey));
     obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
@@ -366,49 +366,7 @@ export default function App() {
           fetchSnapshots(),
           loadAnalysisFromUser()
         ]);
-        // Create welcome entry for brand-new users
-        let finalEntries = e;
-        if (e.length === 0) {
-          const welcomeEntry = {
-            id: Date.now(),
-            date: getDate(),
-            text: `Welcome to Between! 👋
-
-Here's how to get the most out of your journaling practice:
-
-📝 Write Between Sessions
-Capture thoughts, feelings, and moments as they come up between therapy sessions. Don't wait until your next appointment - write when something resonates.
-
-✨ Get AI Insights
-After writing a few entries, go to the Patterns tab to see what themes are emerging. The AI will help you spot patterns you might miss on your own.
-
-💬 Prep for Therapy
-Before your session, tap the Sessions tab to review what you've been working through and get a suggested conversation starter.
-
-🎤 Use Voice Input
-Don't feel like typing? Use voice input to speak your thoughts. Sometimes talking feels easier than writing.
-
-📊 Track Your Progress
-Watch your streak build as you journal consistently. Small entries count - even a few sentences help.
-
-🔒 Your Privacy Matters
-Everything you write is private and secure. This is your space.
-
----
-
-Ready to start? Tap the Journal tab below and write about what's on your mind today.`,
-            prompt: "",
-            timestamp: new Date().toISOString(),
-          };
-          try {
-            await createEntry(welcomeEntry);
-            finalEntries = await fetchEntries();
-          } catch (err) {
-            console.error("Welcome entry failed:", err);
-          }
-        }
-
-        setEntries(finalEntries);
+        setEntries(e);
         setHistory(s);
 
         if (savedAnalysis) {
@@ -467,8 +425,7 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
     }
 
     const lastSnapshot = history?.[0];
-    // Filter out the auto-generated welcome entry
-    const journalEntries = entries.filter(e => !e.text.startsWith('Welcome to Between! 👋'));
+    const journalEntries = entries;
 
     let entriesToAnalyze = [];
     let previousPatterns = null;
@@ -829,7 +786,7 @@ Ready to start? Tap the Journal tab below and write about what's on your mind to
       <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
         <div style={{ background: 'white', padding: '32px', borderRadius: '24px', maxWidth: '400px', textAlign: 'center', margin: '16px' }}>
           <h2 style={{ fontSize: '24px', color: '#581c87', marginBottom: '12px' }}>Session Expired</h2>
-          <p style={{ color: '#7c3aed', marginBottom: '24px', fontSize: '15px' }}>Please log in again to decrypt your entries.</p>
+          <p style={{ color: '#7c3aed', marginBottom: '24px', fontSize: '15px' }}>Please log in again.</p>
           <button
             onClick={handleLogout}
             style={{ padding: '12px 24px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: 'pointer' }}
