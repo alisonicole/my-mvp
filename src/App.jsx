@@ -882,13 +882,15 @@ export default function App() {
 
       <div className="main-container">
         {/* Header with logo and account icon */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
           <div style={{ width: '72px' }} />
           <div style={{ textAlign: 'center', flex: 1 }}>
-            <h1 style={{ fontSize: '36px', fontWeight: '300', color: '#581c87', marginBottom: '6px' }}>between</h1>
-            <p style={{ color: '#7c3aed', fontSize: '14px' }}>
-              Capture what comes up between therapy sessions and bring it into the room
-            </p>
+            <h1 style={{ fontSize: '22px', fontWeight: '300', color: '#581c87', margin: 0 }}>between</h1>
+            {tab === 'home' && (
+              <p style={{ color: '#7c3aed', fontSize: '13px', margin: '4px 0 0 0' }}>
+                Capture what comes up between therapy sessions and bring it into the room
+              </p>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '72px' }}>
             <button
