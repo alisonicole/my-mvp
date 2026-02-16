@@ -228,10 +228,21 @@ export default function App() {
     setEntries([]);
     setHistory([]);
     setAnalysis(null);
+    setAnalysisTimestamp(null);
+    setLastAnalyzedEntries([]);
     setActivePrompt("");
+    setGeneratedPrompt("");
+    setEntry({ text: "", prompt: "" });
+    setNotes("");
+    setNextSteps("");
     setDisplayName("");
     setSavedPrompts([]);
     setFavoritedPatterns([]);
+    setTab("home");
+    setJournalView("write");
+    setSessionView("pre");
+    setEditingId(null);
+    setEditDraft({ text: "" });
   };
 
   async function fetchEntries() {
@@ -299,9 +310,9 @@ export default function App() {
       id: o.get("clientId") ?? o.id,
       sessionDate: o.get("sessionDate") ?? getDate(),
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
-      themes: (() => { try { const v = decryptText(o.get("themes") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("themes") ?? []; } })(),
-      avoiding: (() => { try { const v = decryptText(o.get("avoiding") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("avoiding") ?? []; } })(),
-      questions: (() => { try { const v = decryptText(o.get("questions") ?? "", userEncryptionKey); return JSON.parse(v || "[]"); } catch { return o.get("questions") ?? []; } })(),
+      themes: (o.get("themes") ?? []).map(t => decryptText(t, userEncryptionKey)),
+      avoiding: (o.get("avoiding") ?? []).map(t => decryptText(t, userEncryptionKey)),
+      questions: (o.get("questions") ?? []).map(t => decryptText(t, userEncryptionKey)),
       openingStatement: decryptText(o.get("openingStatement") ?? "", userEncryptionKey),
       notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
       nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
@@ -316,9 +327,9 @@ export default function App() {
     obj.set("clientId", payload.id ?? Date.now());
     obj.set("sessionDate", payload.sessionDate ?? getDate());
     obj.set("timestamp", payload.timestamp ?? new Date().toISOString());
-    obj.set("themes", encryptText(JSON.stringify(payload.themes ?? []), userEncryptionKey));
-    obj.set("avoiding", encryptText(JSON.stringify(payload.avoiding ?? []), userEncryptionKey));
-    obj.set("questions", encryptText(JSON.stringify(payload.questions ?? []), userEncryptionKey));
+    obj.set("themes", (payload.themes ?? []).map(t => encryptText(t, userEncryptionKey)));
+    obj.set("avoiding", (payload.avoiding ?? []).map(t => encryptText(t, userEncryptionKey)));
+    obj.set("questions", (payload.questions ?? []).map(t => encryptText(t, userEncryptionKey)));
     obj.set("openingStatement", encryptText(payload.openingStatement ?? "", userEncryptionKey));
     obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
