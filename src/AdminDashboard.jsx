@@ -92,30 +92,59 @@ export default function AdminDashboard({ onExit }) {
         </button>
       </div>
 
-      {/* Growth */}
-      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>Growth</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard icon={Users}    label="Total Users"       value={s.totalUsers}    subtext="All registered accounts" highlight />
-        <StatCard icon={UserPlus} label="New Signups (7d)"  value={s.newSignups7d}  subtext={`${s.newSignups30d} in last 30 days`} />
-        <StatCard icon={Users}    label="Active Users (7d)" value={s.activeUsers7d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers7d / s.totalUsers) * 100) : 0}% of total`} />
+      {/* All stat cards — 3-column grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '32px' }}>
+
+        {/* Growth */}
+        <div style={{ gridColumn: '1 / -1', fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', paddingBottom: '4px', borderBottom: '1px solid #e9d5ff' }}>Growth</div>
+        <StatCard icon={Users}    label="Total Users"        value={s.totalUsers}     subtext="All registered accounts" highlight />
+        <StatCard icon={UserPlus} label="New Signups (7d)"   value={s.newSignups7d}   subtext={`${s.newSignups30d} in last 30 days`} />
+        <StatCard icon={Users}    label="Active Users (7d)"  value={s.activeUsers7d}  subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers7d / s.totalUsers) * 100) : 0}% of total`} />
         <StatCard icon={Users}    label="Active Users (30d)" value={s.activeUsers30d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers30d / s.totalUsers) * 100) : 0}% of total`} />
+
+        {/* Engagement */}
+        <div style={{ gridColumn: '1 / -1', fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', paddingBottom: '4px', borderBottom: '1px solid #e9d5ff', marginTop: '8px' }}>Engagement</div>
+        <StatCard icon={Percent}    label="Engagement Rate"      value={`${s.engagementRate}%`}   subtext="Users who have journaled" highlight />
+        <StatCard icon={Percent}    label="Retention (7d)"       value={`${s.retentionRate7d}%`}  subtext="Week-old users still active" />
+        <StatCard icon={Percent}    label="Retention (30d)"      value={`${s.retentionRate30d}%`} subtext="Month-old users still active" />
+        <StatCard icon={TrendingUp} label="Avg Entries / User"   value={s.avgEntriesPerUser}      subtext="Among journaling users (excl. welcome)" />
+        <StatCard icon={TrendingUp} label="Median Entries / User" value={s.medianEntriesPerUser}  subtext="50th percentile" />
+
+        {/* Content */}
+        <div style={{ gridColumn: '1 / -1', fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', paddingBottom: '4px', borderBottom: '1px solid #e9d5ff', marginTop: '8px' }}>Content</div>
+        <StatCard icon={FileText} label="Total Entries"  value={s.totalEntries}  subtext={`${s.entriesLast7Days} last 7d · ${s.entriesLast30Days} last 30d`} />
+        <StatCard icon={Calendar} label="Total Sessions" value={s.totalSessions} subtext={`${s.sessionsLast7Days} in last 7 days`} />
       </div>
 
-      {/* Engagement */}
-      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>Engagement</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard icon={Percent}   label="Engagement Rate"     value={`${s.engagementRate}%`}     subtext="Users who have journaled" highlight />
-        <StatCard icon={Percent}   label="Retention (7d)"      value={`${s.retentionRate7d}%`}    subtext="Week-old users still active" />
-        <StatCard icon={Percent}   label="Retention (30d)"     value={`${s.retentionRate30d}%`}   subtext="Month-old users still active" />
-        <StatCard icon={TrendingUp} label="Avg Entries / User"    value={s.avgEntriesPerUser}       subtext="Among journaling users (excl. welcome)" />
-        <StatCard icon={TrendingUp} label="Median Entries / User" value={s.medianEntriesPerUser}    subtext="50th percentile" />
-      </div>
-
-      {/* Content */}
-      <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>Content</h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard icon={FileText} label="Total Entries"    value={s.totalEntries}      subtext={`${s.entriesLast7Days} last 7d · ${s.entriesLast30Days} last 30d`} />
-        <StatCard icon={Calendar} label="Total Sessions"   value={s.totalSessions}     subtext={`${s.sessionsLast7Days} in last 7 days`} />
+      {/* New Users (7d) */}
+      <div style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>New Users (Last 7 Days)</h3>
+        {s.newUsers7dList?.length === 0 ? (
+          <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>No new signups in the last 7 days.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e9d5ff' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Email</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Signed Up</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Entries</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.newUsers7dList.map((user) => (
+                  <tr key={user.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{user.email || 'Unknown'}</td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: '13px' }}>
+                      {new Date(user.signedUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: user.entries > 0 ? '#9333ea' : '#9ca3af', fontSize: '14px' }}>{user.entries}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Top Users */}
@@ -245,12 +274,23 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const retentionRate30d = oldUser30Ids.length > 0
     ? Math.round((oldUser30Ids.filter(id => activeIds30d.has(id)).length / oldUser30Ids.length) * 100) : 0;
 
+  // New users in last 7 days with entry counts
+  const newUsers7dList = allUsers
+    .filter(u => u.createdAt > sevenDaysAgo)
+    .map(u => ({
+      id: u.id,
+      email: u.get('username'),
+      signedUpAt: u.createdAt.toISOString(),
+      entries: userEntryCount[u.id]?.count ?? 0,
+    }))
+    .sort((a, b) => new Date(b.signedUpAt) - new Date(a.signedUpAt));
+
   return {
     totalUsers, newSignups7d, newSignups30d,
     activeUsers7d: activeIds7d.size, activeUsers30d: activeIds30d.size,
     totalEntries, entriesLast7Days, entriesLast30Days,
     totalSessions, sessionsLast7Days,
     engagementRate, avgEntriesPerUser, medianEntriesPerUser,
-    retentionRate7d, retentionRate30d, topUsers,
+    retentionRate7d, retentionRate30d, topUsers, newUsers7dList,
   };
 });`;
