@@ -28,7 +28,10 @@ import Logo from './Logo';
 import VoiceInput from './VoiceInput';
 
 export default function App() {
-  const getDate = () => new Date().toISOString().split("T")[0];
+  const getDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
 
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
@@ -78,22 +81,26 @@ export default function App() {
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
   const streak = useMemo(() => {
-    const dateSet = new Set(entries.map(e => e.date));
-    // Also include session snapshot dates in the streak
+    const toLocalDateStr = (d) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    const dateSet = new Set();
+    // Add journal entry dates, excluding welcome entries
+    entries.filter(e => !e.isWelcomeEntry).forEach(e => { if (e.date) dateSet.add(e.date); });
+    // Add session snapshot dates
     history.forEach(s => {
       const d = s.sessionDate || s.timestamp?.split('T')[0];
       if (d) dateSet.add(d);
     });
-    // Only count today if there's been activity in the last 24 hours
-    const now = Date.now();
-    const recentEntry = entries.find(e => now - new Date(e.timestamp).getTime() < 86400000);
-    const recentSnapshot = history.find(s => now - new Date(s.timestamp).getTime() < 86400000);
-    const hasActivityToday = !!(recentEntry || recentSnapshot);
+
+    const todayStr = toLocalDateStr(new Date());
+    const hasActivityToday = dateSet.has(todayStr);
+
     let count = 0;
     const d = new Date();
     if (!hasActivityToday) d.setDate(d.getDate() - 1); // start from yesterday
     while (true) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = toLocalDateStr(d);
       if (dateSet.has(dateStr)) { count++; d.setDate(d.getDate() - 1); }
       else break;
     }
@@ -260,6 +267,7 @@ export default function App() {
       text: decryptText(o.get("text") ?? "", userEncryptionKey),
       prompt: decryptText(o.get("prompt") ?? "", userEncryptionKey),
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
+      isWelcomeEntry: o.get("isWelcomeEntry") ?? false,
     }));
   }
 
@@ -700,7 +708,7 @@ Everything you write is end-to-end encrypted and private.`,
           body, html { margin: 0; padding: 0; min-height: 100vh; background: #f3e8ff; }
         `}</style>
 
-        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '420px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
+        <div style={{ background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', maxWidth: '600px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', margin: '0 auto' }}>
           <div style={{ marginBottom: '32px' }}>
             <Logo />
           </div>
@@ -2047,16 +2055,16 @@ Everything you write is end-to-end encrypted and private.`,
                                 <button
                                   onClick={() => savePromptForLater(item)}
                                   disabled={savedPrompts.some(p => p.text === item)}
-                                  title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Save for later'}
+                                  title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Add to Prompts'}
                                   style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#f3f4f6' : 'white', color: savedPrompts.some(p => p.text === item) ? '#9ca3af' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: savedPrompts.some(p => p.text === item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                 >
                                   <BookOpen size={14} />
-                                  {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Save for Later'}
+                                  {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Add to Prompts'}
                                 </button>
                               ) : (
                                 <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
                                   <Lock size={14} />
-                                  Save for Later
+                                  Add to Prompts
                                 </div>
                               )}
                               {isPaidSubscriber ? (
