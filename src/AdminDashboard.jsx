@@ -19,12 +19,7 @@ export default function AdminDashboard({ onExit }) {
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-      // --- Users ---
-      const allUsersQuery = new Parse.Query(Parse.User);
-      allUsersQuery.limit(2000);
-      const allUsers = await allUsersQuery.find();
-      const totalUsers = allUsers.length;
-
+      // --- Users (new signups only — totalUsers derived from entries/sessions below) ---
       const newSignups7dQuery = new Parse.Query(Parse.User);
       newSignups7dQuery.greaterThan("createdAt", sevenDaysAgo);
       const newSignups7d = await newSignups7dQuery.count();
@@ -90,20 +85,38 @@ export default function AdminDashboard({ onExit }) {
       allEntriesQuery.limit(2000);
       const allEntries = await allEntriesQuery.find();
 
+      // Derive total users from unique user IDs across entries + sessions
+      // (avoids Parse.User CLP restriction which limits count to current user only)
+      const allSessionsForUsers = new Parse.Query("SessionSnapshot");
+      allSessionsForUsers.include("user");
+      allSessionsForUsers.limit(2000);
+      const allSessionObjects = await allSessionsForUsers.find();
+      const allUserIds = new Set();
+      allEntries.forEach(e => { const id = e.get("user")?.id; if (id) allUserIds.add(id); });
+      allSessionObjects.forEach(s => { const id = s.get("user")?.id; if (id) allUserIds.add(id); });
+      const totalUsers = Math.max(allUserIds.size, 1); // at least 1 (the current admin)
+
+      // Real journalers: exclude users who only have the welcome entry
       const userEntryCount = {};
+      const userHasRealEntry = {};
       allEntries.forEach(entry => {
         const userId = entry.get("user")?.id;
         const userEmail = entry.get("user")?.get("username");
+        const isWelcome = entry.get("isWelcomeEntry") === true;
         if (userId) {
           if (!userEntryCount[userId]) userEntryCount[userId] = { email: userEmail, count: 0 };
-          userEntryCount[userId].count++;
+          if (!isWelcome) {
+            userEntryCount[userId].count++;
+            userHasRealEntry[userId] = true;
+          }
         }
       });
 
-      const uniqueJournalers = Object.keys(userEntryCount).length;
+      const uniqueJournalers = Object.keys(userHasRealEntry).length;
       const engagementRate = totalUsers > 0 ? Math.round((uniqueJournalers / totalUsers) * 100) : 0;
 
-      const avgEntriesPerUser = totalUsers > 0 ? (totalEntries / totalUsers).toFixed(1) : 0;
+      const realEntryTotal = Object.values(userEntryCount).reduce((sum, d) => sum + d.count, 0);
+      const avgEntriesPerUser = uniqueJournalers > 0 ? (realEntryTotal / uniqueJournalers).toFixed(1) : 0;
 
       const countValues = Object.values(userEntryCount).map(d => d.count).sort((a, b) => a - b);
       let medianEntriesPerUser = 0;
@@ -210,7 +223,7 @@ export default function AdminDashboard({ onExit }) {
       {/* Growth */}
       <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>Growth</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard icon={Users}    label="Total Users"       value={s.totalUsers}    subtext="All registered accounts" highlight />
+        <StatCard icon={Users}    label="Total Users"       value={s.totalUsers}    subtext="Unique users with entries or sessions" highlight />
         <StatCard icon={UserPlus} label="New Signups (7d)"  value={s.newSignups7d}  subtext={`${s.newSignups30d} in last 30 days`} />
         <StatCard icon={Users}    label="Active Users (7d)" value={s.activeUsers7d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers7d / s.totalUsers) * 100) : 0}% of total`} />
         <StatCard icon={Users}    label="Active Users (30d)" value={s.activeUsers30d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers30d / s.totalUsers) * 100) : 0}% of total`} />
@@ -222,7 +235,8 @@ export default function AdminDashboard({ onExit }) {
         <StatCard icon={Percent}   label="Engagement Rate"     value={`${s.engagementRate}%`}     subtext="Users who have journaled" highlight />
         <StatCard icon={Percent}   label="Retention (7d)"      value={`${s.retentionRate7d}%`}    subtext="Week-old users still active" />
         <StatCard icon={Percent}   label="Retention (30d)"     value={`${s.retentionRate30d}%`}   subtext="Month-old users still active" />
-        <StatCard icon={TrendingUp} label="Avg Entries / User"  value={s.avgEntriesPerUser}        subtext={`Median: ${s.medianEntriesPerUser}`} />
+        <StatCard icon={TrendingUp} label="Avg Entries / User"    value={s.avgEntriesPerUser}       subtext="Among journaling users (excl. welcome)" />
+        <StatCard icon={TrendingUp} label="Median Entries / User" value={s.medianEntriesPerUser}    subtext="50th percentile" />
       </div>
 
       {/* Content */}

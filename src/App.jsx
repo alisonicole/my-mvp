@@ -273,6 +273,7 @@ export default function App() {
     obj.set("text", encryptText(eObj.text || "", userEncryptionKey));
     obj.set("prompt", encryptText(eObj.prompt || "", userEncryptionKey));
     obj.set("timestamp", eObj.timestamp || new Date().toISOString());
+    if (eObj.isWelcomeEntry) obj.set("isWelcomeEntry", true);
     const saved = await obj.save();
     return { ...eObj, parseId: saved.id };
   }
@@ -412,6 +413,7 @@ Watch your streak build as you journal consistently.
 Everything you write is end-to-end encrypted and private.`,
             prompt: "",
             timestamp: new Date().toISOString(),
+            isWelcomeEntry: true,
           };
           try {
             await createEntry(welcomeEntry);

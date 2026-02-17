@@ -1,63 +1,67 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic, MicOff, Volume2 } from 'lucide-react';
 
-// iOS Safari doesn't support continuous recognition — detect it
 const isIOS = /iPhone|iPad|iPod/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '');
 const RESTART_DELAY = isIOS ? 600 : 150;
 
 export default function VoiceInput({ onTranscript, currentText = "", placeholder = "Start speaking...", compact = false }) {
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [supported, setSupported] = useState(true);
-  const [baseText, setBaseText] = useState('');
-  const [paused, setPaused] = useState(false); // iOS: shows "tap to continue" state
+  const [paused, setPaused] = useState(false);
+  const [livePreview, setLivePreview] = useState(''); // real-time interim text
 
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
   const restartTimerRef = useRef(null);
+  // Refs to avoid stale closures in event handlers
+  const finalsRef = useRef('');       // accumulated final transcription
+  const baseTextRef = useRef('');     // text before recording started
+  const onTranscriptRef = useRef(onTranscript);
+
+  useEffect(() => { onTranscriptRef.current = onTranscript; }, [onTranscript]);
 
   // Initialize recognition once
   useEffect(() => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
     if (!SpeechRecognition) {
       setSupported(false);
       return;
     }
 
     const r = new SpeechRecognition();
-    r.continuous = !isIOS; // iOS doesn't support continuous reliably
+    r.continuous = !isIOS;
     r.interimResults = true;
     r.lang = 'en-US';
     recognitionRef.current = r;
 
-    return () => {
-      clearTimeout(restartTimerRef.current);
-      isListeningRef.current = false;
-      try { r.abort(); } catch (e) {}
-    };
-  }, []);
+    r.onresult = (event) => {
+      let interim = '';
+      let newFinal = '';
 
-  // Set up event handlers
-  useEffect(() => {
-    const recognition = recognitionRef.current;
-    if (!recognition) return;
-
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript + ' ';
+          newFinal += event.results[i][0].transcript + ' ';
+        } else {
+          interim += event.results[i][0].transcript;
         }
       }
-      if (finalTranscript) {
-        setTranscript(prev => prev + finalTranscript);
-        if (isIOS) setPaused(false); // result came in, not truly paused
+
+      if (newFinal) {
+        finalsRef.current += newFinal;
+        if (isIOS) setPaused(false);
       }
+
+      // Update live preview text shown in the UI
+      setLivePreview(finalsRef.current + interim);
+
+      // Push combined text to parent on every event (live updates)
+      const base = baseTextRef.current;
+      const spoken = finalsRef.current + interim;
+      const combined = base ? base.trimEnd() + ' ' + spoken : spoken;
+      onTranscriptRef.current(combined);
     };
 
-    recognition.onerror = (event) => {
-      // Ignore expected non-fatal errors
+    r.onerror = (event) => {
       if (['no-speech', 'aborted', 'network'].includes(event.error)) return;
       if (event.error === 'not-allowed' || event.error === 'audio-capture') {
         setSupported(false);
@@ -68,7 +72,7 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
       setPaused(false);
     };
 
-    recognition.onend = () => {
+    r.onend = () => {
       if (!isListeningRef.current) {
         setIsListening(false);
         setPaused(false);
@@ -76,37 +80,35 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
       }
 
       if (isIOS) {
-        // On iOS, show "tap to continue" — require user gesture for next start()
         setPaused(true);
         return;
       }
 
-      // Desktop: auto-restart with debounce
+      // Desktop/Android: auto-restart
       restartTimerRef.current = setTimeout(() => {
         if (!isListeningRef.current) return;
         try {
-          recognition.start();
+          recognitionRef.current.start();
         } catch (e) {
           isListeningRef.current = false;
           setIsListening(false);
         }
       }, RESTART_DELAY);
     };
-  }, []);
 
-  // Update parent when transcript changes
-  useEffect(() => {
-    if (transcript && isListening) {
-      const combined = baseText + (baseText && transcript ? ' ' : '') + transcript;
-      onTranscript(combined);
-    }
-  }, [transcript, baseText, isListening, onTranscript]);
+    return () => {
+      clearTimeout(restartTimerRef.current);
+      isListeningRef.current = false;
+      try { r.abort(); } catch (e) {}
+    };
+  }, []);
 
   const startListening = () => {
     const recognition = recognitionRef.current;
     if (!recognition) return;
-    setBaseText(currentText);
-    setTranscript('');
+    baseTextRef.current = currentText;
+    finalsRef.current = '';
+    setLivePreview('');
     setPaused(false);
     isListeningRef.current = true;
     setIsListening(true);
@@ -120,16 +122,15 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
   };
 
   const stopListening = () => {
-    const recognition = recognitionRef.current;
     clearTimeout(restartTimerRef.current);
     isListeningRef.current = false;
     setIsListening(false);
+    setLivePreview('');
     setPaused(false);
-    try { recognition.abort(); } catch (e) {}
+    try { recognitionRef.current.abort(); } catch (e) {}
   };
 
   const resumeListening = () => {
-    // iOS: user taps to resume after a pause
     const recognition = recognitionRef.current;
     if (!recognition || !isListeningRef.current) return;
     setPaused(false);
@@ -148,21 +149,14 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
 
   if (!supported) {
     return (
-      <div style={{
-        padding: '12px',
-        background: '#fef3c7',
-        border: '1px solid #fbbf24',
-        borderRadius: '12px',
-        fontSize: '14px',
-        color: '#92400e'
-      }}>
-        Voice input not supported in this browser. Try Chrome or Edge.
+      <div style={{ padding: '12px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px', fontSize: '14px', color: '#92400e' }}>
+        Voice input not supported in this browser. Try Chrome, Edge, or Safari.
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           onClick={toggleListening}
@@ -186,27 +180,13 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
               : compact ? 'none' : '0 4px 12px rgba(147,51,234,0.3)'
           }}
         >
-          {isListening ? (
-            <><MicOff size={20} />Stop Recording</>
-          ) : (
-            <><Mic size={20} />Start Voice Input</>
-          )}
+          {isListening ? <><MicOff size={20} />Stop Recording</> : <><Mic size={20} />Start Voice Input</>}
         </button>
 
-        {/* iOS: tap-to-continue button when paused mid-session */}
         {isIOS && paused && isListening && (
           <button
             onClick={resumeListening}
-            style={{
-              padding: '12px 16px',
-              borderRadius: '12px',
-              border: '2px solid #9333ea',
-              background: 'white',
-              color: '#9333ea',
-              fontWeight: '500',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
+            style={{ padding: '12px 16px', borderRadius: '12px', border: '2px solid #9333ea', background: 'white', color: '#9333ea', fontWeight: '500', fontSize: '14px', cursor: 'pointer' }}
           >
             Tap to continue
           </button>
@@ -214,18 +194,18 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
       </div>
 
       {isListening && !paused && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '8px 12px',
-          background: '#fef3c7',
-          borderRadius: '8px',
-          fontSize: '14px',
-          color: '#92400e'
-        }}>
-          <Volume2 size={16} style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
-          <span>Listening{isIOS ? ' — speak, then pause briefly' : '...'}</span>
+        <div style={{ padding: '10px 14px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '10px', fontSize: '14px', color: '#92400e' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: livePreview ? '6px' : 0 }}>
+            <Volume2 size={15} style={{ flexShrink: 0, animation: 'pulse 1.5s ease-in-out infinite' }} />
+            <span style={{ fontWeight: '500' }}>
+              {isIOS ? 'Listening — speak, then pause briefly' : 'Listening...'}
+            </span>
+          </div>
+          {livePreview && (
+            <p style={{ margin: 0, fontSize: '13px', color: '#78350f', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '23px' }}>
+              {livePreview}
+            </p>
+          )}
         </div>
       )}
 
