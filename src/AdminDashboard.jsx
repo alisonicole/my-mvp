@@ -4,6 +4,7 @@ import { BarChart3, Users, FileText, Calendar, TrendingUp, X, Percent, UserPlus 
 export default function AdminDashboard({ onExit }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
 
@@ -14,163 +15,13 @@ export default function AdminDashboard({ onExit }) {
 
   const fetchStats = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const now = new Date();
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-      // --- Users (new signups only — totalUsers derived from entries/sessions below) ---
-      const newSignups7dQuery = new Parse.Query(Parse.User);
-      newSignups7dQuery.greaterThan("createdAt", sevenDaysAgo);
-      const newSignups7d = await newSignups7dQuery.count();
-
-      const newSignups30dQuery = new Parse.Query(Parse.User);
-      newSignups30dQuery.greaterThan("createdAt", thirtyDaysAgo);
-      const newSignups30d = await newSignups30dQuery.count();
-
-      // --- Entries ---
-      const entryCountQuery = new Parse.Query("Entry");
-      const totalEntries = await entryCountQuery.count();
-
-      const entries7Query = new Parse.Query("Entry");
-      entries7Query.greaterThan("createdAt", sevenDaysAgo);
-      const entriesLast7Days = await entries7Query.count();
-
-      const entries30Query = new Parse.Query("Entry");
-      entries30Query.greaterThan("createdAt", thirtyDaysAgo);
-      const entriesLast30Days = await entries30Query.count();
-
-      // --- Sessions ---
-      const sessionCountQuery = new Parse.Query("SessionSnapshot");
-      const totalSessions = await sessionCountQuery.count();
-
-      const sessions7Query = new Parse.Query("SessionSnapshot");
-      sessions7Query.greaterThan("createdAt", sevenDaysAgo);
-      const sessionsLast7Days = await sessions7Query.count();
-
-      // --- Active users (7d & 30d): users who created an entry OR session ---
-      const recentEntries7Query = new Parse.Query("Entry");
-      recentEntries7Query.greaterThan("createdAt", sevenDaysAgo);
-      recentEntries7Query.limit(2000);
-      const recentEntries7 = await recentEntries7Query.find();
-
-      const recentSessions7Query = new Parse.Query("SessionSnapshot");
-      recentSessions7Query.greaterThan("createdAt", sevenDaysAgo);
-      recentSessions7Query.limit(2000);
-      const recentSessions7 = await recentSessions7Query.find();
-
-      const activeIds7d = new Set();
-      recentEntries7.forEach(e => { const id = e.get("user")?.id; if (id) activeIds7d.add(id); });
-      recentSessions7.forEach(s => { const id = s.get("user")?.id; if (id) activeIds7d.add(id); });
-      const activeUsers7d = activeIds7d.size;
-
-      const recentEntries30Query = new Parse.Query("Entry");
-      recentEntries30Query.greaterThan("createdAt", thirtyDaysAgo);
-      recentEntries30Query.limit(2000);
-      const recentEntries30 = await recentEntries30Query.find();
-
-      const recentSessions30Query = new Parse.Query("SessionSnapshot");
-      recentSessions30Query.greaterThan("createdAt", thirtyDaysAgo);
-      recentSessions30Query.limit(2000);
-      const recentSessions30 = await recentSessions30Query.find();
-
-      const activeIds30d = new Set();
-      recentEntries30.forEach(e => { const id = e.get("user")?.id; if (id) activeIds30d.add(id); });
-      recentSessions30.forEach(s => { const id = s.get("user")?.id; if (id) activeIds30d.add(id); });
-      const activeUsers30d = activeIds30d.size;
-
-      // --- Per-user entry counts (engagement rate, mean, median, top users) ---
-      const allEntriesQuery = new Parse.Query("Entry");
-      allEntriesQuery.include("user");
-      allEntriesQuery.limit(2000);
-      const allEntries = await allEntriesQuery.find();
-
-      // Derive total users from unique user IDs across entries + sessions
-      // (avoids Parse.User CLP restriction which limits count to current user only)
-      const allSessionsForUsers = new Parse.Query("SessionSnapshot");
-      allSessionsForUsers.include("user");
-      allSessionsForUsers.limit(2000);
-      const allSessionObjects = await allSessionsForUsers.find();
-      const allUserIds = new Set();
-      allEntries.forEach(e => { const id = e.get("user")?.id; if (id) allUserIds.add(id); });
-      allSessionObjects.forEach(s => { const id = s.get("user")?.id; if (id) allUserIds.add(id); });
-      const totalUsers = Math.max(allUserIds.size, 1); // at least 1 (the current admin)
-
-      // Real journalers: exclude users who only have the welcome entry
-      const userEntryCount = {};
-      const userHasRealEntry = {};
-      allEntries.forEach(entry => {
-        const userId = entry.get("user")?.id;
-        const userEmail = entry.get("user")?.get("username");
-        const isWelcome = entry.get("isWelcomeEntry") === true;
-        if (userId) {
-          if (!userEntryCount[userId]) userEntryCount[userId] = { email: userEmail, count: 0 };
-          if (!isWelcome) {
-            userEntryCount[userId].count++;
-            userHasRealEntry[userId] = true;
-          }
-        }
-      });
-
-      const uniqueJournalers = Object.keys(userHasRealEntry).length;
-      const engagementRate = totalUsers > 0 ? Math.round((uniqueJournalers / totalUsers) * 100) : 0;
-
-      const realEntryTotal = Object.values(userEntryCount).reduce((sum, d) => sum + d.count, 0);
-      const avgEntriesPerUser = uniqueJournalers > 0 ? (realEntryTotal / uniqueJournalers).toFixed(1) : 0;
-
-      const countValues = Object.values(userEntryCount).map(d => d.count).sort((a, b) => a - b);
-      let medianEntriesPerUser = 0;
-      if (countValues.length > 0) {
-        const mid = Math.floor(countValues.length / 2);
-        medianEntriesPerUser = countValues.length % 2 === 0
-          ? ((countValues[mid - 1] + countValues[mid]) / 2).toFixed(1)
-          : countValues[mid].toFixed(1);
-      }
-
-      const topUsers = Object.entries(userEntryCount)
-        .map(([id, data]) => ({ id, email: data.email, count: data.count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      // --- Retention: users created 7+ days ago who are still active in 7d ---
-      const oldUsersQuery = new Parse.Query(Parse.User);
-      oldUsersQuery.lessThan("createdAt", sevenDaysAgo);
-      oldUsersQuery.limit(2000);
-      const oldUsers = await oldUsersQuery.find();
-      const oldUsersStillActive = oldUsers.filter(u => activeIds7d.has(u.id));
-      const retentionRate7d = oldUsers.length > 0
-        ? Math.round((oldUsersStillActive.length / oldUsers.length) * 100)
-        : 0;
-
-      const oldUsers30Query = new Parse.Query(Parse.User);
-      oldUsers30Query.lessThan("createdAt", thirtyDaysAgo);
-      oldUsers30Query.limit(2000);
-      const oldUsers30 = await oldUsers30Query.find();
-      const oldUsers30StillActive = oldUsers30.filter(u => activeIds30d.has(u.id));
-      const retentionRate30d = oldUsers30.length > 0
-        ? Math.round((oldUsers30StillActive.length / oldUsers30.length) * 100)
-        : 0;
-
-      setStats({
-        totalUsers,
-        newSignups7d,
-        newSignups30d,
-        activeUsers7d,
-        activeUsers30d,
-        totalEntries,
-        entriesLast7Days,
-        entriesLast30Days,
-        totalSessions,
-        sessionsLast7Days,
-        engagementRate,
-        avgEntriesPerUser,
-        medianEntriesPerUser,
-        retentionRate7d,
-        retentionRate30d,
-        topUsers,
-      });
-    } catch (error) {
-      console.error("Failed to fetch stats:", error);
+      const result = await Parse.Cloud.run("getAdminStats");
+      setStats(result);
+    } catch (err) {
+      console.error("Failed to fetch stats:", err);
+      setError(err.message || "Failed to load analytics. Make sure the getAdminStats cloud function is deployed.");
     } finally {
       setLoading(false);
     }
@@ -182,6 +33,27 @@ export default function AdminDashboard({ onExit }) {
         <div style={{ width: '48px', height: '48px', border: '4px solid #e9d5ff', borderTopColor: '#9333ea', borderRadius: '50%', margin: '0 auto', animation: 'spin 1s linear infinite' }}></div>
         <p style={{ marginTop: '16px', color: '#7c3aed' }}>Loading analytics...</p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ padding: '32px' }}>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '16px', padding: '24px', marginBottom: '16px' }}>
+          <p style={{ color: '#dc2626', fontWeight: '500', marginBottom: '8px' }}>Analytics Error</p>
+          <p style={{ color: '#7f1d1d', fontSize: '14px', margin: 0 }}>{error}</p>
+        </div>
+        <details style={{ background: '#f5f3ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '16px' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: '500', color: '#7c3aed', fontSize: '14px' }}>Cloud Function setup instructions</summary>
+          <pre style={{ marginTop: '12px', fontSize: '12px', color: '#374151', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>{CLOUD_FUNCTION_CODE}</pre>
+        </details>
+        <button onClick={fetchStats} style={{ marginTop: '16px', padding: '10px 20px', borderRadius: '12px', border: 'none', background: '#9333ea', color: 'white', fontWeight: '500', cursor: 'pointer' }}>
+          Retry
+        </button>
+        <button onClick={onExit} style={{ marginTop: '16px', marginLeft: '12px', padding: '10px 20px', borderRadius: '12px', border: '1px solid #e9d5ff', background: 'white', color: '#7c3aed', fontWeight: '500', cursor: 'pointer' }}>
+          Exit
+        </button>
       </div>
     );
   }
@@ -206,7 +78,7 @@ export default function AdminDashboard({ onExit }) {
   const s = stats;
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '32px' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
       <div style={{ marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: '32px', fontWeight: '300', color: '#581c87', marginBottom: '8px' }}>Between Analytics</h1>
@@ -223,7 +95,7 @@ export default function AdminDashboard({ onExit }) {
       {/* Growth */}
       <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#9ca3af', letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '12px' }}>Growth</h2>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-        <StatCard icon={Users}    label="Total Users"       value={s.totalUsers}    subtext="Unique users with entries or sessions" highlight />
+        <StatCard icon={Users}    label="Total Users"       value={s.totalUsers}    subtext="All registered accounts" highlight />
         <StatCard icon={UserPlus} label="New Signups (7d)"  value={s.newSignups7d}  subtext={`${s.newSignups30d} in last 30 days`} />
         <StatCard icon={Users}    label="Active Users (7d)" value={s.activeUsers7d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers7d / s.totalUsers) * 100) : 0}% of total`} />
         <StatCard icon={Users}    label="Active Users (30d)" value={s.activeUsers30d} subtext={`${s.totalUsers > 0 ? Math.round((s.activeUsers30d / s.totalUsers) * 100) : 0}% of total`} />
@@ -281,3 +153,104 @@ export default function AdminDashboard({ onExit }) {
     </div>
   );
 }
+
+const CLOUD_FUNCTION_CODE = `// Paste this into your Back4App Cloud Code (main.js)
+
+Parse.Cloud.define("getAdminStats", async (request) => {
+  const user = request.user;
+  if (!user || user.get('username') !== 'lee.alisonnicole@gmail.com') {
+    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'Admin only');
+  }
+
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  // All users (master key bypasses CLP)
+  const allUsersQuery = new Parse.Query(Parse.User);
+  allUsersQuery.limit(5000);
+  const allUsers = await allUsersQuery.find({ useMasterKey: true });
+  const totalUsers = allUsers.length;
+  const newSignups7d = allUsers.filter(u => u.createdAt > sevenDaysAgo).length;
+  const newSignups30d = allUsers.filter(u => u.createdAt > thirtyDaysAgo).length;
+
+  // All entries (master key bypasses ACL)
+  const allEntriesQuery = new Parse.Query("Entry");
+  allEntriesQuery.include("user");
+  allEntriesQuery.limit(5000);
+  const allEntries = await allEntriesQuery.find({ useMasterKey: true });
+
+  // All sessions
+  const allSessionsQuery = new Parse.Query("SessionSnapshot");
+  allSessionsQuery.include("user");
+  allSessionsQuery.limit(5000);
+  const allSessions = await allSessionsQuery.find({ useMasterKey: true });
+
+  const totalEntries = allEntries.length;
+  const totalSessions = allSessions.length;
+  const entriesLast7Days = allEntries.filter(e => e.createdAt > sevenDaysAgo).length;
+  const entriesLast30Days = allEntries.filter(e => e.createdAt > thirtyDaysAgo).length;
+  const sessionsLast7Days = allSessions.filter(s => s.createdAt > sevenDaysAgo).length;
+
+  // Active user sets
+  const activeIds7d = new Set();
+  allEntries.filter(e => e.createdAt > sevenDaysAgo).forEach(e => { const id = e.get("user")?.id; if (id) activeIds7d.add(id); });
+  allSessions.filter(s => s.createdAt > sevenDaysAgo).forEach(s => { const id = s.get("user")?.id; if (id) activeIds7d.add(id); });
+
+  const activeIds30d = new Set();
+  allEntries.filter(e => e.createdAt > thirtyDaysAgo).forEach(e => { const id = e.get("user")?.id; if (id) activeIds30d.add(id); });
+  allSessions.filter(s => s.createdAt > thirtyDaysAgo).forEach(s => { const id = s.get("user")?.id; if (id) activeIds30d.add(id); });
+
+  // Per-user entry counts (exclude welcome entries)
+  const userEntryCount = {};
+  const userHasRealEntry = {};
+  allEntries.forEach(entry => {
+    const userId = entry.get("user")?.id;
+    const userEmail = entry.get("user")?.get("username");
+    const isWelcome = entry.get("isWelcomeEntry") === true;
+    if (userId) {
+      if (!userEntryCount[userId]) userEntryCount[userId] = { email: userEmail, count: 0 };
+      if (!isWelcome) {
+        userEntryCount[userId].count++;
+        userHasRealEntry[userId] = true;
+      }
+    }
+  });
+
+  const uniqueJournalers = Object.keys(userHasRealEntry).length;
+  const engagementRate = totalUsers > 0 ? Math.round((uniqueJournalers / totalUsers) * 100) : 0;
+  const realEntryTotal = Object.values(userEntryCount).reduce((sum, d) => sum + d.count, 0);
+  const avgEntriesPerUser = uniqueJournalers > 0 ? parseFloat((realEntryTotal / uniqueJournalers).toFixed(1)) : 0;
+
+  const countValues = Object.values(userEntryCount).filter(d => d.count > 0).map(d => d.count).sort((a, b) => a - b);
+  let medianEntriesPerUser = 0;
+  if (countValues.length > 0) {
+    const mid = Math.floor(countValues.length / 2);
+    medianEntriesPerUser = countValues.length % 2 === 0
+      ? parseFloat(((countValues[mid - 1] + countValues[mid]) / 2).toFixed(1))
+      : parseFloat(countValues[mid].toFixed(1));
+  }
+
+  const topUsers = Object.entries(userEntryCount)
+    .map(([id, data]) => ({ id, email: data.email, count: data.count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // Retention
+  const oldUserIds = allUsers.filter(u => u.createdAt < sevenDaysAgo).map(u => u.id);
+  const retentionRate7d = oldUserIds.length > 0
+    ? Math.round((oldUserIds.filter(id => activeIds7d.has(id)).length / oldUserIds.length) * 100) : 0;
+
+  const oldUser30Ids = allUsers.filter(u => u.createdAt < thirtyDaysAgo).map(u => u.id);
+  const retentionRate30d = oldUser30Ids.length > 0
+    ? Math.round((oldUser30Ids.filter(id => activeIds30d.has(id)).length / oldUser30Ids.length) * 100) : 0;
+
+  return {
+    totalUsers, newSignups7d, newSignups30d,
+    activeUsers7d: activeIds7d.size, activeUsers30d: activeIds30d.size,
+    totalEntries, entriesLast7Days, entriesLast30Days,
+    totalSessions, sessionsLast7Days,
+    engagementRate, avgEntriesPerUser, medianEntriesPerUser,
+    retentionRate7d, retentionRate30d, topUsers,
+  };
+});`;

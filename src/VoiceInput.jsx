@@ -8,7 +8,6 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
   const [isListening, setIsListening] = useState(false);
   const [supported, setSupported] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [livePreview, setLivePreview] = useState(''); // real-time interim text
 
   const recognitionRef = useRef(null);
   const isListeningRef = useRef(false);
@@ -50,9 +49,6 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
         finalsRef.current += newFinal;
         if (isIOS) setPaused(false);
       }
-
-      // Update live preview text shown in the UI
-      setLivePreview(finalsRef.current + interim);
 
       // Push combined text to parent on every event (live updates)
       const base = baseTextRef.current;
@@ -108,7 +104,6 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     if (!recognition) return;
     baseTextRef.current = currentText;
     finalsRef.current = '';
-    setLivePreview('');
     setPaused(false);
     isListeningRef.current = true;
     setIsListening(true);
@@ -125,7 +120,6 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
     clearTimeout(restartTimerRef.current);
     isListeningRef.current = false;
     setIsListening(false);
-    setLivePreview('');
     setPaused(false);
     try { recognitionRef.current.abort(); } catch (e) {}
   };
@@ -195,17 +189,12 @@ export default function VoiceInput({ onTranscript, currentText = "", placeholder
 
       {isListening && !paused && (
         <div style={{ padding: '10px 14px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '10px', fontSize: '14px', color: '#92400e' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: livePreview ? '6px' : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Volume2 size={15} style={{ flexShrink: 0, animation: 'pulse 1.5s ease-in-out infinite' }} />
             <span style={{ fontWeight: '500' }}>
               {isIOS ? 'Listening — speak, then pause briefly' : 'Listening...'}
             </span>
           </div>
-          {livePreview && (
-            <p style={{ margin: 0, fontSize: '13px', color: '#78350f', fontStyle: 'italic', lineHeight: '1.5', paddingLeft: '23px' }}>
-              {livePreview}
-            </p>
-          )}
         </div>
       )}
 
