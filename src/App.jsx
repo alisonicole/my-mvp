@@ -1876,6 +1876,10 @@ Everything you write is end-to-end encrypted and private.`,
                       try {
                         await createEntry(n);
                         setEntries(await fetchEntries());
+                        // Remove used prompt from My Prompts if it came from there
+                        if (activePrompt && savedPrompts.some(p => p.text === activePrompt)) {
+                          removeSavedPrompt(activePrompt);
+                        }
                         setEntry({ text: "", prompt: "" });
                         setActivePrompt("");
                         setJournalView("log");

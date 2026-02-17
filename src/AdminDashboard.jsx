@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { BarChart3, Users, FileText, Calendar, TrendingUp, X, Percent, UserPlus } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function AdminDashboard({ onExit }) {
   const [stats, setStats] = useState(null);
@@ -116,6 +117,28 @@ export default function AdminDashboard({ onExit }) {
         <StatCard icon={Calendar} label="Total Sessions" value={s.totalSessions} subtext={`${s.sessionsLast7Days} in last 7 days`} />
       </div>
 
+      {/* Line chart */}
+      {s.dailyData?.length > 0 && (
+        <div style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', marginBottom: '20px' }}>Activity Over Time (Last 30 Days)</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={s.dailyData} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3e8ff" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#9ca3af' }} tickFormatter={d => d.slice(5)} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
+              <Tooltip
+                contentStyle={{ borderRadius: '12px', border: '1px solid #e9d5ff', fontSize: '13px' }}
+                labelFormatter={d => `Date: ${d}`}
+              />
+              <Legend wrapperStyle={{ fontSize: '13px', paddingTop: '12px' }} />
+              <Line type="monotone" dataKey="newUsers"  name="New Users"  stroke="#9333ea" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="entries"   name="Entries"    stroke="#7c3aed" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+              <Line type="monotone" dataKey="sessions"  name="Sessions"   stroke="#c084fc" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* New Users (7d) */}
       <div style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>New Users (Last 7 Days)</h3>
@@ -129,6 +152,7 @@ export default function AdminDashboard({ onExit }) {
                   <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Email</th>
                   <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Signed Up</th>
                   <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Entries</th>
+                  <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Sessions</th>
                 </tr>
               </thead>
               <tbody>
@@ -139,6 +163,7 @@ export default function AdminDashboard({ onExit }) {
                       {new Date(user.signedUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </td>
                     <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: user.entries > 0 ? '#9333ea' : '#9ca3af', fontSize: '14px' }}>{user.entries}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: user.sessions > 0 ? '#9333ea' : '#9ca3af', fontSize: '14px' }}>{user.sessions ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -157,6 +182,7 @@ export default function AdminDashboard({ onExit }) {
                 <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Rank</th>
                 <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Email</th>
                 <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Entries</th>
+                <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Sessions</th>
               </tr>
             </thead>
             <tbody>
@@ -165,6 +191,7 @@ export default function AdminDashboard({ onExit }) {
                   <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{index + 1}</td>
                   <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{user.email || 'Unknown'}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: '#9333ea', fontSize: '14px' }}>{user.count}</td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: '#9333ea', fontSize: '14px' }}>{user.sessions ?? 0}</td>
                 </tr>
               ))}
             </tbody>
@@ -246,6 +273,17 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     }
   });
 
+  // Per-user session counts
+  const userSessionCount = {};
+  allSessions.forEach(s => {
+    const userId = s.get("user")?.id;
+    const userEmail = s.get("user")?.get("username");
+    if (userId) {
+      if (!userSessionCount[userId]) userSessionCount[userId] = { email: userEmail, count: 0 };
+      userSessionCount[userId].count++;
+    }
+  });
+
   const uniqueJournalers = Object.keys(userHasRealEntry).length;
   const engagementRate = totalUsers > 0 ? Math.round((uniqueJournalers / totalUsers) * 100) : 0;
   const realEntryTotal = Object.values(userEntryCount).reduce((sum, d) => sum + d.count, 0);
@@ -261,7 +299,7 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   }
 
   const topUsers = Object.entries(userEntryCount)
-    .map(([id, data]) => ({ id, email: data.email, count: data.count }))
+    .map(([id, data]) => ({ id, email: data.email, count: data.count, sessions: userSessionCount[id]?.count ?? 0 }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
@@ -274,7 +312,7 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const retentionRate30d = oldUser30Ids.length > 0
     ? Math.round((oldUser30Ids.filter(id => activeIds30d.has(id)).length / oldUser30Ids.length) * 100) : 0;
 
-  // New users in last 7 days with entry counts
+  // New users in last 7 days with entry + session counts
   const newUsers7dList = allUsers
     .filter(u => u.createdAt > sevenDaysAgo)
     .map(u => ({
@@ -282,8 +320,26 @@ Parse.Cloud.define("getAdminStats", async (request) => {
       email: u.get('username'),
       signedUpAt: u.createdAt.toISOString(),
       entries: userEntryCount[u.id]?.count ?? 0,
+      sessions: userSessionCount[u.id]?.count ?? 0,
     }))
     .sort((a, b) => new Date(b.signedUpAt) - new Date(a.signedUpAt));
+
+  // Daily activity for last 30 days
+  const dailyData = [];
+  for (let i = 29; i >= 0; i--) {
+    const dayStart = new Date(now);
+    dayStart.setDate(dayStart.getDate() - i);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+    const label = dayStart.toISOString().split('T')[0];
+    dailyData.push({
+      date: label,
+      newUsers: allUsers.filter(u => u.createdAt >= dayStart && u.createdAt < dayEnd).length,
+      entries:  allEntries.filter(e => e.createdAt >= dayStart && e.createdAt < dayEnd).length,
+      sessions: allSessions.filter(s => s.createdAt >= dayStart && s.createdAt < dayEnd).length,
+    });
+  }
 
   return {
     totalUsers, newSignups7d, newSignups30d,
@@ -291,6 +347,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     totalEntries, entriesLast7Days, entriesLast30Days,
     totalSessions, sessionsLast7Days,
     engagementRate, avgEntriesPerUser, medianEntriesPerUser,
-    retentionRate7d, retentionRate30d, topUsers, newUsers7dList,
+    retentionRate7d, retentionRate30d, topUsers, newUsers7dList, dailyData,
   };
 });`;
