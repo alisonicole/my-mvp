@@ -18,10 +18,10 @@ import {
   BookOpen,
   Archive,
   MessageSquare,
-  PenTool,
   Lock,
   MessageCircle,
   Star,
+  Plus,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -1117,20 +1117,21 @@ Everything you write is end-to-end encrypted and private.`,
         }
         
         input[type="date"] {
-          -webkit-appearance: none;
-          -moz-appearance: none;
-          appearance: none;
           font-family: 'Work Sans', sans-serif;
         }
-        
-        input[type="date"]::-webkit-inner-spin-button,
-        input[type="date"]::-webkit-calendar-picker-indicator {
-          display: none;
-          -webkit-appearance: none;
-        }
-        
+
         input[type="date"]::-webkit-date-and-time-value {
           text-align: left;
+        }
+
+        @media (min-width: 769px) {
+          input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            opacity: 0.6;
+          }
+          input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            opacity: 1;
+          }
         }
         
         input, textarea, select {
@@ -1204,6 +1205,9 @@ Everything you write is end-to-end encrypted and private.`,
             -webkit-appearance: none !important;
             -moz-appearance: none !important;
             appearance: none !important;
+          }
+          input[type="date"]::-webkit-calendar-picker-indicator {
+            display: none !important;
           }
           
           input[type="text"], 
@@ -1366,60 +1370,6 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {/* Primary CTA */}
-              <button
-                onClick={() => { setTab('journal'); setJournalView('write'); }}
-                style={{
-                  width: '100%',
-                  height: '70px',
-                  background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '18px',
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  boxShadow: '0 6px 20px rgba(147,51,234,0.35)',
-                  transition: 'transform 0.15s, box-shadow 0.15s'
-                }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(147,51,234,0.4)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(147,51,234,0.35)'; }}
-              >
-                <PenTool size={22} />
-                Write Journal Entry
-              </button>
-
-              {/* Secondary CTA — voice */}
-              {isPaidSubscriber && (
-                <button
-                  onClick={() => { setTab('journal'); setJournalView('write'); }}
-                  style={{
-                    width: '100%',
-                    height: '48px',
-                    background: 'rgba(147,51,234,0.08)',
-                    color: '#7c3aed',
-                    border: '1px solid rgba(147,51,234,0.2)',
-                    borderRadius: '14px',
-                    fontSize: '15px',
-                    fontWeight: '500',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(147,51,234,0.14)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(147,51,234,0.08)'; }}
-                >
-                  🎤 Start Voice Entry
-                </button>
-              )}
-
               {/* Next action suggestion */}
               {nextAction && (
                 <div style={{ background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '14px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1436,8 +1386,8 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {/* Progress milestone bar */}
-              {milestoneName && (
+              {/* Progress milestone bar — only show when < 4 entries */}
+              {milestoneName && realEntryCount < 4 && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '12px', fontWeight: '500', color: '#7c3aed' }}>{milestoneName}</span>
@@ -1448,31 +1398,6 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 </div>
               )}
-
-              {/* Tertiary actions */}
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ flex: 1, height: '1px', background: '#e9d5ff' }} />
-                  <span style={{ fontSize: '12px', color: '#9ca3af', whiteSpace: 'nowrap' }}>or explore</span>
-                  <div style={{ flex: 1, height: '1px', background: '#e9d5ff' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    onClick={() => setTab('patterns')}
-                    style={{ flex: 1, height: '44px', background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '12px', fontSize: '13px', fontWeight: '500', color: '#581c87', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <Sparkles size={15} />
-                    View Patterns
-                  </button>
-                  <button
-                    onClick={() => { setTab('sessions'); setSessionView('pre'); }}
-                    style={{ flex: 1, height: '44px', background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '12px', fontSize: '13px', fontWeight: '500', color: '#581c87', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                  >
-                    <Calendar size={15} />
-                    Prep for Session
-                  </button>
-                </div>
-              </div>
 
               {/* Stats row */}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -2383,13 +2308,20 @@ Everything you write is end-to-end encrypted and private.`,
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                               {isPaidSubscriber ? (
                                 <button
-                                  onClick={() => savePromptForLater(item)}
-                                  disabled={savedPrompts.some(p => p.text === item)}
-                                  title={savedPrompts.some(p => p.text === item) ? 'Already saved' : 'Add to Prompts'}
-                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#f3f4f6' : 'white', color: savedPrompts.some(p => p.text === item) ? '#9ca3af' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: savedPrompts.some(p => p.text === item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  onClick={() => {
+                                    if (savedPrompts.some(p => p.text === item)) {
+                                      setTab('journal');
+                                      setJournalView('write');
+                                      setShowMyPrompts(true);
+                                    } else {
+                                      savePromptForLater(item);
+                                    }
+                                  }}
+                                  title={savedPrompts.some(p => p.text === item) ? 'View in My Prompts' : 'Add to Prompts'}
+                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#ede9fe' : 'white', color: savedPrompts.some(p => p.text === item) ? '#7c3aed' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                                 >
                                   <BookOpen size={14} />
-                                  {savedPrompts.some(p => p.text === item) ? 'Saved' : 'Add to Prompts'}
+                                  {savedPrompts.some(p => p.text === item) ? 'Saved → My Prompts' : 'Add to Prompts'}
                                 </button>
                               ) : (
                                 <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
@@ -2775,6 +2707,15 @@ Everything you write is end-to-end encrypted and private.`,
                         </svg>
                         <span>Your session notes are private and secure.</span>
                       </div>
+
+                      {history.length === 0 && (
+                        <div style={{ marginTop: '12px', padding: '12px 14px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                          <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
+                          <p style={{ fontSize: '13px', color: '#6b21a8', margin: 0, lineHeight: '1.5' }}>
+                            Logging a session saves your patterns and session prep so you can pick up where you left off next time.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2846,19 +2787,15 @@ Everything you write is end-to-end encrypted and private.`,
             justifyContent: 'space-around'
           }}>
             {[
-              ["home", "Home", Home],
-              ["journal", "Journal", FileText],
-              ["patterns", "Patterns", Sparkles],
-              ["sessions", "Sessions", Calendar],
-            ].map(([t, label, Icon]) => (
+              { id: 'home',     label: 'Home',    Icon: Home,     active: tab === 'home',                                    action: () => { setTab('home'); setExpanded({}); } },
+              { id: 'log',      label: 'Log',     Icon: FileText, active: tab === 'journal' && journalView === 'log',         action: () => { setTab('journal'); setJournalView('log'); setExpanded({}); } },
+              { id: 'create',   label: 'Create',  Icon: Plus,     active: tab === 'journal' && journalView === 'write',       action: () => { setTab('journal'); setJournalView('write'); setExpanded({}); } },
+              { id: 'patterns', label: 'Patterns',Icon: Sparkles, active: tab === 'patterns',                                action: () => { setTab('patterns'); setExpanded({}); } },
+              { id: 'sessions', label: 'Sessions',Icon: Calendar, active: tab === 'sessions',                                action: () => { setTab('sessions'); setSessionView('pre'); setExpanded({}); } },
+            ].map(({ id, label, Icon, active, action }) => (
               <button
-                key={t}
-                onClick={() => {
-                  setTab(t);
-                  if (t === 'journal') setJournalView('write');
-                  if (t === 'sessions') setSessionView('pre');
-                  setExpanded({});
-                }}
+                key={id}
+                onClick={action}
                 style={{
                   flex: 1,
                   display: 'flex',
@@ -2867,17 +2804,17 @@ Everything you write is end-to-end encrypted and private.`,
                   gap: '4px',
                   padding: '8px 4px',
                   borderRadius: '12px',
-                  fontWeight: tab === t ? '600' : '500',
-                  fontSize: '12px',
+                  fontWeight: active ? '600' : '500',
+                  fontSize: '11px',
                   border: 'none',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  background: tab === t ? '#9333ea' : 'transparent',
-                  color: tab === t ? 'white' : '#7c3aed',
-                  minWidth: '60px'
+                  background: active ? '#9333ea' : 'transparent',
+                  color: active ? 'white' : '#7c3aed',
+                  minWidth: '48px'
                 }}
               >
-                <Icon size={22} />
+                <Icon size={20} />
                 <span>{label}</span>
               </button>
             ))}
