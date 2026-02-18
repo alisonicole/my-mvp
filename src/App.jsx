@@ -2254,18 +2254,23 @@ Everything you write is end-to-end encrypted and private.`,
                     {(analysis.themes || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                            <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                            <button
-                              onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
-                              style={{ background: 'none', border: 'none', cursor: extraTopics.includes(item) ? 'default' : 'pointer', padding: '2px 4px', flexShrink: 0, fontSize: '11px', fontWeight: '500', color: extraTopics.includes(item) ? '#c4b5fd' : '#9333ea', whiteSpace: 'nowrap' }}
-                            >
-                              {extraTopics.includes(item) ? '✓ Added' : '+ Key topics'}
-                            </button>
-                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                              <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                            </button>
+                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
+                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: extraTopics.includes(item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Plus size={14} />
+                                {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
+                              </button>
+                            </div>
                           </li>
                         ))}
                         {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
@@ -2291,18 +2296,23 @@ Everything you write is end-to-end encrypted and private.`,
                     {(analysis.avoiding || []).length ? (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                            <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                            <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                            <button
-                              onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
-                              style={{ background: 'none', border: 'none', cursor: extraTopics.includes(item) ? 'default' : 'pointer', padding: '2px 4px', flexShrink: 0, fontSize: '11px', fontWeight: '500', color: extraTopics.includes(item) ? '#c4b5fd' : '#9333ea', whiteSpace: 'nowrap' }}
-                            >
-                              {extraTopics.includes(item) ? '✓ Added' : '+ Key topics'}
-                            </button>
-                            <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                              <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                            </button>
+                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
+                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: extraTopics.includes(item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Plus size={14} />
+                                {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
+                              </button>
+                            </div>
                           </li>
                         ))}
                         {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
