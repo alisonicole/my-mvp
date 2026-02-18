@@ -2257,6 +2257,12 @@ Everything you write is end-to-end encrypted and private.`,
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                            <button
+                              onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
+                              style={{ background: 'none', border: 'none', cursor: extraTopics.includes(item) ? 'default' : 'pointer', padding: '2px 4px', flexShrink: 0, fontSize: '11px', fontWeight: '500', color: extraTopics.includes(item) ? '#c4b5fd' : '#9333ea', whiteSpace: 'nowrap' }}
+                            >
+                              {extraTopics.includes(item) ? '✓ Added' : '+ Key topics'}
+                            </button>
                             <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
                               <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                             </button>
@@ -2288,6 +2294,12 @@ Everything you write is end-to-end encrypted and private.`,
                           <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
                             <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
                             <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                            <button
+                              onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
+                              style={{ background: 'none', border: 'none', cursor: extraTopics.includes(item) ? 'default' : 'pointer', padding: '2px 4px', flexShrink: 0, fontSize: '11px', fontWeight: '500', color: extraTopics.includes(item) ? '#c4b5fd' : '#9333ea', whiteSpace: 'nowrap' }}
+                            >
+                              {extraTopics.includes(item) ? '✓ Added' : '+ Key topics'}
+                            </button>
                             <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
                               <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                             </button>
@@ -2541,10 +2553,10 @@ Everything you write is end-to-end encrypted and private.`,
                             onClick={() => {
                               if (editingTopics) {
                                 const items = tempTopics.split('\n').map(s => s.trim()).filter(Boolean);
-                                setAnalysis(prev => ({ ...prev, themes: items }));
+                                setExtraTopics(items);
                                 setEditingTopics(false);
                               } else {
-                                setTempTopics((analysis.themes || []).join('\n'));
+                                setTempTopics(extraTopics.join('\n'));
                                 setEditingTopics(true);
                               }
                             }}
@@ -2561,29 +2573,31 @@ Everything you write is end-to-end encrypted and private.`,
                             style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', resize: 'none', background: 'white', color: '#581c87', height: '120px', lineHeight: '1.6', boxSizing: 'border-box' }}
                           />
                         ) : (
-                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          {[...(analysis.themes || []), ...extraTopics].map((theme, i) => (
-                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
-                              <input
-                                type="checkbox"
-                                id={`topic-${i}`}
-                                checked={checkedTopics.has(i)}
-                                onChange={() => setCheckedTopics(prev => {
-                                  const next = new Set(prev);
-                                  next.has(i) ? next.delete(i) : next.add(i);
-                                  return next;
-                                })}
-                                style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
-                              />
-                              <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none', flex: 1 }}>
-                                {theme}
-                              </label>
-                              {i >= (analysis.themes?.length || 0) && (
-                                <button onClick={() => setExtraTopics(prev => prev.filter((_, j) => j !== i - (analysis.themes?.length || 0)))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}>×</button>
-                              )}
-                            </li>
-                          ))}
-                        </ul>
+                        <>{extraTopics.length > 0 ? (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {extraTopics.map((theme, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
+                                <input
+                                  type="checkbox"
+                                  id={`topic-${i}`}
+                                  checked={checkedTopics.has(i)}
+                                  onChange={() => setCheckedTopics(prev => {
+                                    const next = new Set(prev);
+                                    next.has(i) ? next.delete(i) : next.add(i);
+                                    return next;
+                                  })}
+                                  style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
+                                />
+                                <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none', flex: 1 }}>
+                                  {theme}
+                                </label>
+                                <button onClick={() => setExtraTopics(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}>×</button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0' }}>No topics yet — add one below or move from Patterns.</p>
+                        )}</>
                         )}
                         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                           <input
