@@ -1726,6 +1726,14 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   )}
 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
+                      <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '500' }}>{entries.length} {entries.length === 1 ? 'entry' : 'entries'}</span>
+                      <span style={{ fontSize: '13px', color: '#9ca3af' }}>·</span>
+                      <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '500' }}>{realHistory.length} {realHistory.length === 1 ? 'session' : 'sessions'}</span>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
@@ -2481,7 +2489,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["pre", "Prep for Session"],
-                ["post", "Reflect on Session"],
+                ["post", "Log Session"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2683,6 +2691,23 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
+                {/* AFTER SESSION EXPLAINER */}
+                {!loading && analysis && (
+                  <div style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>💬</span>
+                    <div>
+                      <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 8px 0', lineHeight: '1.5', fontWeight: '500' }}>After your session</p>
+                      <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 12px 0', lineHeight: '1.5' }}>Come back and log what you covered so you can track your progress over time.</p>
+                      <button
+                        onClick={() => setSessionView('post')}
+                        style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        Log Session →
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* LAST SESSION */}
                 {!loading && lastSnapshot && (
                   <div style={{
@@ -2806,13 +2831,21 @@ Everything you write is end-to-end encrypted and private.`,
                         />
                       </div>
 
+                      <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <span style={{ fontSize: '16px', flexShrink: 0 }}>📋</span>
+                        <div>
+                          <p style={{ fontSize: '13px', color: '#6b21a8', margin: '0 0 4px 0', lineHeight: '1.5', fontWeight: '500' }}>What gets saved</p>
+                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>Your session notes, key topics, and opening statement will be archived so you can recall them before your next session.</p>
+                        </div>
+                      </div>
+
                       <button
                         onClick={moveToArchive}
                         disabled={!notes}
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: notes ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: notes ? '#7c3aed' : '#d1d5db', color: 'white', width: '100%', opacity: notes ? 1 : 0.5 }}
                       >
                         <ArrowRight size={20} />
-                        Save to Log
+                        Save to Session Log
                       </button>
 
                       <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
@@ -2822,15 +2855,6 @@ Everything you write is end-to-end encrypted and private.`,
                         </svg>
                         <span>Your session notes are private and secure.</span>
                       </div>
-
-                      {realHistory.length === 0 && (
-                        <div style={{ marginTop: '12px', padding: '12px 14px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                          <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
-                          <p style={{ fontSize: '13px', color: '#6b21a8', margin: 0, lineHeight: '1.5' }}>
-                            Logging a session saves your patterns and session prep so you can pick up where you left off next time.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
