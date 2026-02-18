@@ -81,6 +81,13 @@ export default function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
+  // Onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(1);
+  const [therapyDay, setTherapyDay] = useState('');
+  const [therapyTime, setTherapyTime] = useState('');
+  const [onboardingEntry, setOnboardingEntry] = useState('');
+
   const streak = useMemo(() => {
     const toLocalDateStr = (d) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -216,9 +223,9 @@ export default function App() {
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
       sessionStorage.setItem('encKey', encKey);
-      setTab("journal");
-      setJournalView("log");
-      setShowWelcome(true);
+      setTab("home");
+      setShowOnboarding(true);
+      setOnboardingStep(1);
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -452,6 +459,11 @@ Everything you write is end-to-end encrypted and private.`,
 
         const sp = currentUser.get("savedPrompts");
         if (Array.isArray(sp)) setSavedPrompts(sp);
+
+        const td = currentUser.get("therapyDay");
+        const tt = currentUser.get("therapyTime");
+        if (td) setTherapyDay(td);
+        if (tt) setTherapyTime(tt);
 
         setLastAnalyzedEntries([]);
       } catch (err) {
@@ -866,9 +878,212 @@ Everything you write is end-to-end encrypted and private.`,
     );
   }
 
+  // ── ONBOARDING OVERLAY ──────────────────────────────────────────────────────
+  const saveTherapySchedule = async (day, time) => {
+    if (currentUser && Parse) {
+      currentUser.set("therapyDay", day);
+      currentUser.set("therapyTime", time);
+      await currentUser.save().catch(() => {});
+    }
+    setTherapyDay(day);
+    setTherapyTime(time);
+  };
+
+  const finishOnboarding = async (firstEntryText) => {
+    if (firstEntryText && firstEntryText.trim()) {
+      const n = {
+        id: Date.now(),
+        date: getDate(),
+        text: firstEntryText.trim(),
+        prompt: "",
+        timestamp: new Date().toISOString(),
+      };
+      try {
+        await createEntry(n);
+        setEntries(await fetchEntries());
+      } catch (err) {
+        console.error("First entry save failed:", err);
+      }
+    }
+    if (currentUser && Parse) {
+      currentUser.set("onboardingComplete", true);
+      currentUser.save().catch(() => {});
+    }
+    setShowOnboarding(false);
+    setOnboardingEntry('');
+  };
+
+  if (showOnboarding) {
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const TIMES = ['7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+      '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM', '7:00 PM', '8:00 PM', '9:00 PM'];
+
+    const stepContent = () => {
+      if (onboardingStep === 1) {
+        return (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <div style={{ fontSize: '40px', marginBottom: '12px' }}>👋</div>
+              <h2 style={{ fontSize: '26px', fontWeight: '400', color: '#581c87', margin: '0 0 10px 0', fontFamily: "'Crimson Pro', serif" }}>
+                Welcome to between
+              </h2>
+              <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0, lineHeight: '1.6' }}>
+                A private space to process what comes up between therapy sessions.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '32px' }}>
+              {[
+                { icon: '📝', title: 'Write between sessions', desc: 'Capture thoughts, feelings, and moments as they arise — not just before your appointment.' },
+                { icon: '✨', title: 'Discover patterns', desc: 'After a few entries, AI surfaces themes and what you might be avoiding.' },
+                { icon: '💬', title: 'Prep for therapy', desc: 'Get a suggested opening statement and key topics to bring into the room.' },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', background: 'rgba(147,51,234,0.05)', border: '1px solid rgba(147,51,234,0.12)', borderRadius: '14px', padding: '16px' }}>
+                  <div style={{ fontSize: '24px', flexShrink: 0, lineHeight: 1 }}>{icon}</div>
+                  <div>
+                    <div style={{ fontWeight: '600', color: '#581c87', fontSize: '15px', marginBottom: '4px' }}>{title}</div>
+                    <div style={{ fontSize: '14px', color: '#7c3aed', lineHeight: '1.5' }}>{desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setOnboardingStep(2)}
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 16px rgba(147,51,234,0.35)' }}
+            >
+              Get Started →
+            </button>
+          </div>
+        );
+      }
+
+      if (onboardingStep === 2) {
+        return (
+          <div>
+            <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+              <div style={{ fontSize: '36px', marginBottom: '10px' }}>🗓️</div>
+              <h2 style={{ fontSize: '24px', fontWeight: '400', color: '#581c87', margin: '0 0 8px 0', fontFamily: "'Crimson Pro', serif" }}>
+                When is your therapy session?
+              </h2>
+              <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, lineHeight: '1.5' }}>
+                We'll personalize your home screen based on where you are in the week.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '28px' }}>
+              <div>
+                <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                  Day of the week
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {DAYS.map(d => (
+                    <button
+                      key={d}
+                      onClick={() => setTherapyDay(d)}
+                      style={{ padding: '8px 16px', borderRadius: '20px', border: '2px solid', borderColor: therapyDay === d ? '#9333ea' : '#e9d5ff', background: therapyDay === d ? '#9333ea' : 'white', color: therapyDay === d ? 'white' : '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s' }}
+                    >
+                      {d.slice(0, 3)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                  Approximate time <span style={{ color: '#9ca3af', fontWeight: '400' }}>(optional)</span>
+                </label>
+                <select
+                  value={therapyTime}
+                  onChange={e => setTherapyTime(e.target.value)}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87', cursor: 'pointer' }}
+                >
+                  <option value="">Select a time...</option>
+                  {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <button
+              onClick={async () => {
+                if (therapyDay) await saveTherapySchedule(therapyDay, therapyTime);
+                setOnboardingStep(3);
+              }}
+              style={{ width: '100%', padding: '14px', background: therapyDay ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: therapyDay ? 'pointer' : 'not-allowed', boxShadow: therapyDay ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
+            >
+              Continue →
+            </button>
+            <button
+              onClick={() => setOnboardingStep(3)}
+              style={{ width: '100%', padding: '10px', background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '14px', cursor: 'pointer' }}
+            >
+              Skip for now
+            </button>
+          </div>
+        );
+      }
+
+      // Step 3: First entry
+      return (
+        <div>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <div style={{ fontSize: '36px', marginBottom: '10px' }}>✏️</div>
+            <h2 style={{ fontSize: '24px', fontWeight: '400', color: '#581c87', margin: '0 0 8px 0', fontFamily: "'Crimson Pro', serif" }}>
+              Write your first entry
+            </h2>
+            <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, lineHeight: '1.5' }}>
+              What's on your mind right now? There's no right or wrong way to start.
+            </p>
+          </div>
+
+          <textarea
+            value={onboardingEntry}
+            onChange={e => setOnboardingEntry(e.target.value)}
+            placeholder="I've been thinking about..."
+            autoFocus
+            style={{ width: '100%', padding: '14px 16px', borderRadius: '14px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.9)', color: '#581c87', height: '180px', marginBottom: '16px', lineHeight: '1.6' }}
+          />
+
+          <button
+            onClick={() => finishOnboarding(onboardingEntry)}
+            disabled={!onboardingEntry.trim()}
+            style={{ width: '100%', padding: '14px', background: onboardingEntry.trim() ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: onboardingEntry.trim() ? 'pointer' : 'not-allowed', boxShadow: onboardingEntry.trim() ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
+          >
+            Save & Start Journaling
+          </button>
+          <button
+            onClick={() => finishOnboarding('')}
+            style={{ width: '100%', padding: '10px', background: 'transparent', color: '#9ca3af', border: 'none', fontSize: '14px', cursor: 'pointer' }}
+          >
+            Skip for now
+          </button>
+        </div>
+      );
+    };
+
+    return (
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', zIndex: 10000, overflowY: 'auto' }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400&family=Work+Sans:wght@400;500&display=swap');
+          * { font-family: 'Work Sans', sans-serif; box-sizing: border-box; }
+          h1, h2, h3 { font-family: 'Crimson Pro', serif; }
+        `}</style>
+        <div style={{ background: 'rgba(255,255,255,0.95)', borderRadius: '24px', padding: '40px', maxWidth: '480px', width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.12)', position: 'relative' }}>
+          {/* Step indicator */}
+          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', marginBottom: '28px' }}>
+            {[1, 2, 3].map(s => (
+              <div key={s} style={{ width: s === onboardingStep ? '24px' : '8px', height: '8px', borderRadius: '4px', background: s <= onboardingStep ? '#9333ea' : '#e9d5ff', transition: 'all 0.3s' }} />
+            ))}
+          </div>
+          {stepContent()}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="app-wrapper" style={{ 
-      minHeight: '100vh', 
+    <div className="app-wrapper" style={{
+      minHeight: '100vh',
       background: '#f3e8ff',
       padding: '24px',
       display: 'flex',
@@ -1085,6 +1300,44 @@ Everything you write is end-to-end encrypted and private.`,
             return `${days}d ago`;
           })() : null;
 
+          const realEntryCount = entries.filter(e => !e.isWelcomeEntry).length;
+
+          // Today's Focus — days until therapy
+          const todaysFocus = (() => {
+            if (!therapyDay) return null;
+            const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const todayIdx = new Date().getDay();
+            const therapyIdx = DAYS.indexOf(therapyDay);
+            const diff = (therapyIdx - todayIdx + 7) % 7;
+            const daysUntil = diff;
+            if (daysUntil === 0) {
+              return { icon: '🗓️', label: 'Session today', message: 'Your therapy session is today — review what you want to bring into the room.', cta: 'Prep for Session', action: () => { setTab('sessions'); setSessionView('pre'); }, urgent: true };
+            } else if (daysUntil === 1) {
+              return { icon: '📅', label: 'Session tomorrow', message: 'Session tomorrow — a good moment to reflect and prepare.', cta: 'Start Prepping', action: () => { setTab('sessions'); setSessionView('pre'); }, urgent: false };
+            } else if (daysUntil <= 3) {
+              return { icon: '✍️', label: `${daysUntil} days until session`, message: `Session in ${daysUntil} days. Keep capturing what comes up.`, cta: 'Write Entry', action: () => { setTab('journal'); setJournalView('write'); }, urgent: false };
+            } else {
+              return { icon: '📝', label: `${daysUntil} days until session`, message: `You have time to journal freely before your next session.`, cta: 'Write Entry', action: () => { setTab('journal'); setJournalView('write'); }, urgent: false };
+            }
+          })();
+
+          // Next action suggestion based on entry count
+          const nextAction = (() => {
+            if (realEntryCount === 0) return { msg: "Write your first entry to get started", cta: "Write Now", action: () => { setTab('journal'); setJournalView('write'); } };
+            if (realEntryCount === 1) return { msg: "Write 2 more entries to unlock pattern analysis", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
+            if (realEntryCount === 2) return { msg: "One more entry to unlock Patterns!", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
+            if (realEntryCount === 3) return { msg: "Patterns unlocked! See what themes are emerging.", cta: "View Patterns", action: () => setTab('patterns') };
+            if (realEntryCount >= 5 && history.length === 0) return { msg: "You have enough entries to prep for your next session.", cta: "Prep for Session", action: () => { setTab('sessions'); setSessionView('pre'); } };
+            return null;
+          })();
+
+          // Progress milestone
+          const milestones = [3, 10, 30, 100];
+          const nextMilestone = milestones.find(m => realEntryCount < m) ?? null;
+          const prevMilestone = nextMilestone ? (milestones[milestones.indexOf(nextMilestone) - 1] ?? 0) : null;
+          const milestoneProgress = nextMilestone ? Math.min(100, ((realEntryCount - prevMilestone) / (nextMilestone - prevMilestone)) * 100) : 100;
+          const milestoneName = nextMilestone === 3 ? 'Unlock Patterns' : nextMilestone === 10 ? '10 Entries' : nextMilestone === 30 ? '30 Entries' : nextMilestone === 100 ? '100 Entries' : null;
+
           return (
             <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
@@ -1095,6 +1348,23 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
                 <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0 }}>{todayPrompt}</p>
               </div>
+
+              {/* Today's Focus card */}
+              {todaysFocus && (
+                <div style={{ background: todaysFocus.urgent ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${todaysFocus.urgent ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <span style={{ fontSize: '28px', flexShrink: 0 }}>{todaysFocus.icon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>{todaysFocus.label}</div>
+                    <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 10px 0', lineHeight: '1.5' }}>{todaysFocus.message}</p>
+                    <button
+                      onClick={todaysFocus.action}
+                      style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                    >
+                      {todaysFocus.cta} →
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Primary CTA */}
               <button
@@ -1123,7 +1393,7 @@ Everything you write is end-to-end encrypted and private.`,
                 Write Journal Entry
               </button>
 
-              {/* Secondary CTA — voice (paid only) */}
+              {/* Secondary CTA — voice */}
               {isPaidSubscriber && (
                 <button
                   onClick={() => { setTab('journal'); setJournalView('write'); }}
@@ -1148,6 +1418,35 @@ Everything you write is end-to-end encrypted and private.`,
                 >
                   🎤 Start Voice Entry
                 </button>
+              )}
+
+              {/* Next action suggestion */}
+              {nextAction && (
+                <div style={{ background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '14px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '20px' }}>💡</span>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: '#581c87', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>{nextAction.msg}</p>
+                    <button
+                      onClick={nextAction.action}
+                      style={{ padding: '6px 14px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '16px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                    >
+                      {nextAction.cta} →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress milestone bar */}
+              {milestoneName && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#7c3aed' }}>{milestoneName}</span>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{realEntryCount} / {nextMilestone}</span>
+                  </div>
+                  <div style={{ height: '6px', background: '#e9d5ff', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${milestoneProgress}%`, background: 'linear-gradient(90deg, #9333ea, #c084fc)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
+                  </div>
+                </div>
               )}
 
               {/* Tertiary actions */}
@@ -1183,9 +1482,19 @@ Everything you write is end-to-end encrypted and private.`,
                     {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''} in a row` : 'Start your streak today'}
                   </span>
                 </div>
-                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {entries.length} entries</span>
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {realEntryCount} entries</span>
                 {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
               </div>
+
+              {/* Therapy schedule nudge if not set */}
+              {!therapyDay && realEntryCount > 0 && (
+                <button
+                  onClick={() => { setShowOnboarding(true); setOnboardingStep(2); }}
+                  style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px dashed #c084fc', borderRadius: '14px', color: '#7c3aed', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  📅 Add your therapy schedule for personalized guidance
+                </button>
+              )}
 
             </div>
           );
@@ -1326,9 +1635,9 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 </div>
 
-                <div style={{ 
-                  padding: '16px', 
-                  background: 'rgba(147,51,234,0.05)', 
+                <div style={{
+                  padding: '16px',
+                  background: 'rgba(147,51,234,0.05)',
                   borderRadius: '12px',
                   border: '1px solid rgba(147,51,234,0.1)'
                 }}>
@@ -1337,6 +1646,21 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                   <div style={{ fontSize: '16px', color: '#581c87' }}>
                     {history.length} {history.length === 1 ? 'session' : 'sessions'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '16px', background: 'rgba(147,51,234,0.05)', borderRadius: '12px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>Therapy Schedule</div>
+                    <button
+                      onClick={() => { setShowOnboarding(true); setOnboardingStep(2); }}
+                      style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '2px 6px' }}
+                    >
+                      {therapyDay ? 'Edit' : 'Set'}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '16px', color: '#581c87' }}>
+                    {therapyDay ? `${therapyDay}${therapyTime ? ` at ${therapyTime}` : ''}` : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
                   </div>
                 </div>
               </div>
