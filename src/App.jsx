@@ -69,6 +69,12 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [tempStmt, setTempStmt] = useState("");
+  const [extraTopics, setExtraTopics] = useState([]);
+  const [newTopicInput, setNewTopicInput] = useState('');
+  const [editingQuestions, setEditingQuestions] = useState(false);
+  const [tempQuestions, setTempQuestions] = useState('');
+  const [editingAvoiding, setEditingAvoiding] = useState(false);
+  const [tempAvoiding, setTempAvoiding] = useState('');
   const [showAdmin, setShowAdmin] = useState(false);
   const [logFilter, setLogFilter] = useState("all"); // "all", "entries", "snapshots"
   const [favoritedPatterns, setFavoritedPatterns] = useState([]); // [{text, favoritedAt}]
@@ -333,6 +339,7 @@ export default function App() {
       openingStatement: decryptText(o.get("openingStatement") ?? "", userEncryptionKey),
       notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
       nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
+      isExampleSnapshot: o.get("isExampleSnapshot") ?? false,
     }));
   }
 
@@ -350,6 +357,7 @@ export default function App() {
     obj.set("openingStatement", encryptText(payload.openingStatement ?? "", userEncryptionKey));
     obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
+    if (payload.isExampleSnapshot) obj.set("isExampleSnapshot", true);
     const saved = await obj.save();
     return { ...payload, parseId: saved.id };
   }
@@ -400,6 +408,29 @@ export default function App() {
         if (oldWelcome.length > 0) {
           await Promise.all(oldWelcome.map(entry => deleteEntry(entry.parseId).catch(() => {})));
         }
+        // Create example session snapshot for brand-new users (no snapshots yet)
+        let finalSnapshots = s;
+        if (s.length === 0) {
+          const exampleSnap = {
+            id: Date.now() - 1000,
+            sessionDate: (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
+            timestamp: new Date(Date.now() - 7 * 24 * 3600000).toISOString(),
+            themes: ["Managing anxiety in social situations", "Work-life balance and boundaries", "Communicating needs in relationships"],
+            avoiding: ["Difficult conversation with a family member", "Setting limits at work"],
+            questions: ["What does a good boundary actually feel like for you?", "What would you do differently if you weren't afraid of the outcome?"],
+            openingStatement: "I think what I'd like to talk about today is the anxiety I feel in social situations and whether it's connected to my difficulty setting boundaries.",
+            notes: "",
+            nextSteps: "Notice when you feel the urge to say yes when you mean no.",
+            isExampleSnapshot: true,
+          };
+          try {
+            await createSnapshot(exampleSnap);
+            finalSnapshots = await fetchSnapshots();
+          } catch (err) {
+            console.error("Example snapshot failed:", err);
+          }
+        }
+
         // Create welcome entry for brand-new users (no real entries)
         let finalEntries = realEntries;
         if (realEntries.length === 0) {
@@ -439,7 +470,7 @@ Everything you write is end-to-end encrypted and private.`,
           }
         }
         setEntries(finalEntries);
-        setHistory(s);
+        setHistory(finalSnapshots);
 
         if (savedAnalysis) {
           setAnalysis(savedAnalysis);
@@ -621,9 +652,9 @@ Everything you write is end-to-end encrypted and private.`,
   };
 
   const handleGeneratePrompt = async () => {
-    if (!isPaidSubscriber || !history || history.length === 0) return;
+    if (!isPaidSubscriber || !realHistory || realHistory.length === 0) return;
 
-    const lastSnapshot = history[0];
+    const lastSnapshot = realHistory[0];
     setLoading(true);
     try {
       const result = await Parse.Cloud.run("generateJournalPrompt", {
@@ -701,7 +732,8 @@ Everything you write is end-to-end encrypted and private.`,
     );
   }, [entries, history]);
 
-  const lastSnapshot = history?.[0] ?? null;
+  const realHistory = history.filter(h => !h.isExampleSnapshot);
+  const lastSnapshot = realHistory[0] ?? history[0] ?? null;
 
   if (!currentUser) {
     return (
@@ -1331,7 +1363,7 @@ Everything you write is end-to-end encrypted and private.`,
             if (realEntryCount === 1) return { msg: "Write 2 more entries to unlock pattern analysis", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
             if (realEntryCount === 2) return { msg: "One more entry to unlock Patterns!", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
             if (realEntryCount === 3) return { msg: "Patterns unlocked! See what themes are emerging.", cta: "View Patterns", action: () => setTab('patterns') };
-            if (realEntryCount >= 5 && history.length === 0) return { msg: "You have enough entries to prep for your next session.", cta: "Prep for Session", action: () => { setTab('sessions'); setSessionView('pre'); } };
+            if (realEntryCount >= 5 && realHistory.length === 0) return { msg: "You have enough entries to prep for your next session.", cta: "Prep for Session", action: () => { setTab('sessions'); setSessionView('pre'); } };
             return null;
           })();
 
@@ -1355,9 +1387,9 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* Today's Focus card */}
               {todaysFocus && (
-                <div style={{ background: todaysFocus.urgent ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${todaysFocus.urgent ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ background: todaysFocus.urgent ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${todaysFocus.urgent ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '14px', overflow: 'hidden' }}>
                   <span style={{ fontSize: '28px', flexShrink: 0 }}>{todaysFocus.icon}</span>
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                     <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>{todaysFocus.label}</div>
                     <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 10px 0', lineHeight: '1.5' }}>{todaysFocus.message}</p>
                     <button
@@ -1386,8 +1418,8 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {/* Progress milestone bar — only show when < 4 entries */}
-              {milestoneName && realEntryCount < 4 && (
+              {/* Progress milestone bar — only show when < 3 entries */}
+              {milestoneName && realEntryCount < 3 && (
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span style={{ fontSize: '12px', fontWeight: '500', color: '#7c3aed' }}>{milestoneName}</span>
@@ -1647,12 +1679,6 @@ Everything you write is end-to-end encrypted and private.`,
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <button
-                        onClick={() => setJournalView('write')}
-                        style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: 0 }}
-                      >
-                        ← Write Entry
-                      </button>
                       <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Log</h2>
                     </div>
                     <div style={{ display: 'flex', gap: '6px' }}>
@@ -2021,7 +2047,7 @@ Everything you write is end-to-end encrypted and private.`,
                   {/* Generate Journaling Prompt + My Prompts */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                     {(() => {
-                      const noSession = !history || history.length === 0;
+                      const noSession = !realHistory || realHistory.length === 0;
                       return (
                         <button
                           onClick={noSession ? undefined : handleGeneratePrompt}
@@ -2047,6 +2073,12 @@ Everything you write is end-to-end encrypted and private.`,
                         </button>
                       );
                     })()}
+                    {realHistory.length === 0 && (
+                      <div style={{ width: '100%', marginTop: '8px', padding: '10px 14px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '10px', fontSize: '13px', color: '#92400e', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                        <span style={{ flexShrink: 0 }}>💡</span>
+                        <span>Log your first session to generate a session snapshot and unlock custom journal prompts.</span>
+                      </div>
+                    )}
                     <button
                       onClick={() => setShowMyPrompts(p => !p)}
                       style={{
@@ -2363,7 +2395,7 @@ Everything you write is end-to-end encrypted and private.`,
               </div>
             )}
 
-            {analysis && !loading && history.length === 0 && (
+            {analysis && !loading && realHistory.length === 0 && (
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px' }}>
                 <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
                 <div>
@@ -2512,64 +2544,133 @@ Everything you write is end-to-end encrypted and private.`,
 
                       <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
 
-                      {/* Key Topics — checkboxes */}
-                      {analysis.themes?.length > 0 && (
+                      {/* Key Topics — checkboxes + custom add */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                          Key Topics to Cover
+                        </div>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {[...(analysis.themes || []), ...extraTopics].map((theme, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
+                              <input
+                                type="checkbox"
+                                id={`topic-${i}`}
+                                checked={checkedTopics.has(i)}
+                                onChange={() => setCheckedTopics(prev => {
+                                  const next = new Set(prev);
+                                  next.has(i) ? next.delete(i) : next.add(i);
+                                  return next;
+                                })}
+                                style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
+                              />
+                              <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none', flex: 1 }}>
+                                {theme}
+                              </label>
+                              {i >= (analysis.themes?.length || 0) && (
+                                <button onClick={() => setExtraTopics(prev => prev.filter((_, j) => j !== i - (analysis.themes?.length || 0)))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}>×</button>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                          <input
+                            type="text"
+                            value={newTopicInput}
+                            onChange={e => setNewTopicInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
+                            placeholder="+ Add a topic..."
+                            style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px dashed #c084fc', outline: 'none', fontSize: '14px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                          />
+                          <button
+                            onClick={() => { if (newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
+                            style={{ padding: '8px 14px', borderRadius: '10px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
+
+                      {/* Questions — editable */}
+                      {(analysis.questions?.length > 0 || editingQuestions) && (
                         <div style={{ marginBottom: '20px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                            Key Topics to Cover
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              Questions to Explore
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (editingQuestions) {
+                                  const items = tempQuestions.split('\n').map(s => s.trim()).filter(Boolean);
+                                  setAnalysis(prev => ({ ...prev, questions: items }));
+                                  setEditingQuestions(false);
+                                } else {
+                                  setTempQuestions((analysis.questions || []).join('\n'));
+                                  setEditingQuestions(true);
+                                }
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+                            >
+                              <Edit2 size={12} />{editingQuestions ? 'Save' : 'Edit'}
+                            </button>
                           </div>
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {analysis.themes.map((theme, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
-                                <input
-                                  type="checkbox"
-                                  id={`topic-${i}`}
-                                  checked={checkedTopics.has(i)}
-                                  onChange={() => setCheckedTopics(prev => {
-                                    const next = new Set(prev);
-                                    next.has(i) ? next.delete(i) : next.add(i);
-                                    return next;
-                                  })}
-                                  style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
-                                />
-                                <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none' }}>
-                                  {theme}
-                                </label>
-                              </li>
-                            ))}
-                          </ul>
+                          {editingQuestions ? (
+                            <textarea
+                              value={tempQuestions}
+                              onChange={e => setTempQuestions(e.target.value)}
+                              placeholder="One question per line"
+                              style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', resize: 'none', background: 'white', color: '#581c87', height: '120px', lineHeight: '1.6', boxSizing: 'border-box' }}
+                            />
+                          ) : (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {analysis.questions.map((q, i) => (
+                                <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>• {q}</li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       )}
 
                       <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
 
-                      {/* Questions */}
-                      {analysis.questions?.length > 0 && (
-                        <div style={{ marginBottom: '20px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                            Questions to Explore
-                          </div>
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {analysis.questions.map((q, i) => (
-                              <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>• {q}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
-
-                      {/* Insights */}
-                      {analysis.avoiding?.length > 0 && (
+                      {/* Insights — editable */}
+                      {(analysis.avoiding?.length > 0 || editingAvoiding) && (
                         <div>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
-                            What You Noticed This Week
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              What You Noticed This Week
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (editingAvoiding) {
+                                  const items = tempAvoiding.split('\n').map(s => s.trim()).filter(Boolean);
+                                  setAnalysis(prev => ({ ...prev, avoiding: items }));
+                                  setEditingAvoiding(false);
+                                } else {
+                                  setTempAvoiding((analysis.avoiding || []).join('\n'));
+                                  setEditingAvoiding(true);
+                                }
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+                            >
+                              <Edit2 size={12} />{editingAvoiding ? 'Save' : 'Edit'}
+                            </button>
                           </div>
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {analysis.avoiding.map((insight, i) => (
-                              <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>✓ {insight}</li>
-                            ))}
-                          </ul>
+                          {editingAvoiding ? (
+                            <textarea
+                              value={tempAvoiding}
+                              onChange={e => setTempAvoiding(e.target.value)}
+                              placeholder="One item per line"
+                              style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', resize: 'none', background: 'white', color: '#581c87', height: '100px', lineHeight: '1.6', boxSizing: 'border-box' }}
+                            />
+                          ) : (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {analysis.avoiding.map((insight, i) => (
+                                <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>✓ {insight}</li>
+                              ))}
+                            </ul>
+                          )}
                         </div>
                       )}
 
@@ -2603,22 +2704,31 @@ Everything you write is end-to-end encrypted and private.`,
                             {formatDate(lastSnapshot?.sessionDate || getDate())}
                           </div>
                         </div>
-                        <div>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            What you talked about
+                        {lastSnapshot?.themes?.length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Key Themes
+                            </div>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {lastSnapshot.themes.map((t, i) => (
+                                <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
+                                  {t}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
-                          <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {lastSnapshot?.notes || "—"}
-                          </p>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Next steps
+                        )}
+                        {lastSnapshot?.nextSteps && (
+                          <div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                              Next Steps
+                            </div>
+                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                              {lastSnapshot.nextSteps}
+                            </p>
                           </div>
-                          <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '15px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                            {lastSnapshot?.nextSteps || "—"}
-                          </p>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -2708,7 +2818,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <span>Your session notes are private and secure.</span>
                       </div>
 
-                      {history.length === 0 && (
+                      {realHistory.length === 0 && (
                         <div style={{ marginTop: '12px', padding: '12px 14px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                           <span style={{ fontSize: '16px', flexShrink: 0 }}>💡</span>
                           <p style={{ fontSize: '13px', color: '#6b21a8', margin: 0, lineHeight: '1.5' }}>
