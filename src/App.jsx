@@ -2264,8 +2264,8 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: extraTopics.includes(item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); setTab('sessions'); setSessionView('pre'); }}
+                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
                                 {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
@@ -2306,8 +2306,8 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); }}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: extraTopics.includes(item) ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); setTab('sessions'); setSessionView('pre'); }}
+                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
                                 {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}

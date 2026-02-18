@@ -199,6 +199,43 @@ export default function AdminDashboard({ onExit }) {
         </div>
       </div>
 
+      {/* Recent Activity Leaderboard */}
+      <div style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>Recent Activity</h3>
+        {!s.recentActivity || s.recentActivity.length === 0 ? (
+          <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>No recent activity.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #e9d5ff' }}>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>#</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>User</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>Action</th>
+                  <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: '12px', fontWeight: '500', color: '#6b7280' }}>When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {s.recentActivity.map((item, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '10px 12px', color: '#9ca3af', fontSize: '13px' }}>{i + 1}</td>
+                    <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{item.email}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: '20px', background: item.type === 'entry' ? '#f3e8ff' : '#ede9fe', color: item.type === 'entry' ? '#7c3aed' : '#6d28d9', fontWeight: '500' }}>
+                        {item.type === 'entry' ? '📝 Journal entry' : '🗓️ Session logged'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: '13px' }}>
+                      {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={fetchStats}
         style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', background: '#9333ea', color: 'white', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -341,12 +378,22 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     });
   }
 
+  // Recent activity — last 10 events across all users
+  const recentActivity = [
+    ...allEntries
+      .filter(e => !e.get("isWelcomeEntry"))
+      .map(e => ({ type: 'entry', email: e.get("user")?.get("username") || 'Unknown', createdAt: e.createdAt.toISOString() })),
+    ...allSessions
+      .filter(s => !s.get("isExampleSnapshot"))
+      .map(s => ({ type: 'session', email: s.get("user")?.get("username") || 'Unknown', createdAt: s.createdAt.toISOString() })),
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 10);
+
   return {
     totalUsers, newSignups7d, newSignups30d,
     activeUsers7d: activeIds7d.size, activeUsers30d: activeIds30d.size,
     totalEntries, entriesLast7Days, entriesLast30Days,
     totalSessions, sessionsLast7Days,
     engagementRate, avgEntriesPerUser, medianEntriesPerUser,
-    retentionRate7d, retentionRate30d, topUsers, newUsers7dList, dailyData,
+    retentionRate7d, retentionRate30d, topUsers, newUsers7dList, dailyData, recentActivity,
   };
 });`;
