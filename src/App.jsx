@@ -1675,10 +1675,7 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', margin: 0 }}>Log</h2>
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
                       {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
                         <button
@@ -1992,13 +1989,6 @@ Everything you write is end-to-end encrypted and private.`,
               ) : (
                 <div className="mobile-card" style={{ position: 'relative', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
 
-                  {/* View Log link — top-right */}
-                  <button
-                    onClick={() => setJournalView('log')}
-                    style={{ position: 'absolute', top: '20px', right: '24px', background: 'none', border: 'none', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                  >
-                    View Log ({entries.length + history.length}) →
-                  </button>
 
                   <div style={{ marginBottom: '24px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
@@ -2214,17 +2204,7 @@ Everything you write is end-to-end encrypted and private.`,
                   </p>
                 )}
               </div>
-            ) : (
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={genAnalysis}
-                  disabled={loading}
-                  style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
-                >
-                  <RefreshCw size={14} />Refresh Analysis
-                </button>
-              </div>
-            )}
+            ) : null}
 
             {analysis?.showNewEntryWarning && !loading && (
               <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#92400e' }}>
@@ -2233,7 +2213,14 @@ Everything you write is end-to-end encrypted and private.`,
             )}
 
             {analysis && !loading && (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+              <div style={{ position: 'relative', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                <button
+                  onClick={genAnalysis}
+                  disabled={loading}
+                  style={{ position: 'absolute', top: '20px', right: '20px', background: '#9333ea', border: 'none', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '20px' }}
+                >
+                  <RefreshCw size={12} />Refresh
+                </button>
                 <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
                   {/* Entry count info */}
                   {analysisTimestamp && (() => {
@@ -2653,7 +2640,7 @@ Everything you write is end-to-end encrypted and private.`,
                               What You Covered
                             </div>
                             <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).map((line, i) => (
+                              {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
                                 <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                   <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
                                   {line}
