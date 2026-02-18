@@ -67,6 +67,7 @@ export default function App() {
   const [notes, setNotes] = useState("");
   const [nextSteps, setNextSteps] = useState("");
   const [editStmt, setEditStmt] = useState(false);
+  const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [tempStmt, setTempStmt] = useState("");
   const [showAdmin, setShowAdmin] = useState(false);
   const [logFilter, setLogFilter] = useState("all"); // "all", "entries", "snapshots"
@@ -556,6 +557,7 @@ Everything you write is end-to-end encrypted and private.`,
       }));
       setAnalysisTimestamp(new Date().toISOString());
       setLastAnalyzedEntries(entriesHash);
+      setCheckedTopics(new Set());
       
       await saveAnalysisToUser(newAnalysis);
     } catch (error) {
@@ -2130,8 +2132,8 @@ Everything you write is end-to-end encrypted and private.`,
             {/* Sub-tabs: Pre-Session | Post-Session */}
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
-                ["pre", "Pre-Session"],
-                ["post", "Post-Session"],
+                ["pre", "Prep for Session"],
+                ["post", "Reflect on Session"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2189,7 +2191,7 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
-                {/* SESSION STARTER */}
+                {/* SESSION PLAN */}
                 {!loading && analysis && (
                   <div style={{
                     background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
@@ -2199,114 +2201,122 @@ Everything you write is end-to-end encrypted and private.`,
                     boxShadow: '0 4px 16px rgba(147,51,234,0.1)'
                   }}>
                     <div style={{ padding: '32px' }}>
-                      <div>
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: '16px'
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Sparkles size={20} style={{ color: '#9333ea' }} />
-                              <h3 style={{
-                                fontSize: '20px',
-                                fontWeight: '500',
-                                color: '#581c87',
-                                margin: 0
-                              }}>
-                                Session Starter
-                              </h3>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <button
-                                onClick={genAnalysis}
-                                disabled={loading}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: loading ? '#d1d5db' : '#7c3aed',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  cursor: loading ? 'not-allowed' : 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '4px 8px'
-                                }}
-                              >
-                                <RefreshCw size={14} />
-                                Refresh
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (editStmt) {
-                                    setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                                    setEditStmt(false);
-                                  } else {
-                                    setTempStmt(analysis.openingStatement || "");
-                                    setEditStmt(true);
-                                  }
-                                }}
-                                disabled={loading}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: loading ? '#d1d5db' : '#7c3aed',
-                                  fontSize: '12px',
-                                  fontWeight: '500',
-                                  cursor: loading ? 'not-allowed' : 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '4px 8px'
-                                }}
-                              >
-                                <Edit2 size={14} />
-                                {editStmt ? "Save" : "Edit"}
-                              </button>
-                            </div>
-                          </div>
 
-                          {editStmt ? (
-                            <textarea
-                              value={tempStmt}
-                              onChange={(e) => setTempStmt(e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '12px 16px',
-                                borderRadius: '12px',
-                                border: '2px solid #e9d5ff',
-                                outline: 'none',
-                                fontSize: '16px',
-                                resize: 'none',
-                                background: 'white',
-                                color: '#581c87',
-                                height: '120px',
-                                lineHeight: '1.6'
-                              }}
-                              rows="4"
-                            />
-                          ) : (
-                            <p style={{
-                              fontSize: '14px',
-                              lineHeight: '1.7',
-                              color: '#581c87',
-                              margin: 0,
-                              fontStyle: 'italic'
-                            }}>
-                              "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
-                            </p>
-                          )}
-
-                          <p style={{
-                            fontSize: '13px',
-                            color: '#7c3aed',
-                            marginTop: '16px',
-                            marginBottom: 0
-                          }}>
-                            💡 Use this to start your next therapy session
-                          </p>
+                      {/* Header */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Sparkles size={20} style={{ color: '#9333ea' }} />
+                          <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
+                            Your Session Plan
+                          </h3>
                         </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <button
+                            onClick={genAnalysis}
+                            disabled={loading}
+                            style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
+                          >
+                            <RefreshCw size={14} />Refresh
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (editStmt) {
+                                setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                                setEditStmt(false);
+                              } else {
+                                setTempStmt(analysis.openingStatement || "");
+                                setEditStmt(true);
+                              }
+                            }}
+                            disabled={loading}
+                            style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
+                          >
+                            <Edit2 size={14} />{editStmt ? "Save" : "Edit"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Opening Statement */}
+                      <div style={{ marginBottom: '20px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                          Opening Statement
+                        </div>
+                        {editStmt ? (
+                          <textarea
+                            value={tempStmt}
+                            onChange={(e) => setTempStmt(e.target.value)}
+                            style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'white', color: '#581c87', height: '100px', lineHeight: '1.6', boxSizing: 'border-box' }}
+                          />
+                        ) : (
+                          <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#581c87', margin: 0, fontStyle: 'italic' }}>
+                            "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
+                          </p>
+                        )}
+                      </div>
+
+                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
+
+                      {/* Key Topics — checkboxes */}
+                      {analysis.themes?.length > 0 && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                            Key Topics to Cover
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            {analysis.themes.map((theme, i) => (
+                              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
+                                <input
+                                  type="checkbox"
+                                  id={`topic-${i}`}
+                                  checked={checkedTopics.has(i)}
+                                  onChange={() => setCheckedTopics(prev => {
+                                    const next = new Set(prev);
+                                    next.has(i) ? next.delete(i) : next.add(i);
+                                    return next;
+                                  })}
+                                  style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
+                                />
+                                <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none' }}>
+                                  {theme}
+                                </label>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
+
+                      {/* Questions */}
+                      {analysis.questions?.length > 0 && (
+                        <div style={{ marginBottom: '20px' }}>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                            Questions to Explore
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analysis.questions.map((q, i) => (
+                              <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>• {q}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
+
+                      {/* Insights */}
+                      {analysis.avoiding?.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
+                            What You Noticed This Week
+                          </div>
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {analysis.avoiding.map((insight, i) => (
+                              <li key={i} style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>✓ {insight}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 )}
@@ -2374,7 +2384,7 @@ Everything you write is end-to-end encrypted and private.`,
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
                     >
                       <Calendar size={20} />
-                      Go to Pre-Session
+                      Go to Prep for Session
                     </button>
                   </div>
                 ) : (
