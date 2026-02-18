@@ -27,6 +27,39 @@ import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
 
+const DAILY_PROMPTS = [
+  "What's been weighing on your mind lately that you haven't said out loud?",
+  "Describe a moment this week when you felt most like yourself.",
+  "What emotion have you been avoiding, and why?",
+  "What do you wish someone would ask you right now?",
+  "What's something you keep telling yourself that might not be true?",
+  "When did you last feel genuinely at ease? What was happening?",
+  "What boundary did you struggle to hold this week?",
+  "What would you do differently if you weren't afraid of the outcome?",
+  "Who or what are you most grateful for today, and have you told them?",
+  "What's a feeling you've been carrying that you haven't named yet?",
+  "What does 'taking care of yourself' actually look like right now?",
+  "Is there something you've been waiting for permission to do?",
+  "What would you tell a close friend who was going through exactly what you are?",
+  "What part of your life feels most out of alignment right now?",
+  "What do you need more of? Less of?",
+  "When did you last feel proud of yourself, and why?",
+  "What's a pattern you've noticed in how you respond to stress?",
+  "What relationship in your life could use more attention or honesty?",
+  "What are you holding onto that might be worth letting go?",
+  "How have you grown in the past year that you don't give yourself credit for?",
+  "What does your inner critic say most often? Is it accurate?",
+  "What's one thing you'd change about how you showed up this week?",
+  "What small thing brought you unexpected comfort or joy recently?",
+  "What part of your past still feels unresolved?",
+  "What are you currently pretending is fine?",
+  "What do you need to hear right now that no one is saying?",
+  "What does your body tell you when you're overwhelmed? Do you listen?",
+  "What story about yourself are you ready to rewrite?",
+  "When you imagine the best version of your life, what's different?",
+  "What conversation have you been putting off, and what's stopping you?",
+];
+
 export default function App() {
   const getDate = () => {
     const d = new Date();
@@ -1416,6 +1449,24 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
+              {/* Journal Prompt of the Day */}
+              {(() => {
+                const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+                const prompt = DAILY_PROMPTS[dayOfYear % DAILY_PROMPTS.length];
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Prompt of the Day</div>
+                    <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6', margin: '0 0 12px 0', fontStyle: 'italic' }}>{prompt}</p>
+                    <button
+                      onClick={() => { setActivePrompt(prompt); setTab('journal'); setJournalView('write'); }}
+                      style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                    >
+                      Write about this →
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Progress milestone bar — only show when < 3 entries */}
               {milestoneName && realEntryCount < 3 && (
                 <div>
@@ -2264,7 +2315,7 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); setTab('sessions'); setSessionView('pre'); }}
+                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('pre'); } else { setExtraTopics(prev => [...prev, item]); } }}
                                 style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
@@ -2306,7 +2357,7 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (!extraTopics.includes(item)) setExtraTopics(prev => [...prev, item]); setTab('sessions'); setSessionView('pre'); }}
+                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('pre'); } else { setExtraTopics(prev => [...prev, item]); } }}
                                 style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
