@@ -23,6 +23,7 @@ import {
   MessageCircle,
   Star,
   Plus,
+  Bookmark,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -1493,6 +1494,62 @@ Everything you write is end-to-end encrypted and private.`,
                 <span style={{ fontSize: '12px', color: '#9ca3af' }}>🗓️ {realHistory.length} sessions</span>
                 {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
               </div>
+
+              {/* Activity Calendar */}
+              {(() => {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = now.getMonth();
+                const todayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+                const journaledDates = new Set(
+                  entries.filter(e => !e.isWelcomeEntry && e.date).map(e => e.date)
+                );
+                const sessionDates = new Set(
+                  realHistory.filter(h => h.sessionDate).map(h => h.sessionDate)
+                );
+
+                const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                const firstDow = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
+
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '10px' }}>{monthLabel}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}>
+                      {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
+                        <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '500', color: '#9ca3af' }}>{d}</div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+                      {cells.map((day, idx) => {
+                        if (!day) return <div key={`e-${idx}`} />;
+                        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                        const hasEntry = journaledDates.has(dateStr);
+                        const hasSession = sessionDates.has(dateStr);
+                        const isToday = dateStr === todayStr;
+                        const isPastOrToday = dateStr <= todayStr;
+                        return (
+                          <div key={day} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px 2px' }}>
+                            {hasSession && (
+                              <Bookmark size={8} fill="#7c3aed" style={{ position: 'absolute', top: 2, right: 3, color: '#7c3aed' }} />
+                            )}
+                            <span style={{ fontSize: '11px', fontWeight: isToday ? '700' : '400', color: isToday ? '#9333ea' : '#4b5563', lineHeight: 1 }}>
+                              {day}
+                            </span>
+                            <div style={{
+                              width: '6px', height: '6px', borderRadius: '50%',
+                              background: hasEntry ? '#9333ea' : 'transparent',
+                              border: isPastOrToday && !hasEntry ? '1.5px solid rgba(147,51,234,0.25)' : 'none',
+                            }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Therapy schedule nudge if not set */}
               {!therapyDay && realEntryCount > 0 && (
