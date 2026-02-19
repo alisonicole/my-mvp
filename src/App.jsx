@@ -12,6 +12,7 @@ import {
   Trash2,
   Edit2,
   ChevronDown,
+  ChevronUp,
   ChevronRight,
   RefreshCw,
   LogOut,
@@ -2488,7 +2489,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["pre", "Prep for Session"],
-                ["post", "Log Session"],
+                ["post", "Log my Session"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2546,7 +2547,7 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
-                {/* SESSION PLAN */}
+                {/* SESSION STARTER */}
                 {!loading && analysis && (
                   <div style={{
                     background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
@@ -2555,14 +2556,12 @@ Everything you write is end-to-end encrypted and private.`,
                     overflow: 'hidden',
                     boxShadow: '0 4px 16px rgba(147,51,234,0.1)'
                   }}>
-                    <div style={{ padding: '32px' }}>
-
-                      {/* Header */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+                    <div style={{ padding: '28px 32px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <Sparkles size={20} style={{ color: '#9333ea' }} />
-                          <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                            Your Session Plan
+                          <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>
+                            Session Starter
                           </h3>
                         </div>
                         <button
@@ -2573,119 +2572,136 @@ Everything you write is end-to-end encrypted and private.`,
                           <RefreshCw size={14} />Refresh
                         </button>
                       </div>
-
-                      {/* Opening Statement */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Opening Statement
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (editStmt) {
-                                setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                                setEditStmt(false);
-                              } else {
-                                setTempStmt(analysis.openingStatement || "");
-                                setEditStmt(true);
-                              }
-                            }}
-                            disabled={loading}
-                            style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#9333ea', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
-                          >
-                            <Edit2 size={12} />{editStmt ? "Save" : "Edit"}
-                          </button>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Opening Statement
                         </div>
-                        {editStmt ? (
-                          <textarea
-                            value={tempStmt}
-                            onChange={(e) => setTempStmt(e.target.value)}
-                            style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'white', color: '#581c87', height: '100px', lineHeight: '1.6', boxSizing: 'border-box' }}
-                          />
-                        ) : (
-                          <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#581c87', margin: 0, fontStyle: 'italic' }}>
-                            "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
-                          </p>
-                        )}
+                        <button
+                          onClick={() => {
+                            if (editStmt) {
+                              setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
+                              setEditStmt(false);
+                            } else {
+                              setTempStmt(analysis.openingStatement || "");
+                              setEditStmt(true);
+                            }
+                          }}
+                          disabled={loading}
+                          style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#9333ea', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+                        >
+                          <Edit2 size={12} />{editStmt ? "Save" : "Edit"}
+                        </button>
                       </div>
+                      {editStmt ? (
+                        <textarea
+                          value={tempStmt}
+                          onChange={(e) => setTempStmt(e.target.value)}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'white', color: '#581c87', height: '100px', lineHeight: '1.6', boxSizing: 'border-box' }}
+                        />
+                      ) : (
+                        <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#581c87', margin: 0, fontStyle: 'italic' }}>
+                          "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
-                      <div style={{ height: '1px', background: '#ddd6fe', margin: '20px 0' }} />
-
-                      {/* Key Topics — checkboxes + custom add */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                            Key Topics to Cover
-                          </div>
-                          <button
-                            onClick={() => {
-                              if (editingTopics) {
-                                const items = tempTopics.split('\n').map(s => s.trim()).filter(Boolean);
-                                setExtraTopics(items);
-                                setEditingTopics(false);
-                              } else {
-                                setTempTopics(extraTopics.join('\n'));
-                                setEditingTopics(true);
-                              }
-                            }}
-                            style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
-                          >
-                            <Edit2 size={12} />{editingTopics ? 'Save' : 'Edit'}
-                          </button>
-                        </div>
-                        {editingTopics ? (
-                          <textarea
-                            value={tempTopics}
-                            onChange={e => setTempTopics(e.target.value)}
-                            placeholder="One topic per line"
-                            style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', resize: 'none', background: 'white', color: '#581c87', height: '120px', lineHeight: '1.6', boxSizing: 'border-box' }}
-                          />
-                        ) : (
-                        <>{extraTopics.length > 0 ? (
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            {extraTopics.map((theme, i) => (
-                              <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '7px 0' }}>
-                                <input
-                                  type="checkbox"
-                                  id={`topic-${i}`}
-                                  checked={checkedTopics.has(i)}
-                                  onChange={() => setCheckedTopics(prev => {
-                                    const next = new Set(prev);
-                                    next.has(i) ? next.delete(i) : next.add(i);
-                                    return next;
-                                  })}
-                                  style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, marginTop: '2px', cursor: 'pointer' }}
-                                />
-                                <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none', flex: 1 }}>
-                                  {theme}
-                                </label>
-                                <button onClick={() => setExtraTopics(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}>×</button>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0' }}>No topics yet — add one below or move from Patterns.</p>
-                        )}</>
-                        )}
-                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                          <input
-                            type="text"
-                            value={newTopicInput}
-                            onChange={e => setNewTopicInput(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
-                            placeholder="+ Add a topic..."
-                            style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px dashed #c084fc', outline: 'none', fontSize: '14px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
-                          />
-                          <button
-                            onClick={() => { if (newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
-                            style={{ padding: '8px 14px', borderRadius: '10px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                          >
-                            Add
-                          </button>
-                        </div>
+                {/* KEY TOPICS */}
+                {!loading && analysis && (
+                  <div style={{
+                    background: 'rgba(255,255,255,0.7)',
+                    backdropFilter: 'blur(10px)',
+                    border: '1px solid #e9d5ff',
+                    borderRadius: '24px',
+                    padding: '28px 32px',
+                    boxShadow: '0 4px 16px rgba(147,51,234,0.06)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Key Topics to Cover
                       </div>
-
-
+                      <button
+                        onClick={() => {
+                          if (editingTopics) {
+                            const items = tempTopics.split('\n').map(s => s.trim()).filter(Boolean);
+                            setExtraTopics(items);
+                            setEditingTopics(false);
+                          } else {
+                            setTempTopics(extraTopics.join('\n'));
+                            setEditingTopics(true);
+                          }
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
+                      >
+                        <Edit2 size={12} />{editingTopics ? 'Save' : 'Edit'}
+                      </button>
+                    </div>
+                    {editingTopics ? (
+                      <textarea
+                        value={tempTopics}
+                        onChange={e => setTempTopics(e.target.value)}
+                        placeholder="One topic per line"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', resize: 'none', background: 'white', color: '#581c87', height: '120px', lineHeight: '1.6', boxSizing: 'border-box' }}
+                      />
+                    ) : (
+                      <>{extraTopics.length > 0 ? (
+                        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column' }}>
+                          {extraTopics.map((theme, i) => (
+                            <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: i < extraTopics.length - 1 ? '1px solid #f3e8ff' : 'none' }}>
+                              <input
+                                type="checkbox"
+                                id={`topic-${i}`}
+                                checked={checkedTopics.has(i)}
+                                onChange={() => setCheckedTopics(prev => {
+                                  const next = new Set(prev);
+                                  next.has(i) ? next.delete(i) : next.add(i);
+                                  return next;
+                                })}
+                                style={{ width: '18px', height: '18px', accentColor: '#9333ea', flexShrink: 0, cursor: 'pointer' }}
+                              />
+                              <label htmlFor={`topic-${i}`} style={{ fontSize: '15px', color: checkedTopics.has(i) ? '#9ca3af' : '#581c87', cursor: 'pointer', lineHeight: '1.5', textDecoration: checkedTopics.has(i) ? 'line-through' : 'none', flex: 1 }}>
+                                {theme}
+                              </label>
+                              <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                                <button
+                                  onClick={() => setExtraTopics(prev => { const a = [...prev]; if (i === 0) return a; [a[i-1], a[i]] = [a[i], a[i-1]]; return a; })}
+                                  disabled={i === 0}
+                                  style={{ background: 'none', border: 'none', padding: '1px 2px', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#e5e7eb' : '#9ca3af', lineHeight: 1 }}
+                                >
+                                  <ChevronUp size={13} />
+                                </button>
+                                <button
+                                  onClick={() => setExtraTopics(prev => { const a = [...prev]; if (i === a.length - 1) return a; [a[i], a[i+1]] = [a[i+1], a[i]]; return a; })}
+                                  disabled={i === extraTopics.length - 1}
+                                  style={{ background: 'none', border: 'none', padding: '1px 2px', cursor: i === extraTopics.length - 1 ? 'default' : 'pointer', color: i === extraTopics.length - 1 ? '#e5e7eb' : '#9ca3af', lineHeight: 1 }}
+                                >
+                                  <ChevronDown size={13} />
+                                </button>
+                              </div>
+                              <button onClick={() => setExtraTopics(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '14px', padding: '0 2px', flexShrink: 0 }}>×</button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: '0 0 8px 0' }}>No topics yet — add one below or move from Patterns.</p>
+                      )}</>
+                    )}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                      <input
+                        type="text"
+                        value={newTopicInput}
+                        onChange={e => setNewTopicInput(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
+                        placeholder="+ Add a topic..."
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '1px dashed #c084fc', outline: 'none', fontSize: '14px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                      />
+                      <button
+                        onClick={() => { if (newTopicInput.trim()) { setExtraTopics(prev => [...prev, newTopicInput.trim()]); setNewTopicInput(''); } }}
+                        style={{ padding: '8px 14px', borderRadius: '10px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        Add
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2844,7 +2860,7 @@ Everything you write is end-to-end encrypted and private.`,
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: notes ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: notes ? '#7c3aed' : '#d1d5db', color: 'white', width: '100%', opacity: notes ? 1 : 0.5 }}
                       >
                         <ArrowRight size={20} />
-                        Save to Session Log
+                        Log Session
                       </button>
 
                       <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
