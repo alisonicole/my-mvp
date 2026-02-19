@@ -104,7 +104,9 @@ export default function App() {
   const [editStmt, setEditStmt] = useState(false);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [tempStmt, setTempStmt] = useState("");
-  const [extraTopics, setExtraTopics] = useState([]);
+  const [extraTopics, setExtraTopics] = useState(() => {
+    try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [newTopicInput, setNewTopicInput] = useState('');
   const [editingTopics, setEditingTopics] = useState(false);
   const [tempTopics, setTempTopics] = useState('');
@@ -215,13 +217,18 @@ export default function App() {
     }
   }, [APP_ID, JS_KEY, SERVER_URL, Parse]);
 
-  // Restore encryption key from session storage on page reload
+  // Restore encryption key from local storage on page reload
   useEffect(() => {
     if (currentUser) {
-      const storedKey = sessionStorage.getItem('encKey');
+      const storedKey = localStorage.getItem('encKey');
       if (storedKey) setUserEncryptionKey(storedKey);
     }
   }, [currentUser]);
+
+  // Persist key topics across sessions
+  useEffect(() => {
+    localStorage.setItem('between_extraTopics', JSON.stringify(extraTopics));
+  }, [extraTopics]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -233,7 +240,7 @@ export default function App() {
       setCurrentUser(user);
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
-      sessionStorage.setItem('encKey', encKey);
+      localStorage.setItem('encKey', encKey);
       setTab("home");
       setEmail("");
       setPassword("");
@@ -261,7 +268,7 @@ export default function App() {
       if (signupName.trim()) setDisplayName(signupName.trim());
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
-      sessionStorage.setItem('encKey', encKey);
+      localStorage.setItem('encKey', encKey);
       setTab("home");
       setShowOnboarding(true);
       setOnboardingStep(1);
@@ -278,7 +285,9 @@ export default function App() {
     await Parse.User.logOut();
     setCurrentUser(null);
     setUserEncryptionKey(null);
-    sessionStorage.removeItem('encKey');
+    localStorage.removeItem('encKey');
+    localStorage.removeItem('between_extraTopics');
+    setExtraTopics([]);
     setEntries([]);
     setHistory([]);
     setAnalysis(null);
