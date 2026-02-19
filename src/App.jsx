@@ -1456,12 +1456,12 @@ Everything you write is end-to-end encrypted and private.`,
                 const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
                 const prompt = DAILY_PROMPTS[dayOfYear % DAILY_PROMPTS.length];
                 return (
-                  <div style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #9333ea 100%)', borderRadius: '16px', padding: '16px 20px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Prompt of the Day</div>
-                    <p style={{ fontSize: '15px', color: 'white', lineHeight: '1.6', margin: '0 0 12px 0', fontStyle: 'italic' }}>{prompt}</p>
+                  <div style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe', borderRadius: '16px', padding: '16px 20px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Prompt of the Day</div>
+                    <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6', margin: '0 0 12px 0', fontStyle: 'italic' }}>{prompt}</p>
                     <button
                       onClick={() => { setActivePrompt(prompt); setTab('journal'); setJournalView('write'); }}
-                      style={{ padding: '7px 16px', background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
                     >
                       Write about this →
                     </button>
@@ -1785,15 +1785,9 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '500' }}>entries <span style={{ background: '#ede9fe', borderRadius: '10px', padding: '1px 8px', fontSize: '12px' }}>{entries.length}</span></span>
-                    <span style={{ fontSize: '13px', color: '#9ca3af' }}>·</span>
-                    <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '500' }}>snapshots <span style={{ background: '#ede9fe', borderRadius: '10px', padding: '1px 8px', fontSize: '12px' }}>{realHistory.length}</span></span>
-                  </div>
-
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      {[["all", "All"], ["entries", "Entries"], ["snapshots", "Snapshots"], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
+                      {[["all", "All"], ["entries", `Entries (${entries.length})`], ["snapshots", `Snapshots (${realHistory.length})`], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
                         <button
                           key={f}
                           onClick={() => setLogFilter(f)}
@@ -2329,35 +2323,29 @@ Everything you write is end-to-end encrypted and private.`,
             )}
 
             {analysis && !loading && (
-              <div style={{ position: 'relative', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                <button
-                  onClick={genAnalysis}
-                  disabled={loading}
-                  style={{ position: 'absolute', top: '20px', right: '20px', background: '#9333ea', border: 'none', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '20px' }}
-                >
-                  <RefreshCw size={12} />Refresh
-                </button>
+              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                 <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                  {/* Entry count info */}
-                  {analysisTimestamp && (() => {
-                    const lastSnapshot = history?.[0];
-                    let entryCount = entries.length;
-                    if (lastSnapshot) {
-                      const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-                      const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
-                      entryCount = newEntries.length;
-                      return (
-                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
-                          {entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session
-                        </p>
-                      );
-                    }
-                    return (
-                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
-                        Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}
-                      </p>
-                    );
-                  })()}
+                  {/* Header: entry count + refresh */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    {analysisTimestamp ? (() => {
+                      const lastSnapshot = history?.[0];
+                      let entryCount = entries.length;
+                      if (lastSnapshot) {
+                        const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
+                        const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
+                        entryCount = newEntries.length;
+                        return <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>{entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session</p>;
+                      }
+                      return <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}</p>;
+                    })() : <div />}
+                    <button
+                      onClick={genAnalysis}
+                      disabled={loading}
+                      style={{ background: '#9333ea', border: 'none', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '20px', flexShrink: 0 }}
+                    >
+                      <RefreshCw size={12} />Refresh
+                    </button>
+                  </div>
 
                   {/* What's trying to come up */}
                   <div>
