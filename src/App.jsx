@@ -122,6 +122,10 @@ export default function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
+  // Next session date (user-editable, overrides computed day-of-week)
+  const [nextSessionDate, setNextSessionDate] = useState('');
+  const [editingNextSession, setEditingNextSession] = useState(false);
+
   // Intention
   const [sessionIntention, setSessionIntention] = useState("");
   const [showIntentionCheckIn, setShowIntentionCheckIn] = useState(false);
@@ -304,6 +308,8 @@ export default function App() {
     setNotes("");
     setNextSteps("");
     setSessionIntention("");
+    setNextSessionDate('');
+    setEditingNextSession(false);
     setDisplayName("");
     setSavedPrompts([]);
     setFavoritedPatterns([]);
@@ -557,6 +563,9 @@ Everything you write is end-to-end encrypted and private.`,
         const tt = currentUser.get("therapyTime");
         if (td) setTherapyDay(td);
         if (tt) setTherapyTime(tt);
+
+        const nsd = currentUser.get("nextSessionDate");
+        if (nsd) setNextSessionDate(nsd);
 
         setLastAnalyzedEntries([]);
       } catch (err) {
@@ -1003,6 +1012,14 @@ Everything you write is end-to-end encrypted and private.`,
     setTherapyTime(time);
   };
 
+  const saveNextSessionDate = (date) => {
+    setNextSessionDate(date);
+    if (currentUser && Parse) {
+      currentUser.set("nextSessionDate", date);
+      currentUser.save().catch(() => {});
+    }
+  };
+
   const finishOnboarding = async (firstEntryText) => {
     if (firstEntryText && firstEntryText.trim()) {
       const n = {
@@ -1399,15 +1416,6 @@ Everything you write is end-to-end encrypted and private.`,
           const fallbackName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
           const name = displayName || fallbackName;
 
-          const prompts = [
-            "What's on your mind today?",
-            "How are you feeling right now?",
-            "What's one thing you'd like to process?",
-            "What came up for you today?",
-            "What are you carrying with you right now?",
-          ];
-          const todayPrompt = prompts[new Date().getDay() % prompts.length];
-
           const lastEntry = entries[0];
           const lastEntryAgo = lastEntry ? (() => {
             const diff = Date.now() - new Date(lastEntry.timestamp).getTime();
@@ -1420,24 +1428,26 @@ Everything you write is end-to-end encrypted and private.`,
 
           const realEntryCount = entries.filter(e => !e.isWelcomeEntry).length;
 
-          // Today's Focus — days until therapy
-          const todaysFocus = (() => {
-            if (!therapyDay) return null;
-            const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const todayIdx = new Date().getDay();
-            const therapyIdx = DAYS.indexOf(therapyDay);
-            const diff = (therapyIdx - todayIdx + 7) % 7;
-            const daysUntil = diff;
-            if (daysUntil === 0) {
-              return { icon: '🗓️', label: 'Session today', message: 'Your therapy session is today — review what you want to bring into the room.', cta: 'Prep for Session', action: () => { setTab('sessions'); setSessionView('pre'); }, urgent: true };
-            } else if (daysUntil === 1) {
-              return { icon: '📅', label: 'Session tomorrow', message: 'Session tomorrow — a good moment to reflect and prepare.', cta: 'Start Prepping', action: () => { setTab('sessions'); setSessionView('pre'); }, urgent: false };
-            } else if (daysUntil <= 3) {
-              return { icon: '✍️', label: `${daysUntil} days until session`, message: `Session in ${daysUntil} days. Keep capturing what comes up.`, cta: 'Write Entry', action: () => { setTab('journal'); setJournalView('write'); }, urgent: false };
-            } else {
-              return { icon: '📝', label: `${daysUntil} days until session`, message: `You have time to journal freely before your next session.`, cta: 'Write Entry', action: () => { setTab('journal'); setJournalView('write'); }, urgent: false };
+          // Compute next session date from stored override or from therapyDay schedule
+          const getComputedNextSession = () => {
+            const today = getDate();
+            if (nextSessionDate && nextSessionDate >= today) return nextSessionDate;
+            if (therapyDay) {
+              const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+              const todayIdx = new Date().getDay();
+              const therapyIdx = DAYS.indexOf(therapyDay);
+              let diff = (therapyIdx - todayIdx + 7) % 7;
+              const d = new Date();
+              d.setDate(d.getDate() + diff);
+              return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             }
-          })();
+            return null;
+          };
+          const computedNextSession = getComputedNextSession();
+          const today = getDate();
+          const sessionDaysUntil = computedNextSession
+            ? Math.round((new Date(computedNextSession + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24))
+            : null;
 
           // Next action suggestion based on entry count
           const nextAction = (() => {
@@ -1461,10 +1471,9 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* Greeting */}
               <div>
-                <h2 style={{ fontSize: '24px', fontWeight: '500', color: '#581c87', margin: '0 0 6px 0' }}>
+                <h2 style={{ fontSize: '24px', fontWeight: '500', color: '#581c87', margin: 0 }}>
                   Hi {name} 👋
                 </h2>
-                <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0 }}>{todayPrompt}</p>
               </div>
 
               {/* Weekly Intention Card */}
@@ -1508,22 +1517,65 @@ Everything you write is end-to-end encrypted and private.`,
                 );
               })()}
 
-              {/* Today's Focus card */}
-              {todaysFocus && (
-                <div style={{ background: todaysFocus.urgent ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${todaysFocus.urgent ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '14px', overflow: 'hidden' }}>
-                  <span style={{ fontSize: '28px', flexShrink: 0 }}>{todaysFocus.icon}</span>
-                  <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '3px' }}>{todaysFocus.label}</div>
-                    <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 10px 0', lineHeight: '1.5' }}>{todaysFocus.message}</p>
-                    <button
-                      onClick={todaysFocus.action}
-                      style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                    >
-                      {todaysFocus.cta} →
-                    </button>
+              {/* Next Therapy Session card */}
+              <div style={{ background: sessionDaysUntil === 0 ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${sessionDaysUntil === 0 ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
+                      Next Therapy Session
+                    </div>
+                    {editingNextSession ? (
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="date"
+                          defaultValue={computedNextSession || ''}
+                          min={today}
+                          onChange={(e) => saveNextSessionDate(e.target.value)}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '2px solid #9333ea', outline: 'none', fontSize: '15px', color: '#581c87', background: 'white' }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => setEditingNextSession(false)}
+                          style={{ padding: '8px 14px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Done
+                        </button>
+                      </div>
+                    ) : computedNextSession ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '18px', fontWeight: '600', color: '#581c87' }}>
+                          {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </span>
+                        <span style={{ fontSize: '13px', color: '#7c3aed' }}>
+                          {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
+                        </span>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to set your next session date</span>
+                    )}
                   </div>
+                  <button
+                    onClick={() => setEditingNextSession(prev => !prev)}
+                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea', flexShrink: 0 }}
+                    title="Change date"
+                  >
+                    <Edit2 size={15} />
+                  </button>
                 </div>
-              )}
+                {computedNextSession && sessionDaysUntil !== null && !editingNextSession && (
+                  <div style={{ marginTop: '12px' }}>
+                    {sessionDaysUntil <= 1 ? (
+                      <button onClick={() => { setTab('sessions'); setSessionView('pre'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                        {sessionDaysUntil === 0 ? 'Prep for today\'s session →' : 'Start prepping →'}
+                      </button>
+                    ) : sessionDaysUntil <= 4 ? (
+                      <button onClick={() => { setTab('journal'); setJournalView('write'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                        Write an entry →
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+              </div>
 
               {/* Next action suggestion */}
               {nextAction && (
@@ -1641,15 +1693,6 @@ Everything you write is end-to-end encrypted and private.`,
                 );
               })()}
 
-              {/* Therapy schedule nudge if not set */}
-              {!therapyDay && realEntryCount > 0 && (
-                <button
-                  onClick={() => { setShowOnboarding(true); setOnboardingStep(2); }}
-                  style={{ width: '100%', padding: '12px', background: 'transparent', border: '1px dashed #c084fc', borderRadius: '14px', color: '#7c3aed', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  📅 Add your therapy schedule for personalized guidance
-                </button>
-              )}
 
             </div>
           );
