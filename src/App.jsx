@@ -128,6 +128,7 @@ export default function App() {
 
   // Intention
   const [sessionIntention, setSessionIntention] = useState("");
+  const [homeIntentionText, setHomeIntentionText] = useState("");
   const [showIntentionCheckIn, setShowIntentionCheckIn] = useState(false);
   const [todayCheckIn, setTodayCheckIn] = useState({ practiced: null, note: '' });
 
@@ -436,6 +437,16 @@ export default function App() {
     q.equalTo("user", currentUser);
     const obj = await q.get(parseId);
     obj.set("intentionCheckIns", intentionCheckIns);
+    await obj.save();
+  }
+
+  async function updateSnapshotIntention(parseId, intentionText) {
+    if (!PARSE_READY || !currentUser) throw new Error("Parse not configured");
+    const Snap = Parse.Object.extend("SessionSnapshot");
+    const q = new Parse.Query(Snap);
+    q.equalTo("user", currentUser);
+    const obj = await q.get(parseId);
+    obj.set("intention", encryptText(intentionText, userEncryptionKey));
     await obj.save();
   }
 
@@ -1476,16 +1487,20 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
               </div>
 
-              {/* Weekly Intention Card */}
+              {/* Weekly Intention Card — always show when there's a recent session */}
               {(() => {
-                const intention = getCurrentIntention();
-                if (!intention) return null;
+                const mostRecent = realHistory[0];
+                if (!mostRecent) return null;
+                const daysSince = Math.floor((Date.now() - new Date(mostRecent.timestamp).getTime()) / (1000 * 60 * 60 * 24));
+                if (daysSince > 14) return null;
+
+                const intention = getCurrentIntention(); // non-null only if text exists
                 const now = new Date();
-                const thisWeekCheckIns = intention.checkIns.filter(c => {
-                  const d = new Date(c.date);
-                  return Math.floor((now - d) / (1000 * 60 * 60 * 24)) < 7;
-                });
+                const thisWeekCheckIns = intention ? intention.checkIns.filter(c =>
+                  Math.floor((now - new Date(c.date)) / (1000 * 60 * 60 * 24)) < 7
+                ) : [];
                 const practicedCount = thisWeekCheckIns.filter(c => c.practiced === 'yes').length;
+
                 return (
                   <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '2px solid #e9d5ff', borderRadius: '16px', padding: '20px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
@@ -1494,25 +1509,61 @@ Everything you write is end-to-end encrypted and private.`,
                         This Week's Intention
                       </span>
                     </div>
-                    <p style={{ fontSize: '16px', color: '#581c87', fontWeight: '500', lineHeight: '1.5', margin: '0 0 10px 0' }}>
-                      {intention.text}
-                    </p>
-                    <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
-                      {[0,1,2,3,4,5,6].map(i => (
-                        <div key={i} style={{ flex: 1, height: '6px', borderRadius: '3px', background: i < thisWeekCheckIns.length ? '#9333ea' : '#e9d5ff' }} />
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: '12px', color: '#7c3aed' }}>
-                        {practicedCount > 0 ? `Practiced ${practicedCount}x this week` : `${thisWeekCheckIns.length} check-in${thisWeekCheckIns.length !== 1 ? 's' : ''} this week`}
-                      </span>
-                      <button
-                        onClick={() => setShowIntentionCheckIn(true)}
-                        style={{ padding: '6px 14px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                      >
-                        Check in →
-                      </button>
-                    </div>
+
+                    {intention ? (
+                      <>
+                        <p style={{ fontSize: '16px', color: '#581c87', fontWeight: '500', lineHeight: '1.5', margin: '0 0 10px 0' }}>
+                          {intention.text}
+                        </p>
+                        <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
+                          {[0,1,2,3,4,5,6].map(i => (
+                            <div key={i} style={{ flex: 1, height: '6px', borderRadius: '3px', background: i < thisWeekCheckIns.length ? '#9333ea' : '#e9d5ff' }} />
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '12px', color: '#7c3aed' }}>
+                            {practicedCount > 0 ? `Practiced ${practicedCount}x this week` : `${thisWeekCheckIns.length} check-in${thisWeekCheckIns.length !== 1 ? 's' : ''} this week`}
+                          </span>
+                          <button
+                            onClick={() => setShowIntentionCheckIn(true)}
+                            style={{ padding: '6px 14px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            Check in →
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 10px 0', lineHeight: '1.5' }}>
+                          What do you want to practice or notice this week?
+                        </p>
+                        <textarea
+                          value={homeIntentionText}
+                          onChange={(e) => setHomeIntentionText(e.target.value)}
+                          placeholder="e.g., Notice when I'm people-pleasing and pause before saying yes"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', minHeight: '72px', background: 'white', color: '#581c87', lineHeight: '1.5', boxSizing: 'border-box' }}
+                        />
+                        <button
+                          onClick={async () => {
+                            const text = homeIntentionText.trim();
+                            if (!text) return;
+                            setHistory(prev => prev.map(s =>
+                              s.id === mostRecent.id ? { ...s, intention: text } : s
+                            ));
+                            setHomeIntentionText('');
+                            try {
+                              await updateSnapshotIntention(mostRecent.parseId, text);
+                            } catch (err) {
+                              console.error('Error saving intention:', err);
+                            }
+                          }}
+                          disabled={!homeIntentionText.trim()}
+                          style={{ marginTop: '10px', padding: '8px 20px', background: homeIntentionText.trim() ? '#9333ea' : '#d1d5db', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: homeIntentionText.trim() ? 'pointer' : 'not-allowed' }}
+                        >
+                          Set intention →
+                        </button>
+                      </>
+                    )}
                   </div>
                 );
               })()}
@@ -1563,16 +1614,25 @@ Everything you write is end-to-end encrypted and private.`,
                   </button>
                 </div>
                 {computedNextSession && sessionDaysUntil !== null && !editingNextSession && (
-                  <div style={{ marginTop: '12px' }}>
-                    {sessionDaysUntil <= 1 ? (
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {sessionDaysUntil === 0 ? (
+                      <>
+                        <button onClick={() => { setTab('sessions'); setSessionView('pre'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                          Prep for session →
+                        </button>
+                        <button onClick={() => { setTab('sessions'); setSessionView('post'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                          Reflect on today's session →
+                        </button>
+                      </>
+                    ) : sessionDaysUntil === 1 ? (
                       <button onClick={() => { setTab('sessions'); setSessionView('pre'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                        {sessionDaysUntil === 0 ? 'Prep for today\'s session →' : 'Start prepping →'}
+                        Start prepping →
                       </button>
-                    ) : sessionDaysUntil <= 4 ? (
+                    ) : (
                       <button onClick={() => { setTab('journal'); setJournalView('write'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
                         Write an entry →
                       </button>
-                    ) : null}
+                    )}
                   </div>
                 )}
               </div>
