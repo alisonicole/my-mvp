@@ -86,6 +86,9 @@ export default function App() {
   // Sessions sub-tabs
   const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
 
+  // Patterns sub-tabs
+  const [patternView, setPatternView] = useState("insights"); // "insights" or "progress"
+
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
   const [entry, setEntry] = useState({ text: "", prompt: "" }); // Add prompt field
@@ -1510,29 +1513,50 @@ Everything you write is end-to-end encrypted and private.`,
                       </span>
                     </div>
 
-                    {intention ? (
-                      <>
-                        <p style={{ fontSize: '16px', color: '#581c87', fontWeight: '500', lineHeight: '1.5', margin: '0 0 10px 0' }}>
-                          {intention.text}
-                        </p>
-                        <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
-                          {[0,1,2,3,4,5,6].map(i => (
-                            <div key={i} style={{ flex: 1, height: '6px', borderRadius: '3px', background: i < thisWeekCheckIns.length ? '#9333ea' : '#e9d5ff' }} />
-                          ))}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '12px', color: '#7c3aed' }}>
-                            {practicedCount > 0 ? `Practiced ${practicedCount}x this week` : `${thisWeekCheckIns.length} check-in${thisWeekCheckIns.length !== 1 ? 's' : ''} this week`}
-                          </span>
-                          <button
-                            onClick={() => setShowIntentionCheckIn(true)}
-                            style={{ padding: '6px 14px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                          >
-                            Check in →
-                          </button>
-                        </div>
-                      </>
-                    ) : (
+                    {intention ? (() => {
+                      const todayStr = getDate();
+                      const checkedInToday = intention.checkIns.some(c => c.date.split('T')[0] === todayStr);
+                      const last7 = Array.from({ length: 7 }, (_, i) => {
+                        const d = new Date();
+                        d.setDate(d.getDate() - (6 - i));
+                        return {
+                          dateStr: d.toISOString().split('T')[0],
+                          dayLabel: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
+                        };
+                      });
+                      return (
+                        <>
+                          <p style={{ fontSize: '16px', color: '#581c87', fontWeight: '500', lineHeight: '1.5', margin: '0 0 12px 0' }}>
+                            {intention.text}
+                          </p>
+                          <div style={{ marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
+                              {last7.map(({ dateStr }) => {
+                                const has = intention.checkIns.some(c => c.date.split('T')[0] === dateStr);
+                                return <div key={dateStr} style={{ flex: 1, height: '6px', borderRadius: '3px', background: has ? '#9333ea' : '#e9d5ff' }} />;
+                              })}
+                            </div>
+                            <div style={{ display: 'flex', gap: '3px' }}>
+                              {last7.map(({ dateStr, dayLabel }) => (
+                                <div key={dateStr} style={{ flex: 1, textAlign: 'center', fontSize: '10px', color: '#9ca3af' }}>{dayLabel}</div>
+                              ))}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '12px', color: '#7c3aed' }}>
+                              {practicedCount > 0 ? `Practiced ${practicedCount}x this week` : `${thisWeekCheckIns.length} check-in${thisWeekCheckIns.length !== 1 ? 's' : ''} this week`}
+                            </span>
+                            <button
+                              onClick={() => !checkedInToday && setShowIntentionCheckIn(true)}
+                              disabled={checkedInToday}
+                              style={{ padding: '6px 14px', background: checkedInToday ? '#e9d5ff' : '#9333ea', color: checkedInToday ? '#a78bfa' : 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: checkedInToday ? 'default' : 'pointer' }}
+                            >
+                              {checkedInToday ? '✓ Checked in' : 'Check in →'}
+                            </button>
+                          </div>
+                        </>
+                      );
+                    })() : (
                       <>
                         <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 10px 0', lineHeight: '1.5' }}>
                           What do you want to practice or notice this week?
@@ -2485,6 +2509,24 @@ Everything you write is end-to-end encrypted and private.`,
         {/* PATTERNS TAB */}
         {tab === "patterns" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
+            {/* Patterns sub-tabs: Insights | Progress */}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
+              {[
+                ["insights", "Insights"],
+                ...(getCurrentIntention() ? [["progress", "Progress"]] : []),
+              ].map(([view, label]) => (
+                <button
+                  key={view}
+                  onClick={() => setPatternView(view)}
+                  className="tab-button"
+                  style={{ flex: 1, padding: '12px 16px', borderRadius: '16px', fontWeight: '600', fontSize: '15px', border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: patternView === view ? '#9333ea' : 'rgba(255,255,255,0.6)', color: patternView === view ? 'white' : '#7c3aed', boxShadow: patternView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none' }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {patternView === "insights" && (<>
             {/* Refresh Analysis Button */}
             {loading ? (
               <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
@@ -2717,6 +2759,67 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               </div>
             )}
+            </>)}
+
+            {/* PROGRESS VIEW */}
+            {patternView === "progress" && getCurrentIntention() && (() => {
+              const intention = getCurrentIntention();
+              const checkIns = intention.checkIns || [];
+              const last7Days = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                return d.toISOString().split('T')[0];
+              });
+              return (
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', marginBottom: '6px' }}>Your Progress</h2>
+                  <p style={{ fontSize: '15px', color: '#7c3aed', marginBottom: '24px', fontStyle: 'italic', lineHeight: '1.5' }}>
+                    "{intention.text}"
+                  </p>
+                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
+                    Last 7 Days
+                  </div>
+                  {last7Days.map(dateStr => {
+                    const date = new Date(dateStr + 'T12:00');
+                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    const dayCheckIns = checkIns.filter(c => c.date.split('T')[0] === dateStr);
+                    const latest = dayCheckIns[dayCheckIns.length - 1];
+                    return (
+                      <div key={dateStr} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px', marginBottom: '8px', borderRadius: '12px', background: latest ? '#faf5ff' : 'transparent', border: '1px solid #e9d5ff' }}>
+                        <div style={{ minWidth: '48px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea' }}>{dayName}</div>
+                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{date.getMonth() + 1}/{date.getDate()}</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          {latest ? (
+                            <>
+                              <div style={{ fontSize: '14px', color: '#581c87', marginBottom: latest.note ? '4px' : 0 }}>
+                                {latest.practiced === 'yes' && '✅ Noticed + practiced'}
+                                {latest.practiced === 'somewhat' && "👀 Noticed, didn't practice"}
+                                {latest.practiced === 'forgot' && '💭 Forgot about it'}
+                              </div>
+                              {latest.note && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>"{latest.note}"</p>}
+                            </>
+                          ) : (
+                            <div style={{ fontSize: '13px', color: '#9ca3af' }}>No check-in</div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', padding: '18px', border: '1px solid #e9d5ff', marginTop: '16px' }}>
+                    <p style={{ fontSize: '15px', color: '#581c87', fontWeight: '500', margin: '0 0 6px 0' }}>
+                      🎉 {checkIns.filter(c => c.practiced === 'yes').length} day{checkIns.filter(c => c.practiced === 'yes').length !== 1 ? 's' : ''} practiced this week
+                    </p>
+                    {checkIns.filter(c => c.note).length > 0 && (
+                      <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0 }}>
+                        📝 {checkIns.filter(c => c.note).length} moment{checkIns.filter(c => c.note).length !== 1 ? 's' : ''} captured
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -2727,8 +2830,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["pre", "Prep"],
-                ["post", "Log"],
-                ...(getCurrentIntention() ? [["progress", "🎯 Progress"]] : []),
+                ["post", "Reflect"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -3038,70 +3140,6 @@ Everything you write is end-to-end encrypted and private.`,
               </div>
             )}
 
-            {/* PROGRESS VIEW */}
-            {sessionView === "progress" && getCurrentIntention() && (() => {
-              const intention = getCurrentIntention();
-              const checkIns = intention.checkIns || [];
-              const last7Days = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() - (6 - i));
-                return d.toISOString().split('T')[0];
-              });
-
-              return (
-                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                  <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', marginBottom: '6px' }}>Your Progress</h2>
-                  <p style={{ fontSize: '15px', color: '#7c3aed', marginBottom: '24px', fontStyle: 'italic', lineHeight: '1.5' }}>
-                    "{intention.text}"
-                  </p>
-
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
-                    Last 7 Days
-                  </div>
-
-                  {last7Days.map(dateStr => {
-                    const date = new Date(dateStr + 'T12:00');
-                    const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                    const dayCheckIns = checkIns.filter(c => c.date.split('T')[0] === dateStr);
-                    const latest = dayCheckIns[dayCheckIns.length - 1];
-                    return (
-                      <div key={dateStr} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px', marginBottom: '8px', borderRadius: '12px', background: latest ? '#faf5ff' : 'transparent', border: '1px solid #e9d5ff' }}>
-                        <div style={{ minWidth: '48px' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea' }}>{dayName}</div>
-                          <div style={{ fontSize: '12px', color: '#9ca3af' }}>{date.getMonth() + 1}/{date.getDate()}</div>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          {latest ? (
-                            <>
-                              <div style={{ fontSize: '14px', color: '#581c87', marginBottom: latest.note ? '4px' : 0 }}>
-                                {latest.practiced === 'yes' && '✅ Noticed + practiced'}
-                                {latest.practiced === 'somewhat' && "👀 Noticed, didn't practice"}
-                                {latest.practiced === 'forgot' && '💭 Forgot about it'}
-                              </div>
-                              {latest.note && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>"{latest.note}"</p>}
-                            </>
-                          ) : (
-                            <div style={{ fontSize: '13px', color: '#9ca3af' }}>No check-in</div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', padding: '18px', border: '1px solid #e9d5ff', marginTop: '16px' }}>
-                    <p style={{ fontSize: '15px', color: '#581c87', fontWeight: '500', margin: '0 0 6px 0' }}>
-                      🎉 {checkIns.filter(c => c.practiced === 'yes').length} day{checkIns.filter(c => c.practiced === 'yes').length !== 1 ? 's' : ''} practiced this week
-                    </p>
-                    {checkIns.filter(c => c.note).length > 0 && (
-                      <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0 }}>
-                        📝 {checkIns.filter(c => c.note).length} moment{checkIns.filter(c => c.note).length !== 1 ? 's' : ''} captured
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* POST-SESSION VIEW */}
             {sessionView === "post" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -3371,7 +3409,7 @@ Everything you write is end-to-end encrypted and private.`,
               { id: 'home',     label: 'Home',    Icon: Home,     active: tab === 'home',                                    action: () => { setTab('home'); setExpanded({}); } },
               { id: 'log',      label: 'Log',     Icon: FileText, active: tab === 'journal' && journalView === 'log',         action: () => { setTab('journal'); setJournalView('log'); setExpanded({}); } },
               { id: 'create',   label: 'Create',  Icon: Plus,     active: tab === 'journal' && journalView === 'write',       action: () => { setTab('journal'); setJournalView('write'); setExpanded({}); } },
-              { id: 'patterns', label: 'Patterns',Icon: Sparkles, active: tab === 'patterns',                                action: () => { setTab('patterns'); setExpanded({}); } },
+              { id: 'patterns', label: 'Patterns',Icon: Sparkles, active: tab === 'patterns',                                action: () => { setTab('patterns'); setPatternView('insights'); setExpanded({}); } },
               { id: 'sessions', label: 'Sessions',Icon: Calendar, active: tab === 'sessions',                                action: () => { setTab('sessions'); setSessionView('pre'); setExpanded({}); } },
             ].map(({ id, label, Icon, active, action }) => (
               <button
