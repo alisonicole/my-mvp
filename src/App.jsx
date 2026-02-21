@@ -24,6 +24,8 @@ import {
   Star,
   Plus,
   Bookmark,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -62,6 +64,77 @@ const DAILY_PROMPTS = [
   "What conversation have you been putting off, and what's stopping you?",
 ];
 
+// ── Patterns Over Time: word frequency analysis ──────────────────────────
+const STOP_WORDS = new Set([
+  'i','me','my','myself','we','our','ours','ourselves','you','your','yours',
+  'yourself','yourselves','he','him','his','himself','she','her','hers',
+  'herself','it','its','itself','they','them','their','theirs','themselves',
+  'what','which','who','whom','this','that','these','those','am','is','are',
+  'was','were','be','been','being','have','has','had','having','do','does',
+  'did','doing','a','an','the','and','but','if','or','because','as','until',
+  'while','of','at','by','for','with','about','against','between','into',
+  'through','during','before','after','above','below','to','from','up','down',
+  'in','out','on','off','over','under','again','further','then','once','here',
+  'there','when','where','why','how','all','both','each','few','more','most',
+  'other','some','such','no','nor','not','only','own','same','so','than',
+  'too','very','s','t','can','will','just','don','should','now','d','ll',
+  'm','o','re','ve','y','ain','aren','couldn','didn','doesn','hadn','hasn',
+  'haven','isn','ma','mightn','mustn','needn','shan','shouldn','wasn',
+  'weren','won','wouldn','also','like','get','got','make','made','want',
+  'really','feel','felt','think','thought','know','knew','see','saw',
+  'would','could','much','many','one','two','even','still','back','little',
+  'way','time','day','week','always','never','something','anything','everything',
+  'nothing','sometimes','often','usually','maybe','actually','probably',
+]);
+
+function extractKeywords(text) {
+  return text.toLowerCase()
+    .replace(/[^a-z\s'-]/g, ' ')
+    .split(/\s+/)
+    .map(w => w.replace(/^['-]+|['-]+$/g, ''))
+    .filter(w => w.length > 3 && !STOP_WORDS.has(w));
+}
+
+function calculateWordFrequencies(texts) {
+  const freq = {};
+  texts.forEach(text => {
+    const words = extractKeywords(text);
+    const seen = new Set();
+    words.forEach(w => {
+      if (!seen.has(w)) { freq[w] = (freq[w] || 0) + 1; seen.add(w); }
+    });
+  });
+  return freq;
+}
+
+function compareFrequencies(recent, older) {
+  const allWords = new Set([...Object.keys(recent), ...Object.keys(older)]);
+  const changes = [];
+  allWords.forEach(w => {
+    const r = recent[w] || 0;
+    const o = older[w] || 0;
+    if (r + o < 2) return;
+    const diff = r - o;
+    const pct = o > 0 ? Math.abs(diff / o) : (r > 0 ? 1 : 0);
+    if (Math.abs(diff) >= 1 && pct >= 0.3) {
+      changes.push({ word: w, recent: r, older: o, diff, direction: diff > 0 ? 'up' : 'down' });
+    }
+  });
+  return changes.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 20);
+}
+
+function analyzePatternChanges(entries) {
+  const sorted = [...entries].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  const half = Math.ceil(sorted.length / 2);
+  const recentTexts = sorted.slice(0, half).map(e => e.text);
+  const olderTexts = sorted.slice(half).map(e => e.text);
+  const recentFreq = calculateWordFrequencies(recentTexts);
+  const olderFreq = calculateWordFrequencies(olderTexts);
+  const changes = compareFrequencies(recentFreq, olderFreq);
+  return { changes, recentFreq, olderFreq, recentCount: recentTexts.length, olderCount: olderTexts.length };
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const getDate = () => {
     const d = new Date();
@@ -87,7 +160,12 @@ export default function App() {
   const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
 
   // Patterns sub-tabs
-  const [patternView, setPatternView] = useState("insights"); // "insights" or "progress"
+  const [patternView, setPatternView] = useState("insights"); // "insights" | "progress" | "overtime"
+
+  // Patterns Over Time
+  const [overtimeLoading, setOvertimeLoading] = useState(false);
+  const [overtimeData, setOvertimeData] = useState(null); // { changes, recentCount, olderCount }
+  const [overtimeInterpretation, setOvertimeInterpretation] = useState('');
 
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
@@ -125,8 +203,8 @@ export default function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
-  // Next session date (user-editable, overrides computed day-of-week)
-  const [nextSessionDate, setNextSessionDate] = useState('');
+  // Next session dates (up to 4, user-editable, overrides computed day-of-week)
+  const [nextSessionDates, setNextSessionDates] = useState([]);
   const [editingNextSession, setEditingNextSession] = useState(false);
 
   // Intention
@@ -312,7 +390,7 @@ export default function App() {
     setNotes("");
     setNextSteps("");
     setSessionIntention("");
-    setNextSessionDate('');
+    setNextSessionDates([]);
     setEditingNextSession(false);
     setDisplayName("");
     setSavedPrompts([]);
@@ -578,8 +656,14 @@ Everything you write is end-to-end encrypted and private.`,
         if (td) setTherapyDay(td);
         if (tt) setTherapyTime(tt);
 
-        const nsd = currentUser.get("nextSessionDate");
-        if (nsd) setNextSessionDate(nsd);
+        // Load session dates (new array format, with fallback for old single-date field)
+        const nsds = currentUser.get("nextSessionDates");
+        if (Array.isArray(nsds) && nsds.length > 0) {
+          setNextSessionDates(nsds);
+        } else {
+          const legacyNsd = currentUser.get("nextSessionDate");
+          if (legacyNsd) setNextSessionDates([legacyNsd]);
+        }
 
         setLastAnalyzedEntries([]);
       } catch (err) {
@@ -1026,10 +1110,11 @@ Everything you write is end-to-end encrypted and private.`,
     setTherapyTime(time);
   };
 
-  const saveNextSessionDate = (date) => {
-    setNextSessionDate(date);
+  const saveNextSessionDates = (dates) => {
+    const sorted = [...dates].sort();
+    setNextSessionDates(sorted);
     if (currentUser && Parse) {
-      currentUser.set("nextSessionDate", date);
+      currentUser.set("nextSessionDates", sorted);
       currentUser.save().catch(() => {});
     }
   };
@@ -1168,7 +1253,11 @@ Everything you write is end-to-end encrypted and private.`,
         );
       }
 
-      // Step 3: First entry
+      // Step 3: First entry — skip if user already has entries
+      if (entries.filter(e => !e.isWelcomeEntry).length > 0) {
+        finishOnboarding('');
+        return null;
+      }
       return (
         <div>
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
@@ -1442,23 +1531,23 @@ Everything you write is end-to-end encrypted and private.`,
 
           const realEntryCount = entries.filter(e => !e.isWelcomeEntry).length;
 
-          // Compute next session date from stored override or from therapyDay schedule
-          const getComputedNextSession = () => {
-            const today = getDate();
-            if (nextSessionDate && nextSessionDate >= today) return nextSessionDate;
+          const today = getDate();
+          // Future session dates from user-entered list (sorted ascending)
+          const futureDates = nextSessionDates.filter(d => d >= today).sort();
+          // Nearest upcoming date, falling back to therapyDay schedule if no dates entered
+          const computedNextSession = (() => {
+            if (futureDates.length > 0) return futureDates[0];
             if (therapyDay) {
               const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
               const todayIdx = new Date().getDay();
               const therapyIdx = DAYS.indexOf(therapyDay);
-              let diff = (therapyIdx - todayIdx + 7) % 7;
+              const diff = (therapyIdx - todayIdx + 7) % 7;
               const d = new Date();
               d.setDate(d.getDate() + diff);
               return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             }
             return null;
-          };
-          const computedNextSession = getComputedNextSession();
-          const today = getDate();
+          })();
           const sessionDaysUntil = computedNextSession
             ? Math.round((new Date(computedNextSession + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24))
             : null;
@@ -1598,49 +1687,88 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* Next Therapy Session card */}
               <div style={{ background: sessionDaysUntil === 0 ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${sessionDaysUntil === 0 ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-                      Next Therapy Session
-                    </div>
-                    {editingNextSession ? (
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <input
-                          type="date"
-                          defaultValue={computedNextSession || ''}
-                          min={today}
-                          onChange={(e) => saveNextSessionDate(e.target.value)}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '2px solid #9333ea', outline: 'none', fontSize: '15px', color: '#581c87', background: 'white' }}
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => setEditingNextSession(false)}
-                          style={{ padding: '8px 14px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '500', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          Done
-                        </button>
-                      </div>
-                    ) : computedNextSession ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '18px', fontWeight: '600', color: '#581c87' }}>
-                          {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </span>
-                        <span style={{ fontSize: '13px', color: '#7c3aed' }}>
-                          {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
-                        </span>
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to set your next session date</span>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Upcoming Sessions
                   </div>
                   <button
                     onClick={() => setEditingNextSession(prev => !prev)}
-                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea', flexShrink: 0 }}
-                    title="Change date"
+                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea' }}
+                    title={editingNextSession ? 'Done' : 'Edit dates'}
                   >
-                    <Edit2 size={15} />
+                    {editingNextSession ? <span style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea' }}>Done</span> : <Edit2 size={15} />}
                   </button>
                 </div>
+
+                {editingNextSession ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {futureDates.map((dateStr, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="date"
+                          value={dateStr}
+                          min={today}
+                          onChange={(e) => {
+                            const updated = [...futureDates];
+                            updated[idx] = e.target.value;
+                            saveNextSessionDates(updated.filter(Boolean));
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', color: '#581c87', background: 'white' }}
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = futureDates.filter((_, i) => i !== idx);
+                            saveNextSessionDates(updated);
+                          }}
+                          style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#9ca3af', fontSize: '16px' }}
+                          title="Remove"
+                        >✕</button>
+                      </div>
+                    ))}
+                    {futureDates.length < 4 && (
+                      <button
+                        onClick={() => saveNextSessionDates([...futureDates, ''])}
+                        style={{ padding: '8px', background: 'transparent', border: '2px dashed #e9d5ff', borderRadius: '10px', color: '#9333ea', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        + Add a session
+                      </button>
+                    )}
+                    {futureDates.length === 0 && (
+                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
+                        No upcoming sessions saved. Add one above.
+                      </p>
+                    )}
+                  </div>
+                ) : futureDates.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {futureDates.map((dateStr, idx) => {
+                      const daysUntil = Math.round((new Date(dateStr + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={dateStr} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: idx === 0 ? '10px 0 6px' : '4px 0', borderBottom: idx < futureDates.length - 1 ? '1px solid #f3e8ff' : 'none' }}>
+                          <span style={{ fontSize: idx === 0 ? '17px' : '15px', fontWeight: idx === 0 ? '600' : '400', color: '#581c87' }}>
+                            {new Date(dateStr + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </span>
+                          <span style={{ fontSize: '12px', color: daysUntil === 0 ? '#9333ea' : '#9ca3af' }}>
+                            {daysUntil === 0 ? '· today' : daysUntil === 1 ? '· tomorrow' : `· ${daysUntil} days`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : computedNextSession ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '17px', fontWeight: '600', color: '#581c87' }}>
+                      {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                      {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#c4b5fd', fontStyle: 'italic' }}>(from schedule)</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to add your upcoming session dates</span>
+                )}
+
                 {computedNextSession && sessionDaysUntil !== null && !editingNextSession && (
                   <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     {sessionDaysUntil === 0 ? (
@@ -2513,11 +2641,12 @@ Everything you write is end-to-end encrypted and private.`,
         {/* PATTERNS TAB */}
         {tab === "patterns" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {/* Patterns sub-tabs: Insights | Progress */}
+            {/* Patterns sub-tabs: Insights | Progress | Over Time */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["insights", "Insights"],
                 ...(getCurrentIntention() ? [["progress", "Progress"]] : []),
+                ["overtime", "Over Time"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2778,12 +2907,29 @@ Everything you write is end-to-end encrypted and private.`,
                 d.setDate(sunProg.getDate() + i);
                 return toLocalDate(d);
               });
+              const practicedThisWeek = checkIns.filter(c => c.practiced === 'yes').length;
               return (
                 <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  {/* Intention header */}
                   <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', marginBottom: '6px' }}>Your Progress</h2>
-                  <p style={{ fontSize: '15px', color: '#7c3aed', marginBottom: '24px', fontStyle: 'italic', lineHeight: '1.5' }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>This week's intention</p>
+                  <p style={{ fontSize: '15px', color: '#581c87', fontStyle: 'italic', lineHeight: '1.5', margin: '0 0 20px 0' }}>
                     "{intention.text}"
                   </p>
+
+                  {/* Summary card */}
+                  <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', padding: '18px', border: '1px solid #e9d5ff', marginBottom: '24px' }}>
+                    <p style={{ fontSize: '15px', color: '#581c87', fontWeight: '500', margin: '0 0 6px 0' }}>
+                      🎉 {practicedThisWeek} day{practicedThisWeek !== 1 ? 's' : ''} practiced this week
+                    </p>
+                    {checkIns.filter(c => c.note).length > 0 && (
+                      <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0 }}>
+                        📝 {checkIns.filter(c => c.note).length} moment{checkIns.filter(c => c.note).length !== 1 ? 's' : ''} captured
+                      </p>
+                    )}
+                  </div>
+
+                  {/* This Week daily list */}
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
                     This Week
                   </div>
@@ -2815,16 +2961,114 @@ Everything you write is end-to-end encrypted and private.`,
                       </div>
                     );
                   })}
-                  <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', padding: '18px', border: '1px solid #e9d5ff', marginTop: '16px' }}>
-                    <p style={{ fontSize: '15px', color: '#581c87', fontWeight: '500', margin: '0 0 6px 0' }}>
-                      🎉 {checkIns.filter(c => c.practiced === 'yes').length} day{checkIns.filter(c => c.practiced === 'yes').length !== 1 ? 's' : ''} practiced this week
+                </div>
+              );
+            })()}
+
+            {/* OVER TIME VIEW */}
+            {patternView === "overtime" && (() => {
+              const realEntries = entries.filter(e => !e.isWelcomeEntry);
+              const hasEnough = realEntries.length >= 6;
+
+              const runAnalysis = async () => {
+                setOvertimeLoading(true);
+                setOvertimeInterpretation('');
+                const result = analyzePatternChanges(realEntries);
+                setOvertimeData(result);
+                // Request AI interpretation via cloud function
+                try {
+                  const topChanges = result.changes.slice(0, 10).map(c => ({
+                    word: c.word, direction: c.direction, recent: c.recent, older: c.older,
+                  }));
+                  const res = await window.Parse.Cloud.run("interpretPatternChanges", {
+                    changes: topChanges,
+                    recentCount: result.recentCount,
+                    olderCount: result.olderCount,
+                  });
+                  setOvertimeInterpretation(res?.interpretation || '');
+                } catch (err) {
+                  console.error('interpretPatternChanges error:', err);
+                }
+                setOvertimeLoading(false);
+              };
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                    <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 8px 0' }}>Patterns Over Time</h2>
+                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+                      Compares your most recent entries against older ones to surface what's shifting in your inner world.
                     </p>
-                    {checkIns.filter(c => c.note).length > 0 && (
-                      <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0 }}>
-                        📝 {checkIns.filter(c => c.note).length} moment{checkIns.filter(c => c.note).length !== 1 ? 's' : ''} captured
-                      </p>
+
+                    {!hasEnough ? (
+                      <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📝</div>
+                        <p style={{ fontSize: '15px', color: '#7c3aed', margin: '0 0 6px 0' }}>You need at least 6 entries to see patterns over time.</p>
+                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>You have {realEntries.length} so far.</p>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={runAnalysis}
+                        disabled={overtimeLoading}
+                        style={{ padding: '10px 24px', background: overtimeLoading ? '#d1d5db' : 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: overtimeLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> Analyze my patterns</>}
+                      </button>
                     )}
                   </div>
+
+                  {overtimeData && !overtimeLoading && (() => {
+                    const increased = overtimeData.changes.filter(c => c.direction === 'up').slice(0, 8);
+                    const decreased = overtimeData.changes.filter(c => c.direction === 'down').slice(0, 8);
+                    return (
+                      <>
+                        {overtimeInterpretation && (
+                          <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '20px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                              ✨ AI Interpretation
+                            </div>
+                            <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.7', margin: 0 }}>{overtimeInterpretation}</p>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+                              <TrendingUp size={16} style={{ color: '#9333ea' }} />
+                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emerging</span>
+                            </div>
+                            {increased.length === 0 ? (
+                              <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Nothing notable</p>
+                            ) : increased.map(c => (
+                              <div key={c.word} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '14px', color: '#581c87', fontWeight: '500' }}>{c.word}</span>
+                                <span style={{ fontSize: '12px', color: '#9333ea', background: '#f3e8ff', padding: '2px 8px', borderRadius: '10px' }}>+{c.diff}×</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+                              <TrendingDown size={16} style={{ color: '#7c3aed' }} />
+                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fading</span>
+                            </div>
+                            {decreased.length === 0 ? (
+                              <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Nothing notable</p>
+                            ) : decreased.map(c => (
+                              <div key={c.word} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ fontSize: '14px', color: '#581c87', fontWeight: '500' }}>{c.word}</span>
+                                <span style={{ fontSize: '12px', color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '10px' }}>{c.diff}×</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
+                          Based on {overtimeData.recentCount} recent vs {overtimeData.olderCount} earlier entries
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
               );
             })()}
