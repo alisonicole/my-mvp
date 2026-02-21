@@ -1498,9 +1498,13 @@ Everything you write is end-to-end encrypted and private.`,
                 if (daysSince > 14) return null;
 
                 const intention = getCurrentIntention(); // non-null only if text exists
-                const now = new Date();
+                const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                const todayDt = new Date();
+                const sunDate = new Date(todayDt);
+                sunDate.setDate(todayDt.getDate() - todayDt.getDay()); // rewind to this week's Sunday
+                const sunStr = toLocalDate(sunDate);
                 const thisWeekCheckIns = intention ? intention.checkIns.filter(c =>
-                  Math.floor((now - new Date(c.date)) / (1000 * 60 * 60 * 24)) < 7
+                  toLocalDate(new Date(c.date)) >= sunStr
                 ) : [];
                 const practicedCount = thisWeekCheckIns.filter(c => c.practiced === 'yes').length;
 
@@ -1515,12 +1519,12 @@ Everything you write is end-to-end encrypted and private.`,
 
                     {intention ? (() => {
                       const todayStr = getDate();
-                      const checkedInToday = intention.checkIns.some(c => c.date.split('T')[0] === todayStr);
-                      const last7 = Array.from({ length: 7 }, (_, i) => {
-                        const d = new Date();
-                        d.setDate(d.getDate() - (6 - i));
+                      const checkedInToday = intention.checkIns.some(c => toLocalDate(new Date(c.date)) === todayStr);
+                      const weekDays = Array.from({ length: 7 }, (_, i) => {
+                        const d = new Date(sunDate);
+                        d.setDate(sunDate.getDate() + i);
                         return {
-                          dateStr: d.toISOString().split('T')[0],
+                          dateStr: toLocalDate(d),
                           dayLabel: d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2),
                         };
                       });
@@ -1531,13 +1535,13 @@ Everything you write is end-to-end encrypted and private.`,
                           </p>
                           <div style={{ marginBottom: '10px' }}>
                             <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
-                              {last7.map(({ dateStr }) => {
-                                const has = intention.checkIns.some(c => c.date.split('T')[0] === dateStr);
+                              {weekDays.map(({ dateStr }) => {
+                                const has = intention.checkIns.some(c => toLocalDate(new Date(c.date)) === dateStr);
                                 return <div key={dateStr} style={{ flex: 1, height: '6px', borderRadius: '3px', background: has ? '#9333ea' : '#e9d5ff' }} />;
                               })}
                             </div>
                             <div style={{ display: 'flex', gap: '3px' }}>
-                              {last7.map(({ dateStr, dayLabel }) => (
+                              {weekDays.map(({ dateStr, dayLabel }) => (
                                 <div key={dateStr} style={{ flex: 1, textAlign: 'center', fontSize: '10px', color: '#9ca3af' }}>{dayLabel}</div>
                               ))}
                             </div>
@@ -2765,10 +2769,14 @@ Everything you write is end-to-end encrypted and private.`,
             {patternView === "progress" && getCurrentIntention() && (() => {
               const intention = getCurrentIntention();
               const checkIns = intention.checkIns || [];
-              const last7Days = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() - (6 - i));
-                return d.toISOString().split('T')[0];
+              const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+              const todayProg = new Date();
+              const sunProg = new Date(todayProg);
+              sunProg.setDate(todayProg.getDate() - todayProg.getDay());
+              const weekDays = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date(sunProg);
+                d.setDate(sunProg.getDate() + i);
+                return toLocalDate(d);
               });
               return (
                 <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
@@ -2777,12 +2785,12 @@ Everything you write is end-to-end encrypted and private.`,
                     "{intention.text}"
                   </p>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '14px' }}>
-                    Last 7 Days
+                    This Week
                   </div>
-                  {last7Days.map(dateStr => {
+                  {weekDays.map(dateStr => {
                     const date = new Date(dateStr + 'T12:00');
                     const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                    const dayCheckIns = checkIns.filter(c => c.date.split('T')[0] === dateStr);
+                    const dayCheckIns = checkIns.filter(c => toLocalDate(new Date(c.date)) === dateStr);
                     const latest = dayCheckIns[dayCheckIns.length - 1];
                     return (
                       <div key={dateStr} style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', padding: '14px', marginBottom: '8px', borderRadius: '12px', background: latest ? '#faf5ff' : 'transparent', border: '1px solid #e9d5ff' }}>
