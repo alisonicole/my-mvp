@@ -1702,14 +1702,15 @@ Everything you write is end-to-end encrypted and private.`,
 
                 {editingNextSession ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {futureDates.map((dateStr, idx) => (
+                    {nextSessionDates.map((dateStr, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <input
                           type="date"
                           value={dateStr}
                           min={today}
+                          autoFocus={idx === nextSessionDates.length - 1 && dateStr === ''}
                           onChange={(e) => {
-                            const updated = [...futureDates];
+                            const updated = [...nextSessionDates];
                             updated[idx] = e.target.value;
                             saveNextSessionDates(updated.filter(Boolean));
                           }}
@@ -1717,7 +1718,7 @@ Everything you write is end-to-end encrypted and private.`,
                         />
                         <button
                           onClick={() => {
-                            const updated = futureDates.filter((_, i) => i !== idx);
+                            const updated = nextSessionDates.filter((_, i) => i !== idx);
                             saveNextSessionDates(updated);
                           }}
                           style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#9ca3af', fontSize: '16px' }}
@@ -1725,15 +1726,18 @@ Everything you write is end-to-end encrypted and private.`,
                         >✕</button>
                       </div>
                     ))}
-                    {futureDates.length < 4 && (
+                    {nextSessionDates.length < 4 && (
                       <button
-                        onClick={() => saveNextSessionDates([...futureDates, ''])}
+                        onClick={() => {
+                          const updated = [...nextSessionDates, ''];
+                          setNextSessionDates(updated);
+                        }}
                         style={{ padding: '8px', background: 'transparent', border: '2px dashed #e9d5ff', borderRadius: '10px', color: '#9333ea', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
                       >
                         + Add a session
                       </button>
                     )}
-                    {futureDates.length === 0 && (
+                    {nextSessionDates.length === 0 && (
                       <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
                         No upcoming sessions saved. Add one above.
                       </p>
@@ -2646,7 +2650,7 @@ Everything you write is end-to-end encrypted and private.`,
               {[
                 ["insights", "Insights"],
                 ...(getCurrentIntention() ? [["progress", "Progress"]] : []),
-                ["overtime", "Over Time"],
+                ["overtime", "Keywords"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2995,7 +2999,7 @@ Everything you write is end-to-end encrypted and private.`,
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                    <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 8px 0' }}>Patterns Over Time</h2>
+                    <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 8px 0' }}>Keywords Over Time</h2>
                     <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 20px 0', lineHeight: '1.5' }}>
                       Compares your most recent entries against older ones to surface what's shifting in your inner world.
                     </p>
@@ -3012,7 +3016,7 @@ Everything you write is end-to-end encrypted and private.`,
                         disabled={overtimeLoading}
                         style={{ padding: '10px 24px', background: overtimeLoading ? '#d1d5db' : 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: overtimeLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                       >
-                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> Analyze my patterns</>}
+                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> Analyze my keywords</>}
                       </button>
                     )}
                   </div>
