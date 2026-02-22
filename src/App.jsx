@@ -207,6 +207,9 @@ export default function App() {
   const [nextSessionDates, setNextSessionDates] = useState([]);
   const [editingNextSession, setEditingNextSession] = useState(false);
 
+  // Home session snapshot modal
+  const [homeSessionModal, setHomeSessionModal] = useState(null);
+
   // Intention
   const [sessionIntention, setSessionIntention] = useState("");
   const [homeIntentionText, setHomeIntentionText] = useState("");
@@ -1571,8 +1574,14 @@ Everything you write is end-to-end encrypted and private.`,
             ? Math.round((new Date(computedNextSession + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24))
             : null;
 
+          // Thoughts captured since last session (for dot display)
+          const lastSessionDate = realHistory[0]?.sessionDate;
+          const thoughtsSinceLast = lastSessionDate
+            ? entries.filter(e => !e.isWelcomeEntry && e.date && e.date >= lastSessionDate).length
+            : realEntryCount;
+
           return (
-            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '24px 24px 0', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
               {/* Greeting */}
               <div>
@@ -1581,12 +1590,12 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
               </div>
 
-              {/* Next Therapy Session card */}
+              {/* NEXT SESSION */}
               <div style={{ background: sessionDaysUntil === 0 ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${sessionDaysUntil === 0 ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Upcoming Sessions
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Next Session
+                  </span>
                   <button
                     onClick={() => setEditingNextSession(prev => !prev)}
                     style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea' }}
@@ -1624,87 +1633,87 @@ Everything you write is end-to-end encrypted and private.`,
                     ))}
                     {nextSessionDates.length < 4 && (
                       <button
-                        onClick={() => {
-                          const updated = [...nextSessionDates, ''];
-                          setNextSessionDates(updated);
-                        }}
+                        onClick={() => { const updated = [...nextSessionDates, '']; setNextSessionDates(updated); }}
                         style={{ padding: '8px', background: 'transparent', border: '2px dashed #e9d5ff', borderRadius: '10px', color: '#9333ea', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
                       >
                         + Add a session
                       </button>
                     )}
                     {nextSessionDates.length === 0 && (
-                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
-                        No upcoming sessions saved. Add one above.
-                      </p>
+                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>No upcoming sessions saved. Add one above.</p>
                     )}
-                  </div>
-                ) : futureDates.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {futureDates.map((dateStr, idx) => {
-                      const daysUntil = Math.round((new Date(dateStr + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={dateStr} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: idx === 0 ? '10px 0 6px' : '4px 0', borderBottom: idx < futureDates.length - 1 ? '1px solid #f3e8ff' : 'none' }}>
-                          <span style={{ fontSize: idx === 0 ? '17px' : '15px', fontWeight: idx === 0 ? '600' : '400', color: '#581c87' }}>
-                            {new Date(dateStr + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </span>
-                          <span style={{ fontSize: '12px', color: daysUntil === 0 ? '#9333ea' : '#9ca3af' }}>
-                            {daysUntil === 0 ? '· today' : daysUntil === 1 ? '· tomorrow' : `· ${daysUntil} days`}
-                          </span>
-                        </div>
-                      );
-                    })}
                   </div>
                 ) : computedNextSession ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '17px', fontWeight: '600', color: '#581c87' }}>
-                      {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                      {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#c4b5fd', fontStyle: 'italic' }}>(from schedule)</span>
-                  </div>
+                  <>
+                    <div style={{ marginBottom: '10px' }}>
+                      <div style={{ fontSize: '20px', fontWeight: '600', color: '#581c87', lineHeight: 1.2 }}>
+                        {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                      </div>
+                      {therapyTime && (
+                        <div style={{ fontSize: '14px', color: '#7c3aed', marginTop: '3px' }}>{therapyTime}</div>
+                      )}
+                      <div style={{ fontSize: '13px', color: sessionDaysUntil === 0 ? '#9333ea' : '#9ca3af', marginTop: '4px', fontWeight: sessionDaysUntil === 0 ? '600' : '400' }}>
+                        {sessionDaysUntil === 0 ? 'Today' : sessionDaysUntil === 1 ? 'Tomorrow' : `In ${sessionDaysUntil} days`}
+                        {futureDates.length === 0 && <span style={{ fontSize: '11px', color: '#c4b5fd', fontStyle: 'italic' }}> (from schedule)</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>
+                        {thoughtsSinceLast} thought{thoughtsSinceLast !== 1 ? 's' : ''} captured
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
+                        {Array.from({ length: Math.min(thoughtsSinceLast, 12) }, (_, i) => (
+                          <div key={i} style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#9333ea' }} />
+                        ))}
+                        {thoughtsSinceLast > 12 && <span style={{ fontSize: '11px', color: '#9333ea', fontWeight: '600' }}>+{thoughtsSinceLast - 12}</span>}
+                      </div>
+                    </div>
+                  </>
                 ) : (
-                  <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to add your upcoming session dates</span>
-                )}
-
-                {!editingNextSession && (
-                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {computedNextSession && sessionDaysUntil !== null ? (
-                      sessionDaysUntil === 0 ? (
-                        <>
-                          <button onClick={() => { setTab('sessions'); setSessionView('prep'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                            Prep for session →
-                          </button>
-                          <button onClick={() => { setTab('sessions'); setSessionView('after'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                            Reflect on session →
-                          </button>
-                        </>
-                      ) : sessionDaysUntil === 1 ? (
-                        <>
-                          <button onClick={() => { setTab('sessions'); setSessionView('prep'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                            Start prepping →
-                          </button>
-                          <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                            Capture a thought →
-                          </button>
-                        </>
-                      ) : (
-                        <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                          Capture a thought →
-                        </button>
-                      )
-                    ) : (
-                      <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                        Capture a thought →
-                      </button>
-                    )}
-                  </div>
+                  <>
+                    <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to add your upcoming session dates</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>
+                        {thoughtsSinceLast} thought{thoughtsSinceLast !== 1 ? 's' : ''} captured
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px', alignItems: 'center' }}>
+                        {Array.from({ length: Math.min(thoughtsSinceLast, 12) }, (_, i) => (
+                          <div key={i} style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#9333ea' }} />
+                        ))}
+                        {thoughtsSinceLast > 12 && <span style={{ fontSize: '11px', color: '#9333ea', fontWeight: '600' }}>+{thoughtsSinceLast - 12}</span>}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* Weekly Intention Card — show when there's a recent session */}
+              {/* WHAT TO DO NOW */}
+              <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid #f3e8ff' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    What To Do Now
+                  </span>
+                </div>
+                {[
+                  { label: '+ Capture a Thought', subtitle: 'Something on your mind?', action: () => { setTab('sessions'); setSessionView('between'); setJournalView('write'); }, primary: true },
+                  { label: 'Prep for Session', subtitle: 'Organize your thoughts', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
+                  { label: 'View All Thoughts', subtitle: "Review what you've captured", action: () => { setTab('sessions'); setSessionView('between'); setJournalView('log'); }, primary: false },
+                ].map(({ label, subtitle, action, primary }, idx, arr) => (
+                  <button
+                    key={label}
+                    onClick={action}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', border: 'none', background: 'none', cursor: 'pointer', borderBottom: idx < arr.length - 1 ? '1px solid #f3e8ff' : 'none', textAlign: 'left' }}
+                  >
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: primary ? '600' : '500', color: primary ? '#9333ea' : '#581c87' }}>{label}</div>
+                      <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>{subtitle}</div>
+                    </div>
+                    <ChevronRight size={16} style={{ color: '#c4b5fd', flexShrink: 0 }} />
+                  </button>
+                ))}
+              </div>
+
+              {/* THIS WEEK'S INTENTION */}
               {(() => {
                 const mostRecent = realHistory[0];
                 if (!mostRecent) return null;
@@ -1810,7 +1819,7 @@ Everything you write is end-to-end encrypted and private.`,
                 );
               })()}
 
-              {/* Recent Sessions */}
+              {/* RECENT SESSIONS */}
               {realHistory.length > 0 && (
                 <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
@@ -1831,7 +1840,7 @@ Everything you write is end-to-end encrypted and private.`,
                           )}
                         </div>
                         <button
-                          onClick={() => { setTab('sessions'); setSessionView('after'); }}
+                          onClick={() => setHomeSessionModal(session)}
                           style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           View →
@@ -1849,18 +1858,6 @@ Everything you write is end-to-end encrypted and private.`,
                   )}
                 </div>
               )}
-
-              {/* Stats row */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '6px 14px' }}>
-                  <span style={{ fontSize: '16px' }}>🔥</span>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#92400e' }}>
-                    {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''} in a row` : 'Start your streak today'}
-                  </span>
-                </div>
-                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {realEntryCount} thoughts</span>
-                <span style={{ fontSize: '12px', color: '#9ca3af' }}>🗓️ {realHistory.length} sessions</span>
-              </div>
 
             </div>
           );
@@ -2435,6 +2432,14 @@ Everything you write is end-to-end encrypted and private.`,
               ) : (
                 <div className="mobile-card" style={{ position: 'relative', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
 
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px' }}>
+                    <button
+                      onClick={() => setJournalView('log')}
+                      style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                    >
+                      View log →
+                    </button>
+                  </div>
 
                   <div style={{ marginBottom: '24px' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#7c3aed', marginBottom: '8px', fontWeight: '500' }}>
@@ -3493,6 +3498,75 @@ Everything you write is end-to-end encrypted and private.`,
 
         {/* Close content area */}
         </div>
+
+        {/* SESSION SNAPSHOT MODAL */}
+        {homeSessionModal && (
+          <div
+            onClick={() => setHomeSessionModal(null)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 10000, padding: '0' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px 40px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Session</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: '#581c87' }}>
+                    {homeSessionModal.sessionDate
+                      ? new Date(homeSessionModal.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                      : 'Session'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setHomeSessionModal(null)}
+                  style={{ background: 'none', border: 'none', fontSize: '24px', color: '#9ca3af', cursor: 'pointer', padding: '4px', lineHeight: 1 }}
+                >×</button>
+              </div>
+
+              {homeSessionModal.openingStatement && (
+                <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Opening Statement</div>
+                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>"{homeSessionModal.openingStatement}"</p>
+                </div>
+              )}
+
+              {homeSessionModal.notes && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
+                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
+                </div>
+              )}
+
+              {homeSessionModal.intention && (
+                <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#fef3c7', borderRadius: '10px', border: '1px solid #fbbf24' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Intention</div>
+                  <p style={{ fontSize: '14px', color: '#92400e', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>"{homeSessionModal.intention}"</p>
+                </div>
+              )}
+
+              {homeSessionModal.nextSteps && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Follow Ups</div>
+                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
+                </div>
+              )}
+
+              {homeSessionModal.themes?.length > 0 && homeSessionModal.themes[0] !== 'Capture at least 3 thoughts to see patterns' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Key Themes</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {homeSessionModal.themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
+                      <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px' }}>
+                        <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* INTENTION CHECK-IN MODAL */}
         {showIntentionCheckIn && getCurrentIntention() && (() => {
