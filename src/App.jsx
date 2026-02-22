@@ -3070,19 +3070,21 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {homeSessionModal.notes && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
-                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
-                </div>
-              )}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
+                {homeSessionModal.notes
+                  ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
+                  : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
+                }
+              </div>
 
-              {homeSessionModal.nextSteps && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Follow Ups</div>
-                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
-                </div>
-              )}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Follow Ups</div>
+                {homeSessionModal.nextSteps
+                  ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
+                  : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
+                }
+              </div>
 
               {homeSessionModal.themes?.length > 0 && homeSessionModal.themes[0] !== 'Capture at least 3 thoughts to see patterns' && (
                 <div style={{ marginBottom: '20px' }}>
