@@ -2736,6 +2736,14 @@ Everything you write is end-to-end encrypted and private.`,
                           </div>
                         )}
                       </div>
+                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setHomeSessionModal(lastSnapshot)}
+                          style={{ padding: '8px 18px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                        >
+                          View Session Snapshot →
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
