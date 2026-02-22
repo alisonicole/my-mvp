@@ -1491,7 +1491,7 @@ Everything you write is end-to-end encrypted and private.`,
               {/* Greeting */}
               <div>
                 <h2 style={{ fontSize: '24px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                  Hi {name}
+                  Hi {name} 👋
                 </h2>
               </div>
 
@@ -1523,54 +1523,30 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* RECENT SESSIONS */}
               {realHistory.length > 0 && (
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
                     Recent Sessions
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {realHistory.slice(0, 3).map((session) => {
-                      const dStr = session.sessionDate
-                        ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-                        : 'Session';
-                      return (
-                        <div key={session.id} style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '12px' }}>{dStr}</div>
-                          {session.openingStatement && (
-                            <div style={{ marginBottom: '10px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Opening Statement</div>
-                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>"{session.openingStatement}"</p>
-                            </div>
-                          )}
-                          {session.notes && (
-                            <div style={{ marginBottom: '10px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>What You Covered</div>
-                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{session.notes}</p>
-                            </div>
-                          )}
-                          {session.nextSteps && (
-                            <div style={{ marginBottom: '10px' }}>
-                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Follow Ups</div>
-                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{session.nextSteps}</p>
-                            </div>
-                          )}
-                          {session.themes?.length > 0 && session.themes[0] !== 'Capture at least 3 thoughts to see patterns' && (
-                            <div>
-                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Key Themes</div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                {session.themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
-                                  <span key={i} style={{ fontSize: '12px', color: '#7c3aed', background: '#f3e8ff', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {realHistory.slice(0, 3).map((session, idx) => {
+                    const dStr = session.sessionDate
+                      ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      : 'Session';
+                    return (
+                      <div key={session.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: idx === 0 ? '0 0 10px 0' : '10px 0', borderBottom: idx < Math.min(realHistory.length, 3) - 1 ? '1px solid #f3e8ff' : 'none' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#581c87' }}>{dStr}</div>
+                        <button
+                          onClick={() => setHomeSessionModal(session)}
+                          style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          View →
+                        </button>
+                      </div>
+                    );
+                  })}
                   {realHistory.length > 3 && (
                     <button
                       onClick={() => { setTab('sessions'); setSessionView('between'); setJournalView('log'); setLogFilter('snapshots'); }}
-                      style={{ marginTop: '10px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9333ea', cursor: 'pointer', fontWeight: '500' }}
+                      style={{ marginTop: '8px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9333ea', cursor: 'pointer', fontWeight: '500' }}
                     >
                       + {realHistory.length - 3} more sessions →
                     </button>
@@ -2725,6 +2701,45 @@ Everything you write is end-to-end encrypted and private.`,
         {/* SESSIONS PREP VIEW */}
         {tab === "sessions" && sessionView === "prep" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* LAST SESSION */}
+                {lastSnapshot && (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                    <div style={{ padding: '32px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                        <Archive size={20} style={{ color: '#9333ea' }} />
+                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
+                          Recall Your Last Session
+                        </h3>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Date</div>
+                          <div style={{ fontSize: '16px', color: '#581c87' }}>{formatDate(lastSnapshot?.sessionDate || getDate())}</div>
+                        </div>
+                        {lastSnapshot?.notes && (
+                          <div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What You Covered</div>
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
+                                <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
+                                  {line}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {lastSnapshot?.nextSteps && (
+                          <div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Follow Ups</div>
+                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{lastSnapshot.nextSteps}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Refresh Analysis Button - Always visible at top */}
                 {loading ? (
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
@@ -2922,61 +2937,6 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
-                {/* LAST SESSION */}
-                {!loading && lastSnapshot && (
-                  <div style={{
-                    background: 'rgba(255,255,255,0.7)',
-                    backdropFilter: 'blur(10px)',
-                    border: '1px solid rgba(255,255,255,0.8)',
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ padding: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <Archive size={20} style={{ color: '#9333ea' }} />
-                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                          Recall Your Last Session
-                        </h3>
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        <div>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Session Date
-                          </div>
-                          <div style={{ fontSize: '16px', color: '#581c87' }}>
-                            {formatDate(lastSnapshot?.sessionDate || getDate())}
-                          </div>
-                        </div>
-                        {lastSnapshot?.notes && (
-                          <div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              What You Covered
-                            </div>
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
-                                <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
-                                  {line}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {lastSnapshot?.nextSteps && (
-                          <div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Follow Ups
-                            </div>
-                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                              {lastSnapshot.nextSteps}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
