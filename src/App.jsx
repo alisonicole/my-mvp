@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import CryptoJS from 'crypto-js';
 import {
   Calendar,
-  FileText,
   Home,
   User,
   Sparkles,
@@ -151,13 +150,13 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Main tabs: "journal" or "sessions"
-  const [tab, setTab] = useState("journal"); // "home", "journal", "sessions", "account"
-  
-  // Journal sub-tabs
+  const [tab, setTab] = useState("home"); // "home" | "sessions" | "account"
+
+  // Journal sub-tabs (used within sessions/between)
   const [journalView, setJournalView] = useState("write"); // "write" or "log"
-  
+
   // Sessions sub-tabs
-  const [sessionView, setSessionView] = useState("pre"); // "pre" or "post"
+  const [sessionView, setSessionView] = useState("between"); // "between" | "prep" | "after" | "insights"
 
   // Patterns sub-tabs
   const [patternView, setPatternView] = useState("insights"); // "insights" | "progress" | "overtime"
@@ -337,8 +336,7 @@ export default function App() {
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
       localStorage.setItem('encKey', encKey);
-      setTab("journal");
-      setJournalView("write");
+      setTab("home");
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -407,7 +405,7 @@ export default function App() {
     setFavoritedPatterns([]);
     setTab("home");
     setJournalView("write");
-    setSessionView("pre");
+    setSessionView("between");
     setEditingId(null);
     setEditDraft({ text: "" });
   };
@@ -708,8 +706,8 @@ Everything you write is end-to-end encrypted and private.`,
   const genAnalysis = async () => {
     if (entries.length < 3) {
       const empty = {
-        themes: ["Add at least 3 journal entries to see patterns"],
-        avoiding: ["Begin your journaling journey"],
+        themes: ["Capture at least 3 thoughts to see patterns"],
+        avoiding: ["Begin capturing your thoughts between sessions"],
         questions: ["What would you like to explore?"],
         openingStatement: "I think what I'd like to talk about today is just getting started.",
       };
@@ -845,7 +843,8 @@ Everything you write is end-to-end encrypted and private.`,
     
     // Set the active prompt (don't pre-fill text)
     setActivePrompt(question);
-    setTab('journal');
+    setTab('sessions');
+    setSessionView('between');
     setJournalView('write');
   };
 
@@ -861,7 +860,8 @@ Everything you write is end-to-end encrypted and private.`,
         questions: lastSnapshot.questions || [],
       });
       setActivePrompt(result.prompt);
-      setTab('journal');
+      setTab('sessions');
+      setSessionView('between');
       setJournalView('write');
     } catch (error) {
       console.error('Error generating prompt:', error);
@@ -1289,10 +1289,10 @@ Everything you write is end-to-end encrypted and private.`,
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <div style={{ fontSize: '36px', marginBottom: '10px' }}>✏️</div>
             <h2 style={{ fontSize: '24px', fontWeight: '400', color: '#581c87', margin: '0 0 8px 0', fontFamily: "'Crimson Pro', serif" }}>
-              Write your first entry
+              Capture your first thought
             </h2>
             <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, lineHeight: '1.5' }}>
-              What's on your mind right now? There's no right or wrong way to start.
+              What came up today? There's no right or wrong way to start.
             </p>
           </div>
 
@@ -1545,22 +1545,10 @@ Everything you write is end-to-end encrypted and private.`,
           const fallbackName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
           const name = displayName || fallbackName;
 
-          const lastEntry = entries[0];
-          const lastEntryAgo = lastEntry ? (() => {
-            const diff = Date.now() - new Date(lastEntry.timestamp).getTime();
-            const hours = Math.floor(diff / 3600000);
-            if (hours < 1) return 'just now';
-            if (hours < 24) return `${hours}h ago`;
-            const days = Math.floor(hours / 24);
-            return `${days}d ago`;
-          })() : null;
-
           const realEntryCount = entries.filter(e => !e.isWelcomeEntry).length;
 
           const today = getDate();
-          // Future session dates from user-entered list (sorted ascending)
           const futureDates = nextSessionDates.filter(d => d >= today).sort();
-          // Nearest upcoming date, falling back to therapyDays schedule if no dates entered
           const computedNextSession = (() => {
             if (futureDates.length > 0) return futureDates[0];
             if (therapyDays.length > 0) {
@@ -1583,45 +1571,151 @@ Everything you write is end-to-end encrypted and private.`,
             ? Math.round((new Date(computedNextSession + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24))
             : null;
 
-          // Next action suggestion based on entry count
-          const nextAction = (() => {
-            if (realEntryCount === 0) return { msg: "Write your first entry to get started", cta: "Write Now", action: () => { setTab('journal'); setJournalView('write'); } };
-            if (realEntryCount === 1) return { msg: "Write 2 more entries to unlock pattern analysis", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
-            if (realEntryCount === 2) return { msg: "One more entry to unlock Patterns!", cta: "Write Entry", action: () => { setTab('journal'); setJournalView('write'); } };
-            if (realEntryCount === 3) return { msg: "Patterns unlocked! See what themes are emerging.", cta: "View Patterns", action: () => setTab('patterns') };
-            if (realEntryCount >= 5 && realHistory.length === 0) return { msg: "You have enough entries to prep for your next session.", cta: "Prep for Session", action: () => { setTab('sessions'); setSessionView('pre'); } };
-            return null;
-          })();
-
-          // Progress milestone
-          const milestones = [3, 10, 30, 100];
-          const nextMilestone = milestones.find(m => realEntryCount < m) ?? null;
-          const prevMilestone = nextMilestone ? (milestones[milestones.indexOf(nextMilestone) - 1] ?? 0) : null;
-          const milestoneProgress = nextMilestone ? Math.min(100, ((realEntryCount - prevMilestone) / (nextMilestone - prevMilestone)) * 100) : 100;
-          const milestoneName = nextMilestone === 3 ? 'Unlock Patterns' : nextMilestone === 10 ? '10 Entries' : nextMilestone === 30 ? '30 Entries' : nextMilestone === 100 ? '100 Entries' : null;
-
           return (
             <div style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
               {/* Greeting */}
               <div>
                 <h2 style={{ fontSize: '24px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                  Hi {name} 👋
+                  Hi {name}
                 </h2>
               </div>
 
-              {/* Weekly Intention Card — always show when there's a recent session */}
+              {/* Next Therapy Session card */}
+              <div style={{ background: sessionDaysUntil === 0 ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${sessionDaysUntil === 0 ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Upcoming Sessions
+                  </div>
+                  <button
+                    onClick={() => setEditingNextSession(prev => !prev)}
+                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea' }}
+                    title={editingNextSession ? 'Done' : 'Edit dates'}
+                  >
+                    {editingNextSession ? <span style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea' }}>Done</span> : <Edit2 size={15} />}
+                  </button>
+                </div>
+
+                {editingNextSession ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {nextSessionDates.map((dateStr, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="date"
+                          value={dateStr}
+                          min={today}
+                          autoFocus={idx === nextSessionDates.length - 1 && dateStr === ''}
+                          onChange={(e) => {
+                            const updated = [...nextSessionDates];
+                            updated[idx] = e.target.value;
+                            saveNextSessionDates(updated.filter(Boolean));
+                          }}
+                          style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', color: '#581c87', background: 'white' }}
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = nextSessionDates.filter((_, i) => i !== idx);
+                            saveNextSessionDates(updated);
+                          }}
+                          style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#9ca3af', fontSize: '16px' }}
+                          title="Remove"
+                        >✕</button>
+                      </div>
+                    ))}
+                    {nextSessionDates.length < 4 && (
+                      <button
+                        onClick={() => {
+                          const updated = [...nextSessionDates, ''];
+                          setNextSessionDates(updated);
+                        }}
+                        style={{ padding: '8px', background: 'transparent', border: '2px dashed #e9d5ff', borderRadius: '10px', color: '#9333ea', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        + Add a session
+                      </button>
+                    )}
+                    {nextSessionDates.length === 0 && (
+                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
+                        No upcoming sessions saved. Add one above.
+                      </p>
+                    )}
+                  </div>
+                ) : futureDates.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {futureDates.map((dateStr, idx) => {
+                      const daysUntil = Math.round((new Date(dateStr + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24));
+                      return (
+                        <div key={dateStr} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: idx === 0 ? '10px 0 6px' : '4px 0', borderBottom: idx < futureDates.length - 1 ? '1px solid #f3e8ff' : 'none' }}>
+                          <span style={{ fontSize: idx === 0 ? '17px' : '15px', fontWeight: idx === 0 ? '600' : '400', color: '#581c87' }}>
+                            {new Date(dateStr + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </span>
+                          <span style={{ fontSize: '12px', color: daysUntil === 0 ? '#9333ea' : '#9ca3af' }}>
+                            {daysUntil === 0 ? '· today' : daysUntil === 1 ? '· tomorrow' : `· ${daysUntil} days`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : computedNextSession ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '17px', fontWeight: '600', color: '#581c87' }}>
+                      {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                      {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
+                    </span>
+                    <span style={{ fontSize: '11px', color: '#c4b5fd', fontStyle: 'italic' }}>(from schedule)</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to add your upcoming session dates</span>
+                )}
+
+                {!editingNextSession && (
+                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {computedNextSession && sessionDaysUntil !== null ? (
+                      sessionDaysUntil === 0 ? (
+                        <>
+                          <button onClick={() => { setTab('sessions'); setSessionView('prep'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                            Prep for session →
+                          </button>
+                          <button onClick={() => { setTab('sessions'); setSessionView('after'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                            Reflect on session →
+                          </button>
+                        </>
+                      ) : sessionDaysUntil === 1 ? (
+                        <>
+                          <button onClick={() => { setTab('sessions'); setSessionView('prep'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                            Start prepping →
+                          </button>
+                          <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                            Capture a thought →
+                          </button>
+                        </>
+                      ) : (
+                        <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                          Capture a thought →
+                        </button>
+                      )
+                    ) : (
+                      <button onClick={() => { setTab('sessions'); setSessionView('between'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+                        Capture a thought →
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Weekly Intention Card — show when there's a recent session */}
               {(() => {
                 const mostRecent = realHistory[0];
                 if (!mostRecent) return null;
                 const daysSince = Math.floor((Date.now() - new Date(mostRecent.timestamp).getTime()) / (1000 * 60 * 60 * 24));
                 if (daysSince > 14) return null;
 
-                const intention = getCurrentIntention(); // non-null only if text exists
+                const intention = getCurrentIntention();
                 const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
                 const todayDt = new Date();
                 const sunDate = new Date(todayDt);
-                sunDate.setDate(todayDt.getDate() - todayDt.getDay()); // rewind to this week's Sunday
+                sunDate.setDate(todayDt.getDate() - todayDt.getDay());
                 const sunStr = toLocalDate(sunDate);
                 const thisWeekCheckIns = intention ? intention.checkIns.filter(c =>
                   toLocalDate(new Date(c.date)) >= sunStr
@@ -1716,145 +1810,43 @@ Everything you write is end-to-end encrypted and private.`,
                 );
               })()}
 
-              {/* Next Therapy Session card */}
-              <div style={{ background: sessionDaysUntil === 0 ? 'linear-gradient(135deg, #fdf4ff 0%, #f3e8ff 100%)' : 'rgba(255,255,255,0.7)', border: `1px solid ${sessionDaysUntil === 0 ? '#c084fc' : '#e9d5ff'}`, borderRadius: '16px', padding: '16px 20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Upcoming Sessions
+              {/* Recent Sessions */}
+              {realHistory.length > 0 && (
+                <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+                    Recent Sessions
                   </div>
-                  <button
-                    onClick={() => setEditingNextSession(prev => !prev)}
-                    style={{ background: 'none', border: 'none', padding: '2px', cursor: 'pointer', color: '#9333ea' }}
-                    title={editingNextSession ? 'Done' : 'Edit dates'}
-                  >
-                    {editingNextSession ? <span style={{ fontSize: '13px', fontWeight: '600', color: '#9333ea' }}>Done</span> : <Edit2 size={15} />}
-                  </button>
-                </div>
-
-                {editingNextSession ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {nextSessionDates.map((dateStr, idx) => (
-                      <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <input
-                          type="date"
-                          value={dateStr}
-                          min={today}
-                          autoFocus={idx === nextSessionDates.length - 1 && dateStr === ''}
-                          onChange={(e) => {
-                            const updated = [...nextSessionDates];
-                            updated[idx] = e.target.value;
-                            saveNextSessionDates(updated.filter(Boolean));
-                          }}
-                          style={{ flex: 1, padding: '8px 12px', borderRadius: '10px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '14px', color: '#581c87', background: 'white' }}
-                        />
-                        <button
-                          onClick={() => {
-                            const updated = nextSessionDates.filter((_, i) => i !== idx);
-                            saveNextSessionDates(updated);
-                          }}
-                          style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#9ca3af', fontSize: '16px' }}
-                          title="Remove"
-                        >✕</button>
-                      </div>
-                    ))}
-                    {nextSessionDates.length < 4 && (
-                      <button
-                        onClick={() => {
-                          const updated = [...nextSessionDates, ''];
-                          setNextSessionDates(updated);
-                        }}
-                        style={{ padding: '8px', background: 'transparent', border: '2px dashed #e9d5ff', borderRadius: '10px', color: '#9333ea', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                      >
-                        + Add a session
-                      </button>
-                    )}
-                    {nextSessionDates.length === 0 && (
-                      <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0, textAlign: 'center' }}>
-                        No upcoming sessions saved. Add one above.
-                      </p>
-                    )}
-                  </div>
-                ) : futureDates.length > 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {futureDates.map((dateStr, idx) => {
-                      const daysUntil = Math.round((new Date(dateStr + 'T12:00') - new Date(today + 'T12:00')) / (1000 * 60 * 60 * 24));
-                      return (
-                        <div key={dateStr} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: idx === 0 ? '10px 0 6px' : '4px 0', borderBottom: idx < futureDates.length - 1 ? '1px solid #f3e8ff' : 'none' }}>
-                          <span style={{ fontSize: idx === 0 ? '17px' : '15px', fontWeight: idx === 0 ? '600' : '400', color: '#581c87' }}>
-                            {new Date(dateStr + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                          </span>
-                          <span style={{ fontSize: '12px', color: daysUntil === 0 ? '#9333ea' : '#9ca3af' }}>
-                            {daysUntil === 0 ? '· today' : daysUntil === 1 ? '· tomorrow' : `· ${daysUntil} days`}
-                          </span>
+                  {realHistory.slice(0, 3).map((session, idx) => {
+                    const dStr = session.sessionDate
+                      ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+                      : 'Session';
+                    return (
+                      <div key={session.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: idx === 0 ? '0 0 10px 0' : '10px 0', borderBottom: idx < Math.min(realHistory.length, 3) - 1 ? '1px solid #f3e8ff' : 'none' }}>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#581c87' }}>{dStr}</div>
+                          {session.intention && (
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px', fontStyle: 'italic' }}>
+                              {session.intention.slice(0, 50)}{session.intention.length > 50 ? '…' : ''}
+                            </div>
+                          )}
                         </div>
-                      );
-                    })}
-                  </div>
-                ) : computedNextSession ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '17px', fontWeight: '600', color: '#581c87' }}>
-                      {new Date(computedNextSession + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </span>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                      {sessionDaysUntil === 0 ? '· today' : sessionDaysUntil === 1 ? '· tomorrow' : `· ${sessionDaysUntil} days`}
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#c4b5fd', fontStyle: 'italic' }}>(from schedule)</span>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: '14px', color: '#9ca3af', fontStyle: 'italic' }}>Tap ✏️ to add your upcoming session dates</span>
-                )}
-
-                {computedNextSession && sessionDaysUntil !== null && !editingNextSession && (
-                  <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    {sessionDaysUntil === 0 ? (
-                      <>
-                        <button onClick={() => { setTab('sessions'); setSessionView('pre'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                          Prep for session →
+                        <button
+                          onClick={() => { setTab('sessions'); setSessionView('after'); }}
+                          style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          View →
                         </button>
-                        <button onClick={() => { setTab('sessions'); setSessionView('post'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                          Reflect on today's session →
-                        </button>
-                      </>
-                    ) : sessionDaysUntil === 1 ? (
-                      <button onClick={() => { setTab('sessions'); setSessionView('pre'); }} style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                        Start prepping →
-                      </button>
-                    ) : (
-                      <button onClick={() => { setTab('journal'); setJournalView('write'); }} style={{ padding: '7px 16px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-                        Write an entry →
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Next action suggestion */}
-              {nextAction && (
-                <div style={{ background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '14px', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>💡</span>
-                  <div style={{ flex: 1 }}>
-                    <p style={{ color: '#581c87', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>{nextAction.msg}</p>
+                      </div>
+                    );
+                  })}
+                  {realHistory.length > 3 && (
                     <button
-                      onClick={nextAction.action}
-                      style={{ padding: '6px 14px', background: 'transparent', color: '#9333ea', border: '1px solid #9333ea', borderRadius: '16px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                      onClick={() => setTab('sessions')}
+                      style={{ marginTop: '8px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9ca3af', cursor: 'pointer' }}
                     >
-                      {nextAction.cta} →
+                      + {realHistory.length - 3} more sessions
                     </button>
-                  </div>
-                </div>
-              )}
-
-
-              {/* Progress milestone bar — only show when < 3 entries */}
-              {milestoneName && realEntryCount < 3 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: '500', color: '#7c3aed' }}>{milestoneName}</span>
-                    <span style={{ fontSize: '12px', color: '#9ca3af' }}>{realEntryCount} / {nextMilestone}</span>
-                  </div>
-                  <div style={{ height: '6px', background: '#e9d5ff', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${milestoneProgress}%`, background: 'linear-gradient(90deg, #9333ea, #c084fc)', borderRadius: '3px', transition: 'width 0.5s ease' }} />
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1866,67 +1858,9 @@ Everything you write is end-to-end encrypted and private.`,
                     {streak > 0 ? `${streak} day${streak !== 1 ? 's' : ''} in a row` : 'Start your streak today'}
                   </span>
                 </div>
-                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {realEntryCount} entries</span>
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>📊 {realEntryCount} thoughts</span>
                 <span style={{ fontSize: '12px', color: '#9ca3af' }}>🗓️ {realHistory.length} sessions</span>
-                {lastEntryAgo && <span style={{ fontSize: '12px', color: '#9ca3af' }}>💜 {lastEntryAgo}</span>}
               </div>
-
-              {/* Activity Calendar */}
-              {(() => {
-                const now = new Date();
-                const year = now.getFullYear();
-                const month = now.getMonth();
-                const todayStr = `${year}-${String(month+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-
-                const journaledDates = new Set(
-                  entries.filter(e => !e.isWelcomeEntry && e.date).map(e => e.date)
-                );
-                const sessionDates = new Set(
-                  realHistory.filter(h => h.sessionDate).map(h => h.sessionDate)
-                );
-
-                const monthLabel = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-                const firstDow = new Date(year, month, 1).getDay();
-                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                const cells = [...Array(firstDow).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)];
-
-                return (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '10px' }}>{monthLabel}</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}>
-                      {['Su','Mo','Tu','We','Th','Fr','Sa'].map(d => (
-                        <div key={d} style={{ textAlign: 'center', fontSize: '10px', fontWeight: '500', color: '#9ca3af' }}>{d}</div>
-                      ))}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
-                      {cells.map((day, idx) => {
-                        if (!day) return <div key={`e-${idx}`} />;
-                        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                        const hasEntry = journaledDates.has(dateStr);
-                        const hasSession = sessionDates.has(dateStr);
-                        const isToday = dateStr === todayStr;
-                        const isPastOrToday = dateStr <= todayStr;
-                        return (
-                          <div key={day} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', padding: '5px 2px' }}>
-                            {hasSession && (
-                              <Bookmark size={8} fill="#7c3aed" style={{ position: 'absolute', top: 2, right: 3, color: '#7c3aed' }} />
-                            )}
-                            <span style={{ fontSize: '11px', fontWeight: isToday ? '700' : '400', color: isToday ? '#9333ea' : '#4b5563', lineHeight: 1 }}>
-                              {day}
-                            </span>
-                            <div style={{
-                              width: '6px', height: '6px', borderRadius: '50%',
-                              background: hasEntry ? '#9333ea' : 'transparent',
-                              border: isPastOrToday && !hasEntry ? '1.5px solid rgba(147,51,234,0.25)' : 'none',
-                            }} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-
 
             </div>
           );
@@ -2131,8 +2065,43 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
-        {/* JOURNAL TAB */}
-        {tab === "journal" && (
+        {/* SESSIONS SUB-TABS — rendered first so they appear above content */}
+        {tab === "sessions" && (
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px 24px 0', width: '100%' }}>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[
+                ["between", "Between"],
+                ["prep", "Prep"],
+                ["after", "After"],
+                ["insights", "Insights"],
+              ].map(([view, label]) => (
+                <button
+                  key={view}
+                  onClick={() => setSessionView(view)}
+                  style={{
+                    flex: 1,
+                    padding: '10px 8px',
+                    borderRadius: '14px',
+                    fontWeight: '600',
+                    fontSize: '13px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s',
+                    background: sessionView === view ? '#9333ea' : 'rgba(255,255,255,0.6)',
+                    color: sessionView === view ? 'white' : '#7c3aed',
+                    boxShadow: sessionView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* BETWEEN VIEW (journal write/log) */}
+        {tab === "sessions" && sessionView === "between" && (
           <div style={{ display: 'flex', flexDirection: 'column', minHeight: '600px' }}>
 
             <div className="capture-content-wrapper" style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
@@ -2154,7 +2123,7 @@ Everything you write is end-to-end encrypted and private.`,
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <div style={{ display: 'flex', gap: '6px' }}>
-                      {[["all", "All"], ["entries", `Entries (${entries.length})`], ["snapshots", `Snapshots (${realHistory.length})`], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
+                      {[["all", "All"], ["entries", `Thoughts (${entries.length})`], ["snapshots", `Sessions (${realHistory.length})`], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
                         <button
                           key={f}
                           onClick={() => setLogFilter(f)}
@@ -2218,7 +2187,7 @@ Everything you write is end-to-end encrypted and private.`,
                     });
                     return filtered.length === 0 ? (
                       <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
-                        No {logFilter === "entries" ? "journal entries" : "session snapshots"} yet.
+                        No {logFilter === "entries" ? "thoughts captured" : "session snapshots"} yet.
                       </p>
                     ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -2506,7 +2475,7 @@ Everything you write is end-to-end encrypted and private.`,
                   )}
 
                   <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
-                    What's on your mind?
+                    What came up today?
                   </h2>
 
                   {/* Prompt buttons: My Prompts | Prompt of the Day | Generate Journaling Prompt */}
@@ -2659,8 +2628,8 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
-        {/* PATTERNS TAB */}
-        {tab === "patterns" && (
+        {/* INSIGHTS VIEW (patterns/analysis) */}
+        {tab === "sessions" && sessionView === "insights" && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
             {/* Patterns sub-tabs: Insights | Progress | Over Time */}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
@@ -2699,7 +2668,7 @@ Everything you write is end-to-end encrypted and private.`,
                 </button>
                 {entries.length < 3 && (
                   <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
-                    Add at least 3 journal entries to see patterns ({entries.length}/3)
+                    Capture at least 3 thoughts to see patterns ({entries.length}/3)
                   </p>
                 )}
               </div>
@@ -2707,7 +2676,7 @@ Everything you write is end-to-end encrypted and private.`,
 
             {analysis?.showNewEntryWarning && !loading && (
               <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#92400e' }}>
-                💡 Enter a new journal entry to refresh your analysis and get new insights
+                💡 Capture a new thought to refresh your analysis and get new insights
               </div>
             )}
 
@@ -2757,7 +2726,7 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('pre'); } else { setExtraTopics(prev => [...prev, item]); } }}
+                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('prep'); } else { setExtraTopics(prev => [...prev, item]); } }}
                                 style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
@@ -2799,7 +2768,7 @@ Everything you write is end-to-end encrypted and private.`,
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                               <button
-                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('pre'); } else { setExtraTopics(prev => [...prev, item]); } }}
+                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('prep'); } else { setExtraTopics(prev => [...prev, item]); } }}
                                 style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
                               >
                                 <Plus size={14} />
@@ -2844,7 +2813,8 @@ Everything you write is end-to-end encrypted and private.`,
                                 <button
                                   onClick={() => {
                                     if (savedPrompts.some(p => p.text === item)) {
-                                      setTab('journal');
+                                      setTab('sessions');
+                                      setSessionView('between');
                                       setJournalView('write');
                                       setShowMyPrompts(true);
                                     } else {
@@ -2905,7 +2875,7 @@ Everything you write is end-to-end encrypted and private.`,
                     Save your patterns when you log a session snapshot to keep a record of your progress.
                   </p>
                   <button
-                    onClick={() => { setTab('sessions'); setSessionView('post'); }}
+                    onClick={() => { setTab('sessions'); setSessionView('after'); }}
                     style={{ padding: '7px 14px', borderRadius: '20px', border: 'none', background: '#f59e0b', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                   >
                     Log a Session Snapshot →
@@ -3114,40 +3084,8 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
-        {/* SESSIONS TAB */}
-        {tab === "sessions" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {/* Sub-tabs: Pre-Session | Post-Session */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
-              {[
-                ["pre", "Prep"],
-                ["post", "Reflect"],
-              ].map(([view, label]) => (
-                <button
-                  key={view}
-                  onClick={() => setSessionView(view)}
-                  className="tab-button"
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    borderRadius: '16px',
-                    fontWeight: '600',
-                    fontSize: '15px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    background: sessionView === view ? '#9333ea' : 'rgba(255,255,255,0.6)',
-                    color: sessionView === view ? 'white' : '#7c3aed',
-                    boxShadow: sessionView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none'
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* PRE-SESSION VIEW */}
-            {sessionView === "pre" && (
+        {/* SESSIONS PREP VIEW */}
+        {tab === "sessions" && sessionView === "prep" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {/* Refresh Analysis Button - Always visible at top */}
                 {loading ? (
@@ -3167,7 +3105,7 @@ Everything you write is end-to-end encrypted and private.`,
                     </button>
                     {entries.length < 3 && (
                       <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
-                        Add at least 3 journal entries to see patterns ({entries.length}/3)
+                        Capture at least 3 thoughts to see patterns ({entries.length}/3)
                       </p>
                     )}
                   </div>
@@ -3175,7 +3113,7 @@ Everything you write is end-to-end encrypted and private.`,
 
                 {analysis?.showNewEntryWarning && !loading && (
                   <div style={{ background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#92400e' }}>
-                    💡 Enter a new journal entry to refresh your analysis and get new insights
+                    💡 Capture a new thought to refresh your analysis and get new insights
                   </div>
                 )}
 
@@ -3346,7 +3284,7 @@ Everything you write is end-to-end encrypted and private.`,
                       <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 8px 0', lineHeight: '1.5', fontWeight: '500' }}>After your session</p>
                       <p style={{ fontSize: '13px', color: '#6b7280', margin: '0 0 12px 0', lineHeight: '1.5' }}>Come back and log what you covered so you can track your progress over time.</p>
                       <button
-                        onClick={() => setSessionView('post')}
+                        onClick={() => setSessionView('after')}
                         style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
                       >
                         Log Session →
@@ -3431,8 +3369,8 @@ Everything you write is end-to-end encrypted and private.`,
               </div>
             )}
 
-            {/* POST-SESSION VIEW */}
-            {sessionView === "post" && (
+        {/* SESSIONS AFTER VIEW */}
+        {tab === "sessions" && sessionView === "after" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 {!analysis ? (
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
@@ -3441,7 +3379,7 @@ Everything you write is end-to-end encrypted and private.`,
                       Create session prep first to record session notes
                     </p>
                     <button
-                      onClick={() => setSessionView("pre")}
+                      onClick={() => setSessionView("prep")}
                       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
                     >
                       <Calendar size={20} />
@@ -3552,8 +3490,6 @@ Everything you write is end-to-end encrypted and private.`,
                 )}
               </div>
             )}
-          </div>
-        )}
 
         {/* Close content area */}
         </div>
@@ -3677,55 +3613,16 @@ Everything you write is end-to-end encrypted and private.`,
         )}
 
         {/* BOTTOM NAVIGATION BAR */}
-        <div style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(10px)',
-          borderTop: '1px solid rgba(147,51,234,0.2)',
-          padding: '8px 16px 20px 16px',
-          boxShadow: '0 -4px 12px rgba(0,0,0,0.1)',
-          zIndex: 1000
-        }}>
-          <div style={{
-            maxWidth: '600px',
-            margin: '0 auto',
-            display: 'flex',
-            gap: '4px',
-            justifyContent: 'space-around'
-          }}>
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(147,51,234,0.2)', padding: '8px 16px 20px 16px', boxShadow: '0 -4px 12px rgba(0,0,0,0.1)', zIndex: 1000 }}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around' }}>
             {[
-              { id: 'home',     label: 'Home',    Icon: Home,     active: tab === 'home',                                    action: () => { setTab('home'); setExpanded({}); } },
-              { id: 'log',      label: 'Log',     Icon: FileText, active: tab === 'journal' && journalView === 'log',         action: () => { setTab('journal'); setJournalView('log'); setExpanded({}); } },
-              { id: 'create',   label: 'Create',  Icon: Plus,     active: tab === 'journal' && journalView === 'write',       action: () => { setTab('journal'); setJournalView('write'); setExpanded({}); } },
-              { id: 'patterns', label: 'Patterns',Icon: Sparkles, active: tab === 'patterns',                                action: () => { setTab('patterns'); setPatternView('insights'); setExpanded({}); } },
-              { id: 'sessions', label: 'Sessions',Icon: Calendar, active: tab === 'sessions',                                action: () => { setTab('sessions'); setSessionView('pre'); setExpanded({}); } },
+              { id: 'home',     label: 'Home',        Icon: Home,     active: tab === 'home',     action: () => { setTab('home'); setExpanded({}); } },
+              { id: 'sessions', label: 'My Sessions',  Icon: Calendar, active: tab === 'sessions', action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
+              { id: 'account',  label: 'You',          Icon: User,     active: tab === 'account',  action: () => { setTab('account'); setExpanded({}); } },
             ].map(({ id, label, Icon, active, action }) => (
-              <button
-                key={id}
-                onClick={action}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '8px 4px',
-                  borderRadius: '12px',
-                  fontWeight: active ? '600' : '500',
-                  fontSize: '11px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  background: active ? '#9333ea' : 'transparent',
-                  color: active ? 'white' : '#7c3aed',
-                  minWidth: '48px'
-                }}
-              >
-                <Icon size={20} />
-                <span>{label}</span>
+              <button key={id} onClick={action} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 4px', border: 'none', cursor: 'pointer', background: 'none', color: active ? '#9333ea' : '#9ca3af' }}>
+                <Icon size={22} />
+                <span style={{ fontSize: '11px', fontWeight: active ? '600' : '400' }}>{label}</span>
               </button>
             ))}
           </div>
