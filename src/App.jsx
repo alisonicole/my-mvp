@@ -1523,34 +1523,56 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* RECENT SESSIONS */}
               {realHistory.length > 0 && (
-                <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
                     Recent Sessions
                   </div>
-                  {realHistory.slice(0, 3).map((session, idx) => {
-                    const dStr = session.sessionDate
-                      ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                      : 'Session';
-                    return (
-                      <div key={session.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: idx === 0 ? '0 0 10px 0' : '10px 0', borderBottom: idx < Math.min(realHistory.length, 3) - 1 ? '1px solid #f3e8ff' : 'none' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#581c87' }}>{dStr}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {realHistory.slice(0, 3).map((session) => {
+                      const dStr = session.sessionDate
+                        ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                        : 'Session';
+                      return (
+                        <div key={session.id} style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '12px' }}>{dStr}</div>
+                          {session.openingStatement && (
+                            <div style={{ marginBottom: '10px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Opening Statement</div>
+                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>"{session.openingStatement}"</p>
+                            </div>
+                          )}
+                          {session.notes && (
+                            <div style={{ marginBottom: '10px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>What You Covered</div>
+                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{session.notes}</p>
+                            </div>
+                          )}
+                          {session.nextSteps && (
+                            <div style={{ marginBottom: '10px' }}>
+                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Follow Ups</div>
+                              <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{session.nextSteps}</p>
+                            </div>
+                          )}
+                          {session.themes?.length > 0 && session.themes[0] !== 'Capture at least 3 thoughts to see patterns' && (
+                            <div>
+                              <div style={{ fontSize: '10px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Key Themes</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                {session.themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
+                                  <span key={i} style={{ fontSize: '12px', color: '#7c3aed', background: '#f3e8ff', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <button
-                          onClick={() => setHomeSessionModal(session)}
-                          style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          View →
-                        </button>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                   {realHistory.length > 3 && (
                     <button
-                      onClick={() => setTab('sessions')}
-                      style={{ marginTop: '8px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9ca3af', cursor: 'pointer' }}
+                      onClick={() => { setTab('sessions'); setSessionView('between'); setJournalView('log'); setLogFilter('snapshots'); }}
+                      style={{ marginTop: '10px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9333ea', cursor: 'pointer', fontWeight: '500' }}
                     >
-                      + {realHistory.length - 3} more sessions
+                      + {realHistory.length - 3} more sessions →
                     </button>
                   )}
                 </div>
@@ -3023,33 +3045,6 @@ Everything you write is end-to-end encrypted and private.`,
                         />
                       </div>
 
-                      <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                          🎯 Intention for This Week
-                        </label>
-                        <p style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '10px', lineHeight: '1.5' }}>
-                          What do you want to practice or notice between now and your next session?
-                        </p>
-                        <textarea
-                          value={sessionIntention}
-                          onChange={(e) => setSessionIntention(e.target.value)}
-                          placeholder="e.g., Notice when I'm people-pleasing and pause before saying yes"
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'vertical', minHeight: '80px', background: 'rgba(255,255,255,0.8)', color: '#581c87', lineHeight: '1.6' }}
-                        />
-                        <details style={{ marginTop: '10px' }}>
-                          <summary style={{ fontSize: '13px', color: '#7c3aed', cursor: 'pointer', userSelect: 'none' }}>
-                            💡 Examples of intentions
-                          </summary>
-                          <ul style={{ fontSize: '13px', color: '#7c3aed', marginTop: '8px', paddingLeft: '20px', lineHeight: '1.8' }}>
-                            <li>Notice when I'm people-pleasing</li>
-                            <li>Practice setting one boundary this week</li>
-                            <li>Be compassionate with myself when I make mistakes</li>
-                            <li>Sit with discomfort instead of distracting</li>
-                            <li>Pause before reacting in conflict</li>
-                          </ul>
-                        </details>
-                      </div>
-
                       <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>📋</span>
                         <div>
@@ -3119,13 +3114,6 @@ Everything you write is end-to-end encrypted and private.`,
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
                   <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
-                </div>
-              )}
-
-              {homeSessionModal.intention && (
-                <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#faf5ff', borderRadius: '10px', border: '1px solid #e9d5ff' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Intention</div>
-                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>"{homeSessionModal.intention}"</p>
                 </div>
               )}
 
