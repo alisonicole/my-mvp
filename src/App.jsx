@@ -3065,13 +3065,13 @@ Everything you write is end-to-end encrypted and private.`,
 
               {homeSessionModal.openingStatement && (
                 <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Opening Statement</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Session Starter</div>
                   <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>"{homeSessionModal.openingStatement}"</p>
                 </div>
               )}
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Notes</div>
                 {homeSessionModal.notes
                   ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
                   : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
@@ -3079,25 +3079,54 @@ Everything you write is end-to-end encrypted and private.`,
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Follow Ups</div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Next Steps</div>
                 {homeSessionModal.nextSteps
                   ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
                   : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
                 }
               </div>
 
-              {homeSessionModal.themes?.length > 0 && homeSessionModal.themes[0] !== 'Capture at least 3 thoughts to see patterns' && (
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Key Themes</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {homeSessionModal.themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
-                      <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px' }}>
-                        <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
+              {(() => {
+                const themes = (homeSessionModal.themes ?? []).filter(t => t && t !== 'Capture at least 3 thoughts to see patterns');
+                const avoiding = (homeSessionModal.avoiding ?? []).filter(Boolean);
+                const questions = (homeSessionModal.questions ?? []).filter(Boolean);
+                if (!themes.length && !avoiding.length && !questions.length) return null;
+                return (
+                  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Summary</div>
+                    {themes.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>What's trying to come up</div>
+                        {themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
+                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
+                    {avoiding.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Things I might be avoiding</div>
+                        {avoiding.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
+                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {questions.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Questions to explore</div>
+                        {questions.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
+                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         )}
