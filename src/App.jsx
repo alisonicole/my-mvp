@@ -151,7 +151,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Main tabs: "journal" or "sessions"
-  const [tab, setTab] = useState("home"); // "home", "journal", "sessions", "account"
+  const [tab, setTab] = useState("journal"); // "home", "journal", "sessions", "account"
   
   // Journal sub-tabs
   const [journalView, setJournalView] = useState("write"); // "write" or "log"
@@ -200,6 +200,7 @@ export default function App() {
   const [nameInput, setNameInput] = useState("");
   const [savedPrompts, setSavedPrompts] = useState([]); // [{text, savedAt}]
   const [showMyPrompts, setShowMyPrompts] = useState(false);
+  const [showDailyPrompt, setShowDailyPrompt] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
@@ -216,7 +217,7 @@ export default function App() {
   // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
-  const [therapyDay, setTherapyDay] = useState('');
+  const [therapyDays, setTherapyDays] = useState([]); // array of day names
   const [therapyTime, setTherapyTime] = useState('');
   const [onboardingEntry, setOnboardingEntry] = useState('');
 
@@ -316,9 +317,13 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Persist key topics across sessions
+  // Persist key topics to Parse (cross-device) and localStorage (offline fallback)
   useEffect(() => {
     localStorage.setItem('between_extraTopics', JSON.stringify(extraTopics));
+    if (currentUser && Parse) {
+      currentUser.set("keyTopics", extraTopics);
+      currentUser.save().catch(() => {});
+    }
   }, [extraTopics]);
 
   const handleLogin = async (e) => {
@@ -332,7 +337,8 @@ export default function App() {
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
       localStorage.setItem('encKey', encKey);
-      setTab("home");
+      setTab("journal");
+      setJournalView("write");
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -392,6 +398,10 @@ export default function App() {
     setSessionIntention("");
     setNextSessionDates([]);
     setEditingNextSession(false);
+    setTherapyDays([]);
+    setTherapyTime('');
+    setOvertimeData(null);
+    setOvertimeInterpretation('');
     setDisplayName("");
     setSavedPrompts([]);
     setFavoritedPatterns([]);
@@ -497,6 +507,7 @@ export default function App() {
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
     obj.set("intention", encryptText(payload.intention ?? "", userEncryptionKey));
     obj.set("intentionCheckIns", payload.intentionCheckIns ?? []);
+    obj.set("discussedTopics", payload.discussedTopics ?? []);
     if (payload.isExampleSnapshot) obj.set("isExampleSnapshot", true);
     const saved = await obj.save();
     return { ...payload, parseId: saved.id };
@@ -651,10 +662,21 @@ Everything you write is end-to-end encrypted and private.`,
         const sp = currentUser.get("savedPrompts");
         if (Array.isArray(sp)) setSavedPrompts(sp);
 
-        const td = currentUser.get("therapyDay");
+        const tds = currentUser.get("therapyDays");
         const tt = currentUser.get("therapyTime");
-        if (td) setTherapyDay(td);
+        if (Array.isArray(tds) && tds.length > 0) {
+          setTherapyDays(tds);
+        } else {
+          const legacyTd = currentUser.get("therapyDay");
+          if (legacyTd) setTherapyDays([legacyTd]);
+        }
         if (tt) setTherapyTime(tt);
+
+        // Load key topics from Parse (cross-device), fall back to localStorage
+        const kt = currentUser.get("keyTopics");
+        if (Array.isArray(kt)) {
+          setExtraTopics(kt);
+        }
 
         // Load session dates (new array format, with fallback for old single-date field)
         const nsds = currentUser.get("nextSessionDates");
@@ -745,12 +767,14 @@ Everything you write is end-to-end encrypted and private.`,
 
     setLoading(true);
     try {
+      const discussedTopics = Array.from(checkedTopics).map(i => extraTopics[i]).filter(Boolean);
       const result = await Parse.Cloud.run("analyzeJournal", {
         entries: entriesToAnalyze.map(e =>
           e.prompt ? `Prompt: ${e.prompt}\n\nEntry: ${e.text}` : e.text
         ),
         previousPatterns: previousPatterns,
-        isIncremental: !!previousPatterns
+        isIncremental: !!previousPatterns,
+        discussedTopics: discussedTopics.length > 0 ? discussedTopics : undefined,
       });
 
       const newAnalysis = {
@@ -796,6 +820,7 @@ Everything you write is end-to-end encrypted and private.`,
       nextSteps: nextSteps || "",
       intention: sessionIntention || "",
       intentionCheckIns: [],
+      discussedTopics: Array.from(checkedTopics).map(i => extraTopics[i]).filter(Boolean),
     };
 
     try {
@@ -806,6 +831,7 @@ Everything you write is end-to-end encrypted and private.`,
       setNotes("");
       setNextSteps("");
       setSessionIntention("");
+      setCheckedTopics(new Set());
       setTab("journal");
       setJournalView("log");
     } catch (e) {
@@ -1102,11 +1128,11 @@ Everything you write is end-to-end encrypted and private.`,
   // ── ONBOARDING OVERLAY ──────────────────────────────────────────────────────
   const saveTherapySchedule = async (day, time) => {
     if (currentUser && Parse) {
-      currentUser.set("therapyDay", day);
+      currentUser.set("therapyDays", day);
       currentUser.set("therapyTime", time);
       await currentUser.save().catch(() => {});
     }
-    setTherapyDay(day);
+    setTherapyDays(day);
     setTherapyTime(time);
   };
 
@@ -1204,14 +1230,14 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '28px' }}>
               <div>
                 <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-                  Day of the week
+                  Day(s) of the week <span style={{ color: '#9ca3af', fontWeight: '400' }}>(select all that apply)</span>
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                   {DAYS.map(d => (
                     <button
                       key={d}
-                      onClick={() => setTherapyDay(d)}
-                      style={{ padding: '8px 16px', borderRadius: '20px', border: '2px solid', borderColor: therapyDay === d ? '#9333ea' : '#e9d5ff', background: therapyDay === d ? '#9333ea' : 'white', color: therapyDay === d ? 'white' : '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s' }}
+                      onClick={() => setTherapyDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
+                      style={{ padding: '8px 16px', borderRadius: '20px', border: '2px solid', borderColor: therapyDays.includes(d) ? '#9333ea' : '#e9d5ff', background: therapyDays.includes(d) ? '#9333ea' : 'white', color: therapyDays.includes(d) ? 'white' : '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s' }}
                     >
                       {d.slice(0, 3)}
                     </button>
@@ -1236,10 +1262,10 @@ Everything you write is end-to-end encrypted and private.`,
 
             <button
               onClick={async () => {
-                if (therapyDay) await saveTherapySchedule(therapyDay, therapyTime);
+                if (therapyDays.length > 0) await saveTherapySchedule(therapyDays, therapyTime);
                 setOnboardingStep(3);
               }}
-              style={{ width: '100%', padding: '14px', background: therapyDay ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: therapyDay ? 'pointer' : 'not-allowed', boxShadow: therapyDay ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
+              style={{ width: '100%', padding: '14px', background: therapyDays.length > 0 ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: therapyDays.length > 0 ? 'pointer' : 'not-allowed', boxShadow: therapyDays.length > 0 ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
             >
               Continue →
             </button>
@@ -1534,16 +1560,21 @@ Everything you write is end-to-end encrypted and private.`,
           const today = getDate();
           // Future session dates from user-entered list (sorted ascending)
           const futureDates = nextSessionDates.filter(d => d >= today).sort();
-          // Nearest upcoming date, falling back to therapyDay schedule if no dates entered
+          // Nearest upcoming date, falling back to therapyDays schedule if no dates entered
           const computedNextSession = (() => {
             if (futureDates.length > 0) return futureDates[0];
-            if (therapyDay) {
-              const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            if (therapyDays.length > 0) {
+              const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
               const todayIdx = new Date().getDay();
-              const therapyIdx = DAYS.indexOf(therapyDay);
-              const diff = (therapyIdx - todayIdx + 7) % 7;
+              let minDiff = 8;
+              therapyDays.forEach(day => {
+                const idx = DAY_NAMES.indexOf(day);
+                if (idx < 0) return;
+                const diff = (idx - todayIdx + 7) % 7;
+                if (diff < minDiff) minDiff = diff;
+              });
               const d = new Date();
-              d.setDate(d.getDate() + diff);
+              d.setDate(d.getDate() + minDiff);
               return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
             }
             return null;
@@ -1813,23 +1844,6 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {/* Journal Prompt of the Day */}
-              {(() => {
-                const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-                const prompt = DAILY_PROMPTS[dayOfYear % DAILY_PROMPTS.length];
-                return (
-                  <div style={{ background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)', border: '1px solid #ddd6fe', borderRadius: '16px', padding: '16px 20px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Prompt of the Day</div>
-                    <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6', margin: '0 0 12px 0', fontStyle: 'italic' }}>{prompt}</p>
-                    <button
-                      onClick={() => { setActivePrompt(prompt); setTab('journal'); setJournalView('write'); }}
-                      style={{ padding: '7px 16px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                    >
-                      Write about this →
-                    </button>
-                  </div>
-                );
-              })()}
 
               {/* Progress milestone bar — only show when < 3 entries */}
               {milestoneName && realEntryCount < 3 && (
@@ -2074,11 +2088,11 @@ Everything you write is end-to-end encrypted and private.`,
                       onClick={() => { setShowOnboarding(true); setOnboardingStep(2); }}
                       style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '2px 6px' }}
                     >
-                      {therapyDay ? 'Edit' : 'Set'}
+                      {therapyDays.length > 0 ? 'Edit' : 'Set'}
                     </button>
                   </div>
                   <div style={{ fontSize: '16px', color: '#581c87' }}>
-                    {therapyDay ? `${therapyDay}${therapyTime ? ` at ${therapyTime}` : ''}` : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
+                    {therapyDays.length > 0 ? `${therapyDays.join(', ')}${therapyTime ? ` at ${therapyTime}` : ''}` : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
                   </div>
                 </div>
               </div>
@@ -2495,8 +2509,27 @@ Everything you write is end-to-end encrypted and private.`,
                     What's on your mind?
                   </h2>
 
-                  {/* Generate Journaling Prompt + My Prompts */}
+                  {/* Prompt buttons: My Prompts | Prompt of the Day | Generate Journaling Prompt */}
                   <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                    {/* My Prompts */}
+                    <button
+                      onClick={() => { setShowMyPrompts(p => !p); setShowDailyPrompt(false); }}
+                      style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showMyPrompts ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+                    >
+                      <BookOpen size={14} />
+                      My Prompts ({savedPrompts.length})
+                    </button>
+
+                    {/* Prompt of the Day */}
+                    <button
+                      onClick={() => { setShowDailyPrompt(p => !p); setShowMyPrompts(false); }}
+                      style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showDailyPrompt ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showDailyPrompt ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+                    >
+                      <Calendar size={14} />
+                      Prompt of the Day
+                    </button>
+
+                    {/* Generate Journaling Prompt */}
                     {(() => {
                       const noSession = !realHistory || realHistory.length === 0;
                       return (
@@ -2504,52 +2537,13 @@ Everything you write is end-to-end encrypted and private.`,
                           onClick={noSession ? undefined : handleGeneratePrompt}
                           disabled={loading || noSession}
                           title={noSession ? 'Log your first session to get a custom journal prompt' : ''}
-                          style={{
-                            padding: '7px 14px',
-                            borderRadius: '20px',
-                            border: '1px solid #e9d5ff',
-                            background: (loading || noSession) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
-                            color: (loading || noSession) ? '#9ca3af' : '#7c3aed',
-                            fontWeight: '500',
-                            fontSize: '12px',
-                            cursor: (loading || noSession) ? 'not-allowed' : 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s'
-                          }}
+                          style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: (loading || noSession) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', color: (loading || noSession) ? '#9ca3af' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: (loading || noSession) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
                         >
                           {noSession ? <Lock size={14} /> : <Sparkles size={14} />}
                           {loading && !noSession ? 'Generating...' : 'Generate Journaling Prompt'}
                         </button>
                       );
                     })()}
-                    {realHistory.length === 0 && (
-                      <div style={{ width: '100%', marginTop: '8px', padding: '10px 14px', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '10px', fontSize: '13px', color: '#92400e', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                        <span style={{ flexShrink: 0 }}>💡</span>
-                        <span>Log your first session to generate a session snapshot and unlock custom journal prompts.</span>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => setShowMyPrompts(p => !p)}
-                      style={{
-                        padding: '7px 14px',
-                        borderRadius: '20px',
-                        border: '1px solid #e9d5ff',
-                        background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)',
-                        color: showMyPrompts ? 'white' : '#7c3aed',
-                        fontWeight: '500',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        transition: 'all 0.2s'
-                      }}
-                    >
-                      <BookOpen size={14} />
-                      My Prompts ({savedPrompts.length})
-                    </button>
                   </div>
 
                   {/* My Prompts panel */}
@@ -2580,6 +2574,29 @@ Everything you write is end-to-end encrypted and private.`,
                       </div>
                     </div>
                   )}
+
+                  {/* Prompt of the Day panel */}
+                  {showDailyPrompt && (() => {
+                    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+                    const dailyPrompt = DAILY_PROMPTS[dayOfYear % DAILY_PROMPTS.length];
+                    return (
+                      <div style={{ marginBottom: '12px', border: '1px solid #ddd6fe', borderRadius: '12px', overflow: 'hidden' }}>
+                        <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Calendar size={12} />
+                          Today's Prompt
+                        </div>
+                        <div style={{ padding: '12px 14px', background: 'white', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+                          <p style={{ flex: 1, fontSize: '13px', color: '#581c87', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>{dailyPrompt}</p>
+                          <button
+                            onClick={() => { setActivePrompt(dailyPrompt); setShowDailyPrompt(false); }}
+                            style={{ flexShrink: 0, padding: '5px 12px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '16px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            Use →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div style={{ marginBottom: '16px' }}>
                     <VoiceInput
@@ -2649,7 +2666,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
               {[
                 ["insights", "Insights"],
-                ...(getCurrentIntention() ? [["progress", "Progress"]] : []),
+                ["progress", "Progress"],
                 ["overtime", "Keywords"],
               ].map(([view, label]) => (
                 <button
@@ -2899,8 +2916,27 @@ Everything you write is end-to-end encrypted and private.`,
             </>)}
 
             {/* PROGRESS VIEW */}
-            {patternView === "progress" && getCurrentIntention() && (() => {
+            {patternView === "progress" && (() => {
               const intention = getCurrentIntention();
+
+              if (!intention) {
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '40px 32px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+                    <div style={{ fontSize: '36px', marginBottom: '12px' }}>🎯</div>
+                    <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 10px 0' }}>No intention set yet</h2>
+                    <p style={{ fontSize: '15px', color: '#7c3aed', margin: '0 0 20px 0', lineHeight: '1.6' }}>
+                      Set a weekly intention after your next session to track your daily practice here.
+                    </p>
+                    <button
+                      onClick={() => setTab('home')}
+                      style={{ padding: '10px 24px', background: 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}
+                    >
+                      Go to Home to set intention →
+                    </button>
+                  </div>
+                );
+              }
+
               const checkIns = intention.checkIns || [];
               const toLocalDate = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
               const todayProg = new Date();
@@ -2976,7 +3012,6 @@ Everything you write is end-to-end encrypted and private.`,
 
               const runAnalysis = async () => {
                 setOvertimeLoading(true);
-                setOvertimeInterpretation('');
                 const result = analyzePatternChanges(realEntries);
                 setOvertimeData(result);
                 // Request AI interpretation via cloud function
@@ -3016,16 +3051,16 @@ Everything you write is end-to-end encrypted and private.`,
                         disabled={overtimeLoading}
                         style={{ padding: '10px 24px', background: overtimeLoading ? '#d1d5db' : 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: overtimeLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
                       >
-                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> Analyze my keywords</>}
+                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> {overtimeData ? 'Re-analyze keywords' : 'Analyze my keywords'}</>}
                       </button>
                     )}
                   </div>
 
-                  {overtimeData && !overtimeLoading && (() => {
+                  {overtimeData && (() => {
                     const increased = overtimeData.changes.filter(c => c.direction === 'up').slice(0, 8);
                     const decreased = overtimeData.changes.filter(c => c.direction === 'down').slice(0, 8);
                     return (
-                      <>
+                      <div style={{ opacity: overtimeLoading ? 0.5 : 1, transition: 'opacity 0.3s' }}>
                         {overtimeInterpretation && (
                           <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '20px' }}>
                             <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
@@ -3070,7 +3105,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
                           Based on {overtimeData.recentCount} recent vs {overtimeData.olderCount} earlier entries
                         </p>
-                      </>
+                      </div>
                     );
                   })()}
                 </div>
