@@ -1526,7 +1526,7 @@ Everything you write is end-to-end encrypted and private.`,
                 {[
                   { label: 'Capture a Thought', subtitle: 'Something on your mind?', action: () => { setTab('sessions'); setSessionView('between'); setJournalView('write'); }, primary: true },
                   { label: 'Prep for Session', subtitle: 'Organize your thoughts before therapy', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
-                  { label: 'Reflect on my Session', subtitle: 'How did your session go?', action: () => { setTab('sessions'); setSessionView('after'); }, primary: false },
+                  { label: 'Reflect on Session', subtitle: 'How did your session go?', action: () => { setTab('sessions'); setSessionView('after'); }, primary: false },
                   { label: 'View All Thoughts', subtitle: "Review what you've captured", action: () => { setTab('sessions'); setSessionView('between'); setJournalView('log'); }, primary: false },
                 ].map(({ label, subtitle, action, primary }, idx, arr) => (
                   <button
@@ -2080,7 +2080,7 @@ Everything you write is end-to-end encrypted and private.`,
                                       </h4>
                                       {item.data.themes?.length > 0 && (
                                         <div style={{ marginBottom: '12px' }}>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What's trying to come up:</p>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What kept coming up:</p>
                                           <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
                                             {item.data.themes.map((theme, i) => (
                                               <li key={i} style={{ marginBottom: '4px' }}>{theme}</li>
@@ -2090,7 +2090,7 @@ Everything you write is end-to-end encrypted and private.`,
                                       )}
                                       {item.data.avoiding?.length > 0 && (
                                         <div style={{ marginBottom: '12px' }}>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Things I might be avoiding:</p>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Worth a closer look:</p>
                                           <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
                                             {item.data.avoiding.map((avoid, i) => (
                                               <li key={i} style={{ marginBottom: '4px' }}>{avoid}</li>
@@ -2100,7 +2100,7 @@ Everything you write is end-to-end encrypted and private.`,
                                       )}
                                       {item.data.questions?.length > 0 && (
                                         <div>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions:</p>
+                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Questions to sit with:</p>
                                           <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
                                             {item.data.questions.map((question, i) => (
                                               <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
@@ -2404,7 +2404,7 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                       <Sparkles size={18} style={{ color: '#9333ea' }} />
                       <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        What's trying to come up
+                        What keeps coming up for you
                       </h4>
                     </div>
                     {(analysis.themes || []).length ? (
@@ -2446,7 +2446,7 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                       <Sparkles size={18} style={{ color: '#9333ea' }} />
                       <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        Things I might be avoiding
+                        What might be worth a closer look
                       </h4>
                     </div>
                     {(analysis.avoiding || []).length ? (
@@ -2488,7 +2488,7 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                       <Sparkles size={18} style={{ color: '#9333ea' }} />
                       <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        Open Questions
+                        Questions to sit with
                       </h4>
                     </div>
                     {(analysis.questions || []).length ? (
@@ -3107,7 +3107,7 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Summary</div>
                     {themes.length > 0 && (
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>What's trying to come up</div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>What kept coming up</div>
                         {themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
                           <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
@@ -3117,7 +3117,7 @@ Everything you write is end-to-end encrypted and private.`,
                     )}
                     {avoiding.length > 0 && (
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Things I might be avoiding</div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Worth a closer look</div>
                         {avoiding.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
                           <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
@@ -3127,7 +3127,7 @@ Everything you write is end-to-end encrypted and private.`,
                     )}
                     {questions.length > 0 && (
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Questions to explore</div>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Questions to sit with</div>
                         {questions.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
                           <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
