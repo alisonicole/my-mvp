@@ -1672,7 +1672,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ display: 'flex', gap: '6px' }}>
               {[
                 ["between", "Between"],
-                ["prep", "Prep"],
+                ["prep", "Before"],
                 ["after", "After"],
               ].map(([view, label]) => (
                 <button
@@ -2251,7 +2251,7 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ padding: '32px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                         <Archive size={20} style={{ color: '#9333ea' }} />
-                        <h3 style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', margin: 0 }}>
+                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>
                           Recall Your Last Session
                         </h3>
                       </div>
@@ -2498,11 +2498,14 @@ Everything you write is end-to-end encrypted and private.`,
                 {!loading && analysis && (
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
                     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Sparkles size={20} style={{ color: '#9333ea' }} />
+                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>Patterns</h3>
+                      </div>
                       {/* What keeps coming up for you */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <Sparkles size={18} style={{ color: '#9333ea' }} />
-                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>What keeps coming up for you</h4>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                          What keeps coming up for you
                         </div>
                         {(analysis.themes || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2540,9 +2543,8 @@ Everything you write is end-to-end encrypted and private.`,
 
                       {/* What might be worth a closer look */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <Sparkles size={18} style={{ color: '#9333ea' }} />
-                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>What might be worth a closer look</h4>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                          What might be worth a closer look
                         </div>
                         {(analysis.avoiding || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2580,9 +2582,8 @@ Everything you write is end-to-end encrypted and private.`,
 
                       {/* Questions to sit with */}
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <Sparkles size={18} style={{ color: '#9333ea' }} />
-                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>Questions to sit with</h4>
+                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                          Questions to sit with
                         </div>
                         {(analysis.questions || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
