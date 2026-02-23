@@ -23,8 +23,6 @@ import {
   Star,
   Plus,
   Bookmark,
-  TrendingUp,
-  TrendingDown,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -63,75 +61,6 @@ const DAILY_PROMPTS = [
   "What conversation have you been putting off, and what's stopping you?",
 ];
 
-// ── Patterns Over Time: word frequency analysis ──────────────────────────
-const STOP_WORDS = new Set([
-  'i','me','my','myself','we','our','ours','ourselves','you','your','yours',
-  'yourself','yourselves','he','him','his','himself','she','her','hers',
-  'herself','it','its','itself','they','them','their','theirs','themselves',
-  'what','which','who','whom','this','that','these','those','am','is','are',
-  'was','were','be','been','being','have','has','had','having','do','does',
-  'did','doing','a','an','the','and','but','if','or','because','as','until',
-  'while','of','at','by','for','with','about','against','between','into',
-  'through','during','before','after','above','below','to','from','up','down',
-  'in','out','on','off','over','under','again','further','then','once','here',
-  'there','when','where','why','how','all','both','each','few','more','most',
-  'other','some','such','no','nor','not','only','own','same','so','than',
-  'too','very','s','t','can','will','just','don','should','now','d','ll',
-  'm','o','re','ve','y','ain','aren','couldn','didn','doesn','hadn','hasn',
-  'haven','isn','ma','mightn','mustn','needn','shan','shouldn','wasn',
-  'weren','won','wouldn','also','like','get','got','make','made','want',
-  'really','feel','felt','think','thought','know','knew','see','saw',
-  'would','could','much','many','one','two','even','still','back','little',
-  'way','time','day','week','always','never','something','anything','everything',
-  'nothing','sometimes','often','usually','maybe','actually','probably',
-]);
-
-function extractKeywords(text) {
-  return text.toLowerCase()
-    .replace(/[^a-z\s'-]/g, ' ')
-    .split(/\s+/)
-    .map(w => w.replace(/^['-]+|['-]+$/g, ''))
-    .filter(w => w.length > 3 && !STOP_WORDS.has(w));
-}
-
-function calculateWordFrequencies(texts) {
-  const freq = {};
-  texts.forEach(text => {
-    const words = extractKeywords(text);
-    const seen = new Set();
-    words.forEach(w => {
-      if (!seen.has(w)) { freq[w] = (freq[w] || 0) + 1; seen.add(w); }
-    });
-  });
-  return freq;
-}
-
-function compareFrequencies(recent, older) {
-  const allWords = new Set([...Object.keys(recent), ...Object.keys(older)]);
-  const changes = [];
-  allWords.forEach(w => {
-    const r = recent[w] || 0;
-    const o = older[w] || 0;
-    if (r + o < 2) return;
-    const diff = r - o;
-    const pct = o > 0 ? Math.abs(diff / o) : (r > 0 ? 1 : 0);
-    if (Math.abs(diff) >= 1 && pct >= 0.3) {
-      changes.push({ word: w, recent: r, older: o, diff, direction: diff > 0 ? 'up' : 'down' });
-    }
-  });
-  return changes.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff)).slice(0, 20);
-}
-
-function analyzePatternChanges(entries) {
-  const sorted = [...entries].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const half = Math.ceil(sorted.length / 2);
-  const recentTexts = sorted.slice(0, half).map(e => e.text);
-  const olderTexts = sorted.slice(half).map(e => e.text);
-  const recentFreq = calculateWordFrequencies(recentTexts);
-  const olderFreq = calculateWordFrequencies(olderTexts);
-  const changes = compareFrequencies(recentFreq, olderFreq);
-  return { changes, recentFreq, olderFreq, recentCount: recentTexts.length, olderCount: olderTexts.length };
-}
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -156,15 +85,7 @@ export default function App() {
   const [journalView, setJournalView] = useState("write"); // "write" or "log"
 
   // Sessions sub-tabs
-  const [sessionView, setSessionView] = useState("between"); // "between" | "prep" | "after" | "insights"
-
-  // Patterns sub-tabs
-  const [patternView, setPatternView] = useState("insights"); // "insights" | "progress" | "overtime"
-
-  // Patterns Over Time
-  const [overtimeLoading, setOvertimeLoading] = useState(false);
-  const [overtimeData, setOvertimeData] = useState(null); // { changes, recentCount, olderCount }
-  const [overtimeInterpretation, setOvertimeInterpretation] = useState('');
+  const [sessionView, setSessionView] = useState("between"); // "between" | "prep" | "after"
 
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
@@ -396,8 +317,6 @@ export default function App() {
     setSessionIntention("");
     setTherapyDays([]);
     setTherapyTime('');
-    setOvertimeData(null);
-    setOvertimeInterpretation('');
     setDisplayName("");
     setSavedPrompts([]);
     setFavoritedPatterns([]);
@@ -1520,7 +1439,7 @@ Everything you write is end-to-end encrypted and private.`,
               <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', overflow: 'hidden' }}>
                 <div style={{ padding: '12px 20px', borderBottom: '1px solid #f3e8ff' }}>
                   <span style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    What To Do Now
+                    What do you want to do today?
                   </span>
                 </div>
                 {[
@@ -1755,7 +1674,6 @@ Everything you write is end-to-end encrypted and private.`,
                 ["between", "Between"],
                 ["prep", "Prep"],
                 ["after", "After"],
-                ["insights", "Insights"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2324,370 +2242,6 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
-        {/* INSIGHTS VIEW (patterns/analysis) */}
-        {tab === "sessions" && sessionView === "insights" && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minHeight: '600px' }}>
-            {/* Patterns sub-tabs: Patterns | Progress | Keywords */}
-            <div style={{ display: 'flex', gap: '6px', maxWidth: '600px', margin: '0 auto', width: '100%', padding: '0 24px' }}>
-              {[
-                ["insights", "Patterns"],
-                ["overtime", "Keywords"],
-              ].map(([view, label]) => (
-                <button
-                  key={view}
-                  onClick={() => setPatternView(view)}
-                  style={{ flex: 1, padding: '10px 8px', borderRadius: '14px', fontWeight: '600', fontSize: '13px', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s', background: patternView === view ? '#9333ea' : 'rgba(255,255,255,0.6)', color: patternView === view ? 'white' : '#7c3aed', boxShadow: patternView === view ? '0 4px 12px rgba(147,51,234,0.3)' : 'none' }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {patternView === "insights" && (<>
-            {/* Refresh Analysis Button */}
-            {loading ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                <Loader2 size={48} style={{ color: '#9333ea', margin: '0 auto 16px' }} className="animate-spin" />
-                <p style={{ color: '#7c3aed', fontSize: '16px', margin: 0 }}>Analyzing your reflections...</p>
-              </div>
-            ) : !analysis ? (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-                <Sparkles size={48} style={{ color: '#c4b5fd', margin: '0 auto 16px' }} />
-                <button
-                  onClick={genAnalysis}
-                  style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '16px 32px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s', background: '#9333ea', color: 'white', boxShadow: '0 4px 12px rgba(147,51,234,0.3)' }}
-                >
-                  <Sparkles size={20} />
-                  Run Analysis
-                </button>
-                {entries.length < 3 && (
-                  <p style={{ color: '#7c3aed', fontSize: '14px', marginTop: '16px' }}>
-                    Capture at least 3 thoughts to see patterns ({entries.length}/3)
-                  </p>
-                )}
-              </div>
-            ) : null}
-
-            {analysis?.showNewEntryWarning && !loading && (
-              <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '8px 12px', fontSize: '13px', color: '#7c3aed' }}>
-                💡 Capture a new thought to refresh your analysis and get new insights
-              </div>
-            )}
-
-            {analysis && !loading && (
-              <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                  {/* Header: entry count + refresh */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    {analysisTimestamp ? (() => {
-                      const lastSnapshot = history?.[0];
-                      let entryCount = entries.length;
-                      if (lastSnapshot) {
-                        const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-                        const newEntries = entries.filter(e => new Date(e.timestamp).getTime() > snapshotTime);
-                        entryCount = newEntries.length;
-                        return <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>{entryCount} new {entryCount === 1 ? 'entry' : 'entries'} since last session</p>;
-                      }
-                      return <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Based on {entryCount} {entryCount === 1 ? 'entry' : 'entries'}</p>;
-                    })() : <div />}
-                    <button
-                      onClick={genAnalysis}
-                      disabled={loading}
-                      style={{ background: '#9333ea', border: 'none', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '6px 12px', borderRadius: '20px', flexShrink: 0 }}
-                    >
-                      <RefreshCw size={12} />Refresh
-                    </button>
-                  </div>
-
-                  {/* What's trying to come up */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <Sparkles size={18} style={{ color: '#9333ea' }} />
-                      <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        What keeps coming up for you
-                      </h4>
-                    </div>
-                    {(analysis.themes || []).length ? (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                              </button>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <button
-                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('prep'); } else { setExtraTopics(prev => [...prev, item]); } }}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              >
-                                <Plus size={14} />
-                                {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                        {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
-                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.themes || []).length - 2} more — upgrade to unlock</span>
-                          </li>
-                        )}
-                      </ul>
-                    ) : (
-                      <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                    )}
-                  </div>
-
-                  {/* Things I might be avoiding */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <Sparkles size={18} style={{ color: '#9333ea' }} />
-                      <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        What might be worth a closer look
-                      </h4>
-                    </div>
-                    {(analysis.avoiding || []).length ? (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                              </button>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                              <button
-                                onClick={() => { if (extraTopics.includes(item)) { setTab('sessions'); setSessionView('prep'); } else { setExtraTopics(prev => [...prev, item]); } }}
-                                style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                              >
-                                <Plus size={14} />
-                                {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
-                              </button>
-                            </div>
-                          </li>
-                        ))}
-                        {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
-                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.avoiding || []).length - 2} more — upgrade to unlock</span>
-                          </li>
-                        )}
-                      </ul>
-                    ) : (
-                      <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                    )}
-                  </div>
-
-                  {/* Open Questions */}
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <Sparkles size={18} style={{ color: '#9333ea' }} />
-                      <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>
-                        Questions to sit with
-                      </h4>
-                    </div>
-                    {(analysis.questions || []).length ? (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                          <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                              <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                              <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                              <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                              </button>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                              {isPaidSubscriber ? (
-                                <button
-                                  onClick={() => {
-                                    if (savedPrompts.some(p => p.text === item)) {
-                                      setTab('sessions');
-                                      setSessionView('between');
-                                      setJournalView('write');
-                                      setShowMyPrompts(true);
-                                    } else {
-                                      savePromptForLater(item);
-                                    }
-                                  }}
-                                  title={savedPrompts.some(p => p.text === item) ? 'View in My Prompts' : 'Add to Prompts'}
-                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#ede9fe' : 'white', color: savedPrompts.some(p => p.text === item) ? '#7c3aed' : '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                >
-                                  <BookOpen size={14} />
-                                  {savedPrompts.some(p => p.text === item) ? 'Saved → My Prompts' : 'Add to Prompts'}
-                                </button>
-                              ) : (
-                                <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
-                                  <Lock size={14} />
-                                  Add to Prompts
-                                </div>
-                              )}
-                              {isPaidSubscriber ? (
-                                <button
-                                  onClick={() => handleReplyToQuestion(item)}
-                                  style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #9333ea', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s' }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}
-                                >
-                                  <MessageCircle size={14} />
-                                  Reply
-                                </button>
-                              ) : (
-                                <div title="Upgrade to unlock" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
-                                  <Lock size={14} />
-                                  Reply
-                                </div>
-                              )}
-                            </div>
-                          </li>
-                        ))}
-                        {!isPaidSubscriber && (analysis.questions || []).length > 2 && (
-                          <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                            <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                            <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.questions || []).length - 2} more — upgrade to unlock</span>
-                          </li>
-                        )}
-                      </ul>
-                    ) : (
-                      <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {analysis && !loading && realHistory.length === 0 && (
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px' }}>
-                <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
-                <div>
-                  <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#581c87', lineHeight: '1.5' }}>
-                    Save your patterns when you log a session snapshot to keep a record of your progress.
-                  </p>
-                  <button
-                    onClick={() => { setTab('sessions'); setSessionView('after'); }}
-                    style={{ padding: '7px 14px', borderRadius: '20px', border: 'none', background: '#f59e0b', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    Log a Session Snapshot →
-                  </button>
-                </div>
-              </div>
-            )}
-            </>)}
-
-            {/* OVER TIME VIEW */}
-            {patternView === "overtime" && (() => {
-              const realEntries = entries.filter(e => !e.isWelcomeEntry);
-              const hasEnough = realEntries.length >= 6;
-
-              const runAnalysis = async () => {
-                setOvertimeLoading(true);
-                const result = analyzePatternChanges(realEntries);
-                setOvertimeData(result);
-                // Request AI interpretation via cloud function
-                try {
-                  const topChanges = result.changes.slice(0, 10).map(c => ({
-                    word: c.word, direction: c.direction, recent: c.recent, older: c.older,
-                  }));
-                  const res = await window.Parse.Cloud.run("interpretPatternChanges", {
-                    changes: topChanges,
-                    recentCount: result.recentCount,
-                    olderCount: result.olderCount,
-                  });
-                  setOvertimeInterpretation(res?.interpretation || '');
-                } catch (err) {
-                  console.error('interpretPatternChanges error:', err);
-                }
-                setOvertimeLoading(false);
-              };
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '28px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                    <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 8px 0' }}>Keywords Over Time</h2>
-                    <p style={{ fontSize: '14px', color: '#7c3aed', margin: '0 0 20px 0', lineHeight: '1.5' }}>
-                      Compares your most recent entries against older ones to surface what's shifting in your inner world.
-                    </p>
-
-                    {!hasEnough ? (
-                      <div style={{ textAlign: 'center', padding: '24px 0' }}>
-                        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📝</div>
-                        <p style={{ fontSize: '15px', color: '#7c3aed', margin: '0 0 6px 0' }}>You need at least 6 entries to see patterns over time.</p>
-                        <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>You have {realEntries.length} so far.</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={runAnalysis}
-                        disabled={overtimeLoading}
-                        style={{ padding: '10px 24px', background: overtimeLoading ? '#d1d5db' : 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)', color: 'white', border: 'none', borderRadius: '20px', fontSize: '14px', fontWeight: '600', cursor: overtimeLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                      >
-                        {overtimeLoading ? <><Loader2 size={16} className="animate-spin" /> Analyzing…</> : <><Sparkles size={16} /> {overtimeData ? 'Re-analyze keywords' : 'Analyze my keywords'}</>}
-                      </button>
-                    )}
-                  </div>
-
-                  {overtimeData && (() => {
-                    const increased = overtimeData.changes.filter(c => c.direction === 'up').slice(0, 8);
-                    const decreased = overtimeData.changes.filter(c => c.direction === 'down').slice(0, 8);
-                    return (
-                      <div style={{ opacity: overtimeLoading ? 0.5 : 1, transition: 'opacity 0.3s' }}>
-                        {overtimeInterpretation && (
-                          <div style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '20px' }}>
-                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px' }}>
-                              ✨ AI Interpretation
-                            </div>
-                            <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.7', margin: 0 }}>{overtimeInterpretation}</p>
-                          </div>
-                        )}
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                          <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
-                              <TrendingUp size={16} style={{ color: '#9333ea' }} />
-                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emerging</span>
-                            </div>
-                            {increased.length === 0 ? (
-                              <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Nothing notable</p>
-                            ) : increased.map(c => (
-                              <div key={c.word} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '14px', color: '#581c87', fontWeight: '500' }}>{c.word}</span>
-                                <span style={{ fontSize: '12px', color: '#9333ea', background: '#f3e8ff', padding: '2px 8px', borderRadius: '10px' }}>+{c.diff}×</span>
-                              </div>
-                            ))}
-                          </div>
-
-                          <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
-                              <TrendingDown size={16} style={{ color: '#7c3aed' }} />
-                              <span style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Fading</span>
-                            </div>
-                            {decreased.length === 0 ? (
-                              <p style={{ fontSize: '13px', color: '#9ca3af', margin: 0 }}>Nothing notable</p>
-                            ) : decreased.map(c => (
-                              <div key={c.word} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                <span style={{ fontSize: '14px', color: '#581c87', fontWeight: '500' }}>{c.word}</span>
-                                <span style={{ fontSize: '12px', color: '#7c3aed', background: '#f3e8ff', padding: '2px 8px', borderRadius: '10px' }}>{c.diff}×</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        <p style={{ fontSize: '12px', color: '#9ca3af', textAlign: 'center', margin: 0 }}>
-                          Based on {overtimeData.recentCount} recent vs {overtimeData.olderCount} earlier entries
-                        </p>
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
         {/* SESSIONS PREP VIEW */}
         {tab === "sessions" && sessionView === "prep" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -2937,12 +2491,180 @@ Everything you write is end-to-end encrypted and private.`,
                         Add
                       </button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+                  </div>
+                )}
+
+                {/* PATTERNS */}
+                {!loading && analysis && (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                    <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                      {/* What keeps coming up for you */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <Sparkles size={18} style={{ color: '#9333ea' }} />
+                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>What keeps coming up for you</h4>
+                        </div>
+                        {(analysis.themes || []).length ? (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
+                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                                  </button>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => { if (extraTopics.includes(item)) { return; } setExtraTopics(prev => [...prev, item]); }}
+                                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Plus size={14} />
+                                    {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                            {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
+                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.themes || []).length - 2} more — upgrade to unlock</span>
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                        )}
+                      </div>
+
+                      {/* What might be worth a closer look */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <Sparkles size={18} style={{ color: '#9333ea' }} />
+                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>What might be worth a closer look</h4>
+                        </div>
+                        {(analysis.avoiding || []).length ? (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
+                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                                  </button>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                  <button
+                                    onClick={() => { if (extraTopics.includes(item)) { return; } setExtraTopics(prev => [...prev, item]); }}
+                                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Plus size={14} />
+                                    {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
+                                  </button>
+                                </div>
+                              </li>
+                            ))}
+                            {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
+                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.avoiding || []).length - 2} more — upgrade to unlock</span>
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                        )}
+                      </div>
+
+                      {/* Questions to sit with */}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <Sparkles size={18} style={{ color: '#9333ea' }} />
+                          <h4 style={{ fontSize: '17px', fontWeight: '600', color: '#581c87', margin: 0 }}>Questions to sit with</h4>
+                        </div>
+                        {(analysis.questions || []).length ? (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
+                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                                  </button>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                  {isPaidSubscriber ? (
+                                    <button
+                                      onClick={() => {
+                                        if (savedPrompts.some(p => p.text === item)) {
+                                          setTab('sessions');
+                                          setSessionView('between');
+                                          setJournalView('write');
+                                          setShowMyPrompts(true);
+                                        } else {
+                                          savePromptForLater(item);
+                                        }
+                                      }}
+                                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                      <BookOpen size={14} />
+                                      {savedPrompts.some(p => p.text === item) ? 'Saved → My Prompts' : 'Add to Prompts'}
+                                    </button>
+                                  ) : (
+                                    <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
+                                      <Lock size={14} />
+                                      Add to Prompts
+                                    </div>
+                                  )}
+                                  {isPaidSubscriber ? (
+                                    <button
+                                      onClick={() => handleReplyToQuestion(item)}
+                                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #9333ea', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s' }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}
+                                    >
+                                      <MessageCircle size={14} />
+                                      Reply
+                                    </button>
+                                  ) : (
+                                    <div title="Upgrade to unlock" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
+                                      <Lock size={14} />
+                                      Reply
+                                    </div>
+                                  )}
+                                </div>
+                              </li>
+                            ))}
+                            {!isPaidSubscriber && (analysis.questions || []).length > 2 && (
+                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
+                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.questions || []).length - 2} more — upgrade to unlock</span>
+                              </li>
+                            )}
+                          </ul>
+                        ) : (
+                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {analysis && !loading && realHistory.length === 0 && (
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px' }}>
+                    <span style={{ fontSize: '18px', flexShrink: 0 }}>💡</span>
+                    <div>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '14px', color: '#581c87', lineHeight: '1.5' }}>
+                        Save your patterns when you log a session snapshot to keep a record of your progress.
+                      </p>
                       <button
-                        onClick={() => setSessionView('insights')}
-                        style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                        onClick={() => { setTab('sessions'); setSessionView('after'); }}
+                        style={{ padding: '7px 14px', borderRadius: '20px', border: 'none', background: '#f59e0b', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                       >
-                        View Patterns →
+                        Log a Session Snapshot →
                       </button>
                     </div>
                   </div>
