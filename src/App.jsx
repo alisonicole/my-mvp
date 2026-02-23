@@ -206,6 +206,10 @@ export default function App() {
   // Home session snapshot modal
   const [homeSessionModal, setHomeSessionModal] = useState(null);
 
+  // AI summary of last session notes (cached by parseId)
+  const [sessionNotesSummary, setSessionNotesSummary] = useState({});
+  const [summaryLoading, setSummaryLoading] = useState(false);
+
   // Intention (used in after-session logging)
   const [sessionIntention, setSessionIntention] = useState("");
 
@@ -667,6 +671,23 @@ Everything you write is end-to-end encrypted and private.`,
       return () => clearTimeout(t);
     }
   }, [currentUser]);
+
+  // Auto-summarize last session notes when opening prep view
+  useEffect(() => {
+    if (tab !== 'sessions' || sessionView !== 'prep') return;
+    const snap = history.filter(h => !h.isExampleSnapshot)[0] ?? history[0] ?? null;
+    if (!snap?.notes || !snap?.parseId) return;
+    if (sessionNotesSummary[snap.parseId] !== undefined) return;
+    setSummaryLoading(true);
+    window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
+      .then(result => {
+        setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
+      })
+      .catch(() => {
+        setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
+      })
+      .finally(() => setSummaryLoading(false));
+  }, [tab, sessionView]);
 
   const genAnalysis = async () => {
     if (entries.length < 3) {
@@ -1504,7 +1525,8 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
                 {[
                   { label: 'Capture a Thought', subtitle: 'Something on your mind?', action: () => { setTab('sessions'); setSessionView('between'); setJournalView('write'); }, primary: true },
-                  { label: 'Prep for Session', subtitle: 'Organize your thoughts', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
+                  { label: 'Prep for Session', subtitle: 'Organize your thoughts before therapy', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
+                  { label: 'Reflect on my Session', subtitle: 'How did your session go?', action: () => { setTab('sessions'); setSessionView('after'); }, primary: false },
                   { label: 'View All Thoughts', subtitle: "Review what you've captured", action: () => { setTab('sessions'); setSessionView('between'); setJournalView('log'); }, primary: false },
                 ].map(({ label, subtitle, action, primary }, idx, arr) => (
                   <button
@@ -1521,38 +1543,6 @@ Everything you write is end-to-end encrypted and private.`,
                 ))}
               </div>
 
-              {/* RECENT SESSIONS */}
-              {realHistory.length > 0 && (
-                <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '12px' }}>
-                    Recent Sessions
-                  </div>
-                  {realHistory.slice(0, 3).map((session, idx) => {
-                    const dStr = session.sessionDate
-                      ? new Date(session.sessionDate + 'T12:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-                      : 'Session';
-                    return (
-                      <div key={session.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: idx === 0 ? '0 0 10px 0' : '10px 0', borderBottom: idx < Math.min(realHistory.length, 3) - 1 ? '1px solid #f3e8ff' : 'none' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '500', color: '#581c87' }}>{dStr}</div>
-                        <button
-                          onClick={() => setHomeSessionModal(session)}
-                          style={{ padding: '5px 12px', background: 'transparent', color: '#9333ea', border: '1px solid #e9d5ff', borderRadius: '14px', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          View →
-                        </button>
-                      </div>
-                    );
-                  })}
-                  {realHistory.length > 3 && (
-                    <button
-                      onClick={() => { setTab('sessions'); setSessionView('between'); setJournalView('log'); setLogFilter('snapshots'); }}
-                      style={{ marginTop: '8px', padding: 0, background: 'none', border: 'none', fontSize: '12px', color: '#9333ea', cursor: 'pointer', fontWeight: '500' }}
-                    >
-                      + {realHistory.length - 3} more sessions →
-                    </button>
-                  )}
-                </div>
-              )}
 
             </div>
           );
@@ -2719,14 +2709,27 @@ Everything you write is end-to-end encrypted and private.`,
                         {lastSnapshot?.notes && (
                           <div>
                             <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What You Covered</div>
-                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
-                                <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
-                                  {line}
-                                </li>
-                              ))}
-                            </ul>
+                            {summaryLoading && !sessionNotesSummary[lastSnapshot?.parseId] ? (
+                              <div style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>Summarizing…</div>
+                            ) : sessionNotesSummary[lastSnapshot?.parseId]?.length > 0 ? (
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {sessionNotesSummary[lastSnapshot.parseId].map((bullet, i) => (
+                                  <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                    <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
+                                    {bullet}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
+                                  <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                    <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
+                                    {line}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
                         )}
                         {lastSnapshot?.nextSteps && (
