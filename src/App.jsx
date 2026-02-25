@@ -20,7 +20,6 @@ import {
   Lock,
   MessageCircle,
   Star,
-  Plus,
   Bookmark,
   RefreshCw,
 } from "lucide-react";
@@ -2574,31 +2573,30 @@ Everything you write is end-to-end encrypted and private.`,
                       </div>
                       {/* What came up this week */}
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                           What came up this week
                         </div>
                         {(analysis.themes || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                            {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
+                              const isSelected = extraTopics.includes(item);
+                              return (
+                                <li key={i}
+                                  onClick={() => setExtraTopics(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
+                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                                  </button>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                  <button
-                                    onClick={() => { if (extraTopics.includes(item)) { return; } setExtraTopics(prev => [...prev, item]); }}
-                                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  >
-                                    <Plus size={14} />
-                                    {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
-                                  </button>
-                                </div>
-                              </li>
-                            ))}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                      <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                                    </button>
+                                    {isSelected && (
+                                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#9333ea', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>✓</div>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
                             {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
                               <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
                                 <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
@@ -2613,31 +2611,30 @@ Everything you write is end-to-end encrypted and private.`,
 
                       {/* What might be worth a closer look */}
                       <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                           What might be worth a closer look
                         </div>
                         {(analysis.avoiding || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
+                            {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
+                              const isSelected = extraTopics.includes(item);
+                              return (
+                                <li key={i}
+                                  onClick={() => setExtraTopics(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
+                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
+                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                                  </button>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                  <button
-                                    onClick={() => { if (extraTopics.includes(item)) { return; } setExtraTopics(prev => [...prev, item]); }}
-                                    style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: extraTopics.includes(item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  >
-                                    <Plus size={14} />
-                                    {extraTopics.includes(item) ? 'Added to key topics' : 'Add to key topics'}
-                                  </button>
-                                </div>
-                              </li>
-                            ))}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
+                                      <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
+                                    </button>
+                                    {isSelected && (
+                                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#9333ea', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>✓</div>
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            })}
                             {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
                               <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
                                 <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
@@ -2913,6 +2910,21 @@ Everything you write is end-to-end encrypted and private.`,
                 style={{ marginTop: '16px', padding: '12px 24px', background: 'transparent', border: '1px solid #e9d5ff', borderRadius: '12px', color: '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', width: '100%' }}
               >
                 Maybe Later
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* PATTERNS STICKY SELECTION BAR */}
+        {tab === 'sessions' && sessionView === 'between' && extraTopics.length > 0 && (
+          <div style={{ position: 'fixed', bottom: '68px', left: 0, right: 0, zIndex: 999, padding: '0 16px' }}>
+            <div style={{ maxWidth: '600px', margin: '0 auto', background: '#581c87', borderRadius: '16px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(88,28,135,0.4)' }}>
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>{extraTopics.length} {extraTopics.length === 1 ? 'topic' : 'topics'} selected</span>
+              <button
+                onClick={() => { setTab('sessions'); setSessionView('before'); }}
+                style={{ background: '#9333ea', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                Prep my session →
               </button>
             </div>
           </div>
