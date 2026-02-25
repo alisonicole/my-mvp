@@ -151,6 +151,11 @@ export default function App() {
   // Engagement messages
   const [engagementMessage, setEngagementMessage] = useState(null); // { text, type }
 
+  // Intention daily check-in
+  const [intentionCheckedIn, setIntentionCheckedIn] = useState(() => {
+    try { return localStorage.getItem(`between_checkin_${getDate()}`) === '1'; } catch { return false; }
+  });
+
   const streak = useMemo(() => {
     const toLocalDateStr = (d) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -560,8 +565,11 @@ Everything you write is end-to-end encrypted and private.`,
         const kt = currentUser.get("keyTopics");
         if (Array.isArray(kt) && kt.length > 0) {
           setExtraTopics(kt);
-        } else if (savedAnalysis?.avoiding?.length > 0) {
-          setExtraTopics(savedAnalysis.avoiding.slice(0, 3));
+        } else {
+          const fromThemes = (savedAnalysis?.themes || []).slice(0, 2);
+          const fromAvoiding = (savedAnalysis?.avoiding || []).slice(0, 2);
+          const combined = [...fromThemes, ...fromAvoiding].filter(Boolean);
+          if (combined.length > 0) setExtraTopics(combined);
         }
 
         setLastAnalyzedEntries([]);
@@ -690,11 +698,14 @@ Everything you write is end-to-end encrypted and private.`,
       setCheckedTopics(new Set());
       
       await saveAnalysisToUser(newAnalysis);
-      // Pre-populate key topics from 'what might be worth a closer look' if user hasn't set any
-      setExtraTopics(prev => prev.length === 0 && newAnalysis.avoiding.length > 0
-        ? newAnalysis.avoiding.slice(0, 3)
-        : prev
-      );
+      // Pre-populate key topics: 2 from themes + 2 from avoiding, only if user hasn't set any
+      setExtraTopics(prev => {
+        if (prev.length > 0) return prev;
+        const fromThemes = (newAnalysis.themes || []).slice(0, 2);
+        const fromAvoiding = (newAnalysis.avoiding || []).slice(0, 2);
+        const combined = [...fromThemes, ...fromAvoiding].filter(Boolean);
+        return combined.length > 0 ? combined : prev;
+      });
     } catch (error) {
       console.error("Error analyzing journal:", error);
     } finally {
@@ -860,6 +871,11 @@ Everything you write is end-to-end encrypted and private.`,
 
   const realHistory = history.filter(h => !h.isExampleSnapshot);
   const lastSnapshot = realHistory[0] ?? history[0] ?? null;
+
+  const truncateWords = (text, max = 15) => {
+    const words = (text || '').split(' ');
+    return words.length <= max ? text : words.slice(0, max).join(' ') + '…';
+  };
 
 
   if (!currentUser) {
@@ -1459,6 +1475,37 @@ Everything you write is end-to-end encrypted and private.`,
                   Hi {name} 👋
                 </h2>
               </div>
+
+              {/* INTENTION OF THE WEEK */}
+              {(() => {
+                const intention = lastSnapshot?.intention || sessionIntention;
+                if (!intention) return null;
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '16px 20px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                      Intention of the Week
+                    </div>
+                    <p style={{ fontSize: '15px', color: '#581c87', margin: '0 0 12px 0', lineHeight: '1.5', fontStyle: 'italic' }}>
+                      "{intention}"
+                    </p>
+                    {intentionCheckedIn ? (
+                      <div style={{ fontSize: '12px', color: '#9333ea', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span>✓</span> Reflected on today
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          localStorage.setItem(`between_checkin_${getDate()}`, '1');
+                          setIntentionCheckedIn(true);
+                        }}
+                        style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'none', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                      >
+                        ✓ I reflected on this today
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* WHAT TO DO NOW */}
               <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '16px', overflow: 'hidden' }}>
@@ -2375,6 +2422,18 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
+                {/* INTENTION OF THE WEEK */}
+                {lastSnapshot?.intention && (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px 24px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                      Intention of the Week
+                    </div>
+                    <p style={{ fontSize: '15px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
+                      "{lastSnapshot.intention}"
+                    </p>
+                  </div>
+                )}
+
                 {/* Refresh Analysis Button - Always visible at top */}
                 {loading ? (
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', padding: '48px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', textAlign: 'center' }}>
@@ -2512,7 +2571,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <Sparkles size={20} style={{ color: '#9333ea' }} />
                         <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>Patterns</h3>
                       </div>
-                      {/* What keeps coming up for you */}
+                      {/* What came up this week */}
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
                           What came up this week
@@ -2523,7 +2582,7 @@ Everything you write is end-to-end encrypted and private.`,
                               <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
+                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{truncateWords(item)}</span>
                                   <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
                                     <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                                   </button>
@@ -2644,6 +2703,20 @@ Everything you write is end-to-end encrypted and private.`,
                           value={sessionDate}
                           onChange={(e) => setSessionDate(e.target.value)}
                           style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'rgba(255,255,255,0.8)', color: '#581c87' }}
+                        />
+                      </div>
+
+                      {/* Intention of the week */}
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                          Intention of the week
+                        </label>
+                        <input
+                          type="text"
+                          value={sessionIntention}
+                          onChange={(e) => setSessionIntention(e.target.value)}
+                          placeholder="What do you want to carry forward from this session?"
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', background: 'rgba(255,255,255,0.8)', color: '#581c87', boxSizing: 'border-box' }}
                         />
                       </div>
 
