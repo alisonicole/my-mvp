@@ -114,6 +114,7 @@ export default function App() {
   const [extraTopics, setExtraTopics] = useState(() => {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
+  const [selectedPatterns, setSelectedPatterns] = useState([]);
   const [newTopicInput, setNewTopicInput] = useState('');
   const [editingTopics, setEditingTopics] = useState(false);
   const [tempTopics, setTempTopics] = useState('');
@@ -2571,18 +2572,18 @@ Everything you write is end-to-end encrypted and private.`,
                           Refresh
                         </button>
                       </div>
-                      {/* What came up this week */}
+                      {/* What's been on your mind */}
                       <div>
                         <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                          What came up this week
+                          What's been on your mind
                         </div>
                         {(analysis.themes || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
-                              const isSelected = extraTopics.includes(item);
+                              const isSelected = selectedPatterns.includes(item);
                               return (
                                 <li key={i}
-                                  onClick={() => setExtraTopics(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
+                                  onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
                                   style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
@@ -2609,18 +2610,18 @@ Everything you write is end-to-end encrypted and private.`,
                         )}
                       </div>
 
-                      {/* What might be worth a closer look */}
+                      {/* What might be worth bringing up */}
                       <div>
                         <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                          What might be worth a closer look
+                          What might be worth bringing up
                         </div>
                         {(analysis.avoiding || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
-                              const isSelected = extraTopics.includes(item);
+                              const isSelected = selectedPatterns.includes(item);
                               return (
                                 <li key={i}
-                                  onClick={() => setExtraTopics(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
+                                  onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
                                   style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
@@ -2916,15 +2917,21 @@ Everything you write is end-to-end encrypted and private.`,
         )}
 
         {/* PATTERNS STICKY SELECTION BAR */}
-        {tab === 'sessions' && sessionView === 'between' && extraTopics.length > 0 && (
+        {tab === 'sessions' && sessionView === 'prep' && selectedPatterns.length > 0 && (
           <div style={{ position: 'fixed', bottom: '68px', left: 0, right: 0, zIndex: 999, padding: '0 16px' }}>
             <div style={{ maxWidth: '600px', margin: '0 auto', background: '#581c87', borderRadius: '16px', padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 4px 20px rgba(88,28,135,0.4)' }}>
-              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>{extraTopics.length} {extraTopics.length === 1 ? 'topic' : 'topics'} selected</span>
+              <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '14px' }}>{selectedPatterns.length} {selectedPatterns.length === 1 ? 'topic' : 'topics'} selected</span>
               <button
-                onClick={() => { setTab('sessions'); setSessionView('before'); }}
+                onClick={() => {
+                  setExtraTopics(prev => {
+                    const toAdd = selectedPatterns.filter(t => !prev.includes(t));
+                    return [...prev, ...toAdd];
+                  });
+                  setSelectedPatterns([]);
+                }}
                 style={{ background: '#9333ea', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                Prep my session →
+                Bring this up
               </button>
             </div>
           </div>
