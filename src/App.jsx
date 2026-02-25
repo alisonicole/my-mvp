@@ -13,7 +13,6 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronRight,
-  RefreshCw,
   LogOut,
   BookOpen,
   Archive,
@@ -111,9 +110,7 @@ export default function App() {
   const [sessionDate, setSessionDate] = useState(getDate());
   const [notes, setNotes] = useState("");
   const [nextSteps, setNextSteps] = useState("");
-  const [editStmt, setEditStmt] = useState(false);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
-  const [tempStmt, setTempStmt] = useState("");
   const [extraTopics, setExtraTopics] = useState(() => {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
@@ -130,6 +127,7 @@ export default function App() {
   const [savedPrompts, setSavedPrompts] = useState([]); // [{text, savedAt}]
   const [showMyPrompts, setShowMyPrompts] = useState(false);
   const [showDailyPrompt, setShowDailyPrompt] = useState(false);
+  const [showOpenQuestions, setShowOpenQuestions] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [userEncryptionKey, setUserEncryptionKey] = useState(null);
 
@@ -558,10 +556,12 @@ Everything you write is end-to-end encrypted and private.`,
         }
         if (tt) setTherapyTime(tt);
 
-        // Load key topics from Parse (cross-device), fall back to localStorage
+        // Load key topics from Parse (cross-device); if none set, pre-populate from analysis avoiding
         const kt = currentUser.get("keyTopics");
-        if (Array.isArray(kt)) {
+        if (Array.isArray(kt) && kt.length > 0) {
           setExtraTopics(kt);
+        } else if (savedAnalysis?.avoiding?.length > 0) {
+          setExtraTopics(savedAnalysis.avoiding.slice(0, 3));
         }
 
         setLastAnalyzedEntries([]);
@@ -690,9 +690,13 @@ Everything you write is end-to-end encrypted and private.`,
       setCheckedTopics(new Set());
       
       await saveAnalysisToUser(newAnalysis);
+      // Pre-populate key topics from 'what might be worth a closer look' if user hasn't set any
+      setExtraTopics(prev => prev.length === 0 && newAnalysis.avoiding.length > 0
+        ? newAnalysis.avoiding.slice(0, 3)
+        : prev
+      );
     } catch (error) {
       console.error("Error analyzing journal:", error);
-      alert("Analysis failed. Make sure your Anthropic API key is set in Back4app environment variables.");
     } finally {
       setLoading(false);
     }
@@ -783,26 +787,17 @@ Everything you write is end-to-end encrypted and private.`,
     }
   };
 
-  const handleReplyToQuestion = (question) => {
-    if (!isPaidSubscriber) return; // Only for paid users
-    
-    // Set the active prompt (don't pre-fill text)
-    setActivePrompt(question);
-    setTab('sessions');
-    setSessionView('between');
-    setJournalView('write');
-  };
-
   const handleGeneratePrompt = async () => {
-    if (!isPaidSubscriber || !realHistory || realHistory.length === 0) return;
+    if (!isPaidSubscriber) return;
+    const source = realHistory.length > 0 ? realHistory[0] : analysis;
+    if (!source) return;
 
-    const lastSnapshot = realHistory[0];
     setLoading(true);
     try {
       const result = await Parse.Cloud.run("generateJournalPrompt", {
-        themes: lastSnapshot.themes || [],
-        avoiding: lastSnapshot.avoiding || [],
-        questions: lastSnapshot.questions || [],
+        themes: source.themes || [],
+        avoiding: source.avoiding || [],
+        questions: source.questions || [],
       });
       setActivePrompt(result.prompt);
       setTab('sessions');
@@ -823,18 +818,6 @@ Everything you write is end-to-end encrypted and private.`,
         : [...prev, { text, favoritedAt: new Date().toISOString() }];
       if (currentUser && Parse) {
         currentUser.set("favoritedPatterns", next);
-        currentUser.save().catch(() => {});
-      }
-      return next;
-    });
-  };
-
-  const savePromptForLater = (text) => {
-    setSavedPrompts(prev => {
-      if (prev.some(p => p.text === text)) return prev;
-      const next = [...prev, { text, savedAt: new Date().toISOString() }];
-      if (currentUser && Parse) {
-        currentUser.set("savedPrompts", next);
         currentUser.save().catch(() => {});
       }
       return next;
@@ -2155,25 +2138,36 @@ Everything you write is end-to-end encrypted and private.`,
 
                     {/* Prompt of the Day */}
                     <button
-                      onClick={() => { setShowDailyPrompt(p => !p); setShowMyPrompts(false); }}
+                      onClick={() => { setShowDailyPrompt(p => !p); setShowMyPrompts(false); setShowOpenQuestions(false); }}
                       style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showDailyPrompt ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showDailyPrompt ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
                     >
                       <Calendar size={14} />
                       Prompt of the Day
                     </button>
 
+                    {/* Open Questions */}
+                    {analysis && (analysis.questions || []).length > 0 && (
+                      <button
+                        onClick={() => { setShowOpenQuestions(p => !p); setShowDailyPrompt(false); setShowMyPrompts(false); }}
+                        style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showOpenQuestions ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showOpenQuestions ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+                      >
+                        <MessageCircle size={14} />
+                        Open Questions
+                      </button>
+                    )}
+
                     {/* Generate Journaling Prompt */}
                     {(() => {
-                      const noSession = !realHistory || realHistory.length === 0;
+                      const noSource = !realHistory?.length && !analysis;
                       return (
                         <button
-                          onClick={noSession ? undefined : handleGeneratePrompt}
-                          disabled={loading || noSession}
-                          title={noSession ? 'Log your first session to get a custom journal prompt' : ''}
-                          style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: (loading || noSession) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', color: (loading || noSession) ? '#9ca3af' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: (loading || noSession) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
+                          onClick={noSource ? undefined : handleGeneratePrompt}
+                          disabled={loading || noSource}
+                          title={noSource ? 'Capture a few thoughts first to get a custom prompt' : ''}
+                          style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: (loading || noSource) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', color: (loading || noSource) ? '#9ca3af' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: (loading || noSource) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
                         >
-                          {noSession ? <Lock size={14} /> : <Sparkles size={14} />}
-                          {loading && !noSession ? 'Generating...' : 'Generate Journaling Prompt'}
+                          {noSource ? <Lock size={14} /> : <Sparkles size={14} />}
+                          {loading && !noSource ? 'Generating...' : 'Generate Journaling Prompt'}
                         </button>
                       );
                     })()}
@@ -2230,6 +2224,29 @@ Everything you write is end-to-end encrypted and private.`,
                       </div>
                     );
                   })()}
+
+                  {/* Open Questions panel */}
+                  {showOpenQuestions && analysis && (analysis.questions || []).length > 0 && (
+                    <div style={{ marginBottom: '12px', border: '1px solid #ddd6fe', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <MessageCircle size={12} />
+                        Open Questions
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        {(analysis.questions || []).map((q, i) => (
+                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', padding: '10px 14px', borderBottom: i < analysis.questions.length - 1 ? '1px solid #f3f4f6' : 'none', background: 'white' }}>
+                            <p style={{ flex: 1, fontSize: '13px', color: '#581c87', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>{q}</p>
+                            <button
+                              onClick={() => { setActivePrompt(q); setShowOpenQuestions(false); }}
+                              style={{ flexShrink: 0, padding: '5px 12px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '16px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                            >
+                              Use →
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ marginBottom: '16px' }}>
                     <VoiceInput
@@ -2388,66 +2405,6 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
-                {/* SESSION STARTER */}
-                {!loading && analysis && (
-                  <div style={{
-                    background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
-                    border: '1px solid #ddd6fe',
-                    borderRadius: '24px',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 16px rgba(147,51,234,0.1)'
-                  }}>
-                    <div style={{ padding: '28px 32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <Sparkles size={20} style={{ color: '#9333ea' }} />
-                          <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                            Session Starter
-                          </h3>
-                        </div>
-                        <button
-                          onClick={genAnalysis}
-                          disabled={loading}
-                          style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px' }}
-                        >
-                          <RefreshCw size={14} />Refresh
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Opening Statement
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (editStmt) {
-                              setAnalysis((p) => ({ ...(p ?? {}), openingStatement: tempStmt }));
-                              setEditStmt(false);
-                            } else {
-                              setTempStmt(analysis.openingStatement || "");
-                              setEditStmt(true);
-                            }
-                          }}
-                          disabled={loading}
-                          style={{ background: 'none', border: 'none', color: loading ? '#d1d5db' : '#9333ea', fontSize: '12px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '4px', padding: '2px 6px' }}
-                        >
-                          <Edit2 size={12} />{editStmt ? "Save" : "Edit"}
-                        </button>
-                      </div>
-                      {editStmt ? (
-                        <textarea
-                          value={tempStmt}
-                          onChange={(e) => setTempStmt(e.target.value)}
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'white', color: '#581c87', height: '100px', lineHeight: '1.6', boxSizing: 'border-box' }}
-                        />
-                      ) : (
-                        <p style={{ fontSize: '15px', lineHeight: '1.7', color: '#581c87', margin: 0, fontStyle: 'italic' }}>
-                          "{analysis.openingStatement || "I think what I'd like to talk about today is…"}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* KEY TOPICS */}
                 {!loading && analysis && (
                   <div style={{
@@ -2558,7 +2515,7 @@ Everything you write is end-to-end encrypted and private.`,
                       {/* What keeps coming up for you */}
                       <div>
                         <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-                          What keeps coming up for you
+                          What came up this week
                         </div>
                         {(analysis.themes || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2633,76 +2590,6 @@ Everything you write is end-to-end encrypted and private.`,
                         )}
                       </div>
 
-                      {/* Questions to sit with */}
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
-                          Questions to sit with
-                        </div>
-                        {(analysis.questions || []).length ? (
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {(analysis.questions || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => (
-                              <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                                  <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                    <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                                  </button>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                                  {isPaidSubscriber ? (
-                                    <button
-                                      onClick={() => {
-                                        if (savedPrompts.some(p => p.text === item)) {
-                                          setTab('sessions');
-                                          setSessionView('between');
-                                          setJournalView('write');
-                                          setShowMyPrompts(true);
-                                        } else {
-                                          savePromptForLater(item);
-                                        }
-                                      }}
-                                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #e9d5ff', background: savedPrompts.some(p => p.text === item) ? '#ede9fe' : 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                      <BookOpen size={14} />
-                                      {savedPrompts.some(p => p.text === item) ? 'Saved → My Prompts' : 'Add to Prompts'}
-                                    </button>
-                                  ) : (
-                                    <div title="Upgrade to save prompts" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
-                                      <Lock size={14} />
-                                      Add to Prompts
-                                    </div>
-                                  )}
-                                  {isPaidSubscriber ? (
-                                    <button
-                                      onClick={() => handleReplyToQuestion(item)}
-                                      style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #9333ea', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.2s' }}
-                                      onMouseEnter={(e) => { e.currentTarget.style.background = '#7c3aed'; }}
-                                      onMouseLeave={(e) => { e.currentTarget.style.background = '#9333ea'; }}
-                                    >
-                                      <MessageCircle size={14} />
-                                      Reply
-                                    </button>
-                                  ) : (
-                                    <div title="Upgrade to unlock" style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid #d1d5db', background: '#f3f4f6', color: '#6b7280', fontSize: '13px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'not-allowed' }}>
-                                      <Lock size={14} />
-                                      Reply
-                                    </div>
-                                  )}
-                                </div>
-                              </li>
-                            ))}
-                            {!isPaidSubscriber && (analysis.questions || []).length > 2 && (
-                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.questions || []).length - 2} more — upgrade to unlock</span>
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                        )}
-                      </div>
                     </div>
                   </div>
                 )}
