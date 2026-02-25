@@ -22,6 +22,7 @@ import {
   Star,
   Plus,
   Bookmark,
+  RefreshCw,
 } from "lucide-react";
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
@@ -2565,7 +2566,11 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Sparkles size={20} style={{ color: '#9333ea' }} />
-                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>Patterns</h3>
+                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0, flex: 1 }}>Patterns</h3>
+                        <button onClick={genAnalysis} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1 }}>
+                          <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                          Refresh
+                        </button>
                       </div>
                       {/* What came up this week */}
                       <div>
