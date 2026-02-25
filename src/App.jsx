@@ -872,10 +872,6 @@ Everything you write is end-to-end encrypted and private.`,
   const realHistory = history.filter(h => !h.isExampleSnapshot);
   const lastSnapshot = realHistory[0] ?? history[0] ?? null;
 
-  const truncateWords = (text, max = 15) => {
-    const words = (text || '').split(' ');
-    return words.length <= max ? text : words.slice(0, max).join(' ') + '…';
-  };
 
 
   if (!currentUser) {
@@ -2582,7 +2578,7 @@ Everything you write is end-to-end encrypted and private.`,
                               <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px', background: 'rgba(147,51,234,0.05)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)' }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0 }}>•</span>
-                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{truncateWords(item)}</span>
+                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
                                   <button onClick={() => toggleFavorite(item)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
                                     <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
                                   </button>
