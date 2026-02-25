@@ -27,6 +27,15 @@ import {
 import AdminDashboard from './AdminDashboard';
 import Logo from './Logo';
 import VoiceInput from './VoiceInput';
+import EngagementMessage from './components/EngagementMessage';
+import {
+  getEntry1Message,
+  getEntry2Message,
+  getEntry3Message,
+  getEntry5MilestoneMessage,
+  getSessionSnapshotMessage,
+} from './services/engagementService';
+import { hasMilestoneFired, recordMilestoneFired } from './services/milestoneTracker';
 
 const DAILY_PROMPTS = [
   "What's been weighing on your mind lately that you haven't said out loud?",
@@ -140,6 +149,9 @@ export default function App() {
   const [therapyDays, setTherapyDays] = useState([]); // array of day names
   const [therapyTime, setTherapyTime] = useState('');
   const [onboardingEntry, setOnboardingEntry] = useState('');
+
+  // Engagement messages
+  const [engagementMessage, setEngagementMessage] = useState(null); // { text, type }
 
   const streak = useMemo(() => {
     const toLocalDateStr = (d) =>
@@ -737,9 +749,55 @@ Everything you write is end-to-end encrypted and private.`,
       setCheckedTopics(new Set());
       setTab("journal");
       setJournalView("log");
+      // Fire session snapshot message async (don't block UI)
+      handleSessionSnapshotMessage(entries, payload.notes);
     } catch (e) {
       console.error(e);
       alert("Archive failed. Check Back4App CLP for SessionSnapshot (Create).");
+    }
+  };
+
+  const handlePostEntrySave = async (allEntries) => {
+    if (!currentUser) return;
+    const userId = currentUser.id;
+    // Count only real entries (exclude welcome entries)
+    const realEntries = allEntries.filter(e => !e.isWelcomeEntry);
+    const count = realEntries.length;
+
+    const milestoneMap = {
+      1: { key: 'entry1', fn: () => getEntry1Message(realEntries[0]) },
+      2: { key: 'entry2', fn: () => getEntry2Message(realEntries.slice(0, 2)) },
+      3: { key: 'entry3', fn: () => getEntry3Message(realEntries.slice(0, 3)) },
+      5: { key: 'entry5', fn: () => getEntry5MilestoneMessage(realEntries.slice(0, 5)) },
+    };
+
+    const milestone = milestoneMap[count];
+    if (!milestone) return;
+
+    try {
+      const alreadyFired = await hasMilestoneFired(userId, milestone.key);
+      if (alreadyFired) return;
+      const message = await milestone.fn();
+      await recordMilestoneFired(userId, milestone.key);
+      setEngagementMessage({ text: message, type: milestone.key });
+    } catch (err) {
+      console.error('Engagement message failed:', err);
+    }
+  };
+
+  const handleSessionSnapshotMessage = async (allEntries, prepNotes) => {
+    if (!currentUser) return;
+    const userId = currentUser.id;
+    const milestoneKey = `sessionSnapshot_${new Date().toISOString().split('T')[0]}`;
+    try {
+      const alreadyFired = await hasMilestoneFired(userId, milestoneKey);
+      if (alreadyFired) return;
+      const realEntries = allEntries.filter(e => !e.isWelcomeEntry).slice(0, 10);
+      const message = await getSessionSnapshotMessage(realEntries, prepNotes);
+      await recordMilestoneFired(userId, milestoneKey);
+      setEngagementMessage({ text: message, type: 'sessionSnapshot' });
+    } catch (err) {
+      console.error('Session snapshot message failed:', err);
     }
   };
 
@@ -1721,6 +1779,14 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   )}
 
+                  {engagementMessage && (
+                    <EngagementMessage
+                      message={engagementMessage.text}
+                      type={engagementMessage.type}
+                      onDismiss={() => setEngagementMessage(null)}
+                    />
+                  )}
+
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
                     <button
                       onClick={() => setJournalView('write')}
@@ -2209,7 +2275,8 @@ Everything you write is end-to-end encrypted and private.`,
                       };
                       try {
                         await createEntry(n);
-                        setEntries(await fetchEntries());
+                        const updatedEntries = await fetchEntries();
+                        setEntries(updatedEntries);
                         // Remove used prompt from My Prompts if it came from there
                         if (activePrompt && savedPrompts.some(p => p.text === activePrompt)) {
                           removeSavedPrompt(activePrompt);
@@ -2217,6 +2284,8 @@ Everything you write is end-to-end encrypted and private.`,
                         setEntry({ text: "", prompt: "" });
                         setActivePrompt("");
                         setJournalView("log");
+                        // Fire engagement message async (don't block UI)
+                        handlePostEntrySave(updatedEntries);
                       } catch (err) {
                         console.error(err);
                         alert("Save failed. Check Back4App CLP for Entry (Create).");
