@@ -739,9 +739,9 @@ Everything you write is end-to-end encrypted and private.`,
   const handlePostEntrySave = async (allEntries) => {
     if (!currentUser) return;
     const userId = currentUser.id;
-    // Count only real entries (exclude welcome entries)
     const realEntries = allEntries.filter(e => !e.isWelcomeEntry);
     const count = realEntries.length;
+    console.log('[engagement] entry count (real):', count);
 
     const milestoneMap = {
       1: { key: 'entry1', fn: () => getEntry1Message(realEntries[0]) },
@@ -751,16 +751,19 @@ Everything you write is end-to-end encrypted and private.`,
     };
 
     const milestone = milestoneMap[count];
-    if (!milestone) return;
+    if (!milestone) { console.log('[engagement] no milestone for count', count); return; }
 
     try {
       const alreadyFired = await hasMilestoneFired(userId, milestone.key);
+      console.log('[engagement] milestone:', milestone.key, 'alreadyFired:', alreadyFired);
       if (alreadyFired) return;
+      console.log('[engagement] calling cloud function getEngagementMessage...');
       const message = await milestone.fn();
+      console.log('[engagement] message received:', message?.slice(0, 60));
       await recordMilestoneFired(userId, milestone.key);
       setEngagementMessage({ text: message, type: milestone.key });
     } catch (err) {
-      console.warn('Engagement message failed — is getEngagementMessage deployed in Back4App?', err?.message || err);
+      console.warn('[engagement] FAILED — is getEngagementMessage deployed in Back4App?', err?.message || err);
     }
   };
 
