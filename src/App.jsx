@@ -760,7 +760,7 @@ Everything you write is end-to-end encrypted and private.`,
       await recordMilestoneFired(userId, milestone.key);
       setEngagementMessage({ text: message, type: milestone.key });
     } catch (err) {
-      console.error('Engagement message failed:', err);
+      console.warn('Engagement message failed — is getEngagementMessage deployed in Back4App?', err?.message || err);
     }
   };
 
@@ -776,7 +776,7 @@ Everything you write is end-to-end encrypted and private.`,
       await recordMilestoneFired(userId, milestoneKey);
       setEngagementMessage({ text: message, type: 'sessionSnapshot' });
     } catch (err) {
-      console.error('Session snapshot message failed:', err);
+      console.warn('Session snapshot message failed — is getEngagementMessage deployed in Back4App?', err?.message || err);
     }
   };
 
@@ -1073,7 +1073,9 @@ Everything you write is end-to-end encrypted and private.`,
       };
       try {
         await createEntry(n);
-        setEntries(await fetchEntries());
+        const updatedEntries = await fetchEntries();
+        setEntries(updatedEntries);
+        handlePostEntrySave(updatedEntries);
       } catch (err) {
         console.error("First entry save failed:", err);
       }
