@@ -486,28 +486,7 @@ export default function App() {
         if (oldWelcome.length > 0) {
           await Promise.all(oldWelcome.map(entry => deleteEntry(entry.parseId).catch(() => {})));
         }
-        // Create example session snapshot for brand-new users (no snapshots yet)
-        let finalSnapshots = s;
-        if (s.length === 0) {
-          const exampleSnap = {
-            id: Date.now() - 1000,
-            sessionDate: (() => { const d = new Date(); d.setDate(d.getDate() - 7); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })(),
-            timestamp: new Date(Date.now() - 7 * 24 * 3600000).toISOString(),
-            themes: ["Managing anxiety in social situations", "Work-life balance and boundaries", "Communicating needs in relationships"],
-            avoiding: ["Difficult conversation with a family member", "Setting limits at work"],
-            questions: ["What does a good boundary actually feel like for you?", "What would you do differently if you weren't afraid of the outcome?"],
-            openingStatement: "I think what I'd like to talk about today is the anxiety I feel in social situations and whether it's connected to my difficulty setting boundaries.",
-            notes: "",
-            nextSteps: "Notice when you feel the urge to say yes when you mean no.",
-            isExampleSnapshot: true,
-          };
-          try {
-            await createSnapshot(exampleSnap);
-            finalSnapshots = await fetchSnapshots();
-          } catch (err) {
-            console.error("Example snapshot failed:", err);
-          }
-        }
+        const finalSnapshots = s;
 
         // Create welcome entry for brand-new users (no real entries)
         let finalEntries = realEntries;

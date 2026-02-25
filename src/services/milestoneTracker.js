@@ -1,19 +1,14 @@
-// Uses Parse (global window.Parse) to persist which milestones have fired for each user
+// Milestone tracking via localStorage — simple, no backend permissions needed.
+// Keys are scoped by userId to support multiple accounts on the same device.
+
+function milestoneKey(userId, milestone) {
+  return `between_milestone_${userId}_${milestone}`;
+}
 
 export async function hasMilestoneFired(userId, milestone) {
-  const Parse = window.Parse;
-  const query = new Parse.Query('UserMilestone');
-  query.equalTo('userId', userId);
-  query.equalTo('milestone', milestone);
-  const result = await query.first();
-  return !!result;
+  return localStorage.getItem(milestoneKey(userId, milestone)) === '1';
 }
 
 export async function recordMilestoneFired(userId, milestone) {
-  const Parse = window.Parse;
-  const UserMilestone = Parse.Object.extend('UserMilestone');
-  const record = new UserMilestone();
-  record.set('userId', userId);
-  record.set('milestone', milestone);
-  await record.save();
+  localStorage.setItem(milestoneKey(userId, milestone), '1');
 }
