@@ -566,11 +566,6 @@ Everything you write is end-to-end encrypted and private.`,
         const kt = currentUser.get("keyTopics");
         if (Array.isArray(kt) && kt.length > 0) {
           setExtraTopics(kt);
-        } else {
-          const fromThemes = (savedAnalysis?.themes || []).slice(0, 2);
-          const fromAvoiding = (savedAnalysis?.avoiding || []).slice(0, 2);
-          const combined = [...fromThemes, ...fromAvoiding].filter(Boolean);
-          if (combined.length > 0) setExtraTopics(combined);
         }
 
         setLastAnalyzedEntries([]);
@@ -699,14 +694,6 @@ Everything you write is end-to-end encrypted and private.`,
       setCheckedTopics(new Set());
       
       await saveAnalysisToUser(newAnalysis);
-      // Pre-populate key topics: 2 from themes + 2 from avoiding, only if user hasn't set any
-      setExtraTopics(prev => {
-        if (prev.length > 0) return prev;
-        const fromThemes = (newAnalysis.themes || []).slice(0, 2);
-        const fromAvoiding = (newAnalysis.avoiding || []).slice(0, 2);
-        const combined = [...fromThemes, ...fromAvoiding].filter(Boolean);
-        return combined.length > 0 ? combined : prev;
-      });
     } catch (error) {
       console.error("Error analyzing journal:", error);
     } finally {
@@ -2471,7 +2458,7 @@ Everything you write is end-to-end encrypted and private.`,
                     padding: '28px 32px',
                     boxShadow: '0 4px 16px rgba(147,51,234,0.06)'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                       <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                         Key Topics to Cover
                       </div>
@@ -2491,6 +2478,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <Edit2 size={12} />{editingTopics ? 'Save' : 'Edit'}
                       </button>
                     </div>
+                    <p style={{ fontSize: '12px', color: '#a78bfa', margin: '0 0 14px 0' }}>Add your own or bring up from patterns</p>
                     {editingTopics ? (
                       <textarea
                         value={tempTopics}
