@@ -2575,7 +2575,7 @@ Everything you write is end-to-end encrypted and private.`,
                       {/* What's been on your mind */}
                       <div>
                         <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                          What's been on your mind
+                          Themes
                         </div>
                         {(analysis.themes || []).length ? (
                           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2584,7 +2584,7 @@ Everything you write is end-to-end encrypted and private.`,
                               return (
                                 <li key={i}
                                   onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
-                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
+                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(255,251,235,0.6)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
@@ -2622,7 +2622,7 @@ Everything you write is end-to-end encrypted and private.`,
                               return (
                                 <li key={i}
                                   onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
-                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(147,51,234,0.04)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
+                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(147,51,234,0.09)' : 'rgba(196,167,231,0.18)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #9333ea' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
                                   <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
                                   <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
