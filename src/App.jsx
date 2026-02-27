@@ -87,7 +87,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
 
   // Main tabs: "journal" or "sessions"
-  const [tab, setTab] = useState("home"); // "home" | "sessions" | "account"
+  const [tab, setTab] = useState("sessions"); // "home" | "sessions" | "account"
 
   // Journal sub-tabs (used within sessions/between)
   const [journalView, setJournalView] = useState("write"); // "write" or "log"
@@ -115,6 +115,10 @@ export default function App() {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [selectedPatterns, setSelectedPatterns] = useState([]);
+  const [flaggedForSession, setFlaggedForSession] = useState(() => {
+    try { const s = localStorage.getItem('between_flagged'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [flaggedEntryModal, setFlaggedEntryModal] = useState(null); // { text, date }
   const [newTopicInput, setNewTopicInput] = useState('');
   const [editingTopics, setEditingTopics] = useState(false);
   const [tempTopics, setTempTopics] = useState('');
@@ -252,6 +256,10 @@ export default function App() {
       if (storedKey) setUserEncryptionKey(storedKey);
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    localStorage.setItem('between_flagged', JSON.stringify(flaggedForSession));
+  }, [flaggedForSession]);
 
   // Persist key topics to Parse (cross-device) and localStorage (offline fallback)
   useEffect(() => {
@@ -729,6 +737,7 @@ Everything you write is end-to-end encrypted and private.`,
       setNextSteps("");
       setSessionIntention("");
       setCheckedTopics(new Set());
+      setFlaggedForSession([]);
       setTab("journal");
       setJournalView("log");
       // Fire session snapshot message async (don't block UI)
@@ -1470,7 +1479,7 @@ Everything you write is end-to-end encrypted and private.`,
                       Intention of the Week
                     </div>
                     <p style={{ fontSize: '15px', color: '#581c87', margin: '0 0 12px 0', lineHeight: '1.5', fontStyle: 'italic' }}>
-                      "{intention}"
+                      {intention}
                     </p>
                     {intentionCheckedIn ? (
                       <div style={{ fontSize: '12px', color: '#9333ea', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -1897,17 +1906,34 @@ Everything you write is end-to-end encrypted and private.`,
                                 <h3 style={{ fontWeight: '500', color: '#581c87', marginBottom: '4px', margin: 0 }}>
                                   {formatDate(item.date)}
                                 </h3>
-                                <p style={{ fontSize: '14px', color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
-                                  {item.type === "entry"
-                                    ? (item.data.text || "").substring(0, 60) + "..."
-                                    : (item.data.openingStatement || "")
-                                        .replace(/^I think what I'd like to talk about today is\s*/i, "")
-                                        .replace(/\.$/, "")}
-                                </p>
+                                {item.type === "entry" && (
+                                  <p style={{ fontSize: '14px', color: '#7c3aed', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>
+                                    {(item.data.text || "").substring(0, 60) + "..."}
+                                  </p>
+                                )}
                               </div>
                             </div>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                              {item.type === "entry" && (() => {
+                                const isFlagged = flaggedForSession.some(f => f.parseId === item.data.parseId);
+                                return (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setFlaggedForSession(prev =>
+                                        isFlagged
+                                          ? prev.filter(f => f.parseId !== item.data.parseId)
+                                          : [...prev, { parseId: item.data.parseId, text: item.data.text, date: item.data.date }]
+                                      );
+                                    }}
+                                    title={isFlagged ? "Remove from session" : "Flag for upcoming session"}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', flexShrink: 0, color: isFlagged ? '#9333ea' : '#d1d5db' }}
+                                  >
+                                    <Bookmark size={16} fill={isFlagged ? '#9333ea' : 'none'} />
+                                  </button>
+                                );
+                              })()}
                               {item.type === "entry" && (
                                 <button
                                   onClick={(e) => {
@@ -2028,18 +2054,22 @@ Everything you write is end-to-end encrypted and private.`,
                                 </>
                               ) : (
                                 <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                                  {item.data.discussedTopics?.length > 0 && (
+                                    <div>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
+                                        Key Topics
+                                      </h4>
+                                      <ul style={{ margin: 0, paddingLeft: '18px', color: '#581c87' }}>
+                                        {item.data.discussedTopics.map((t, i) => (
+                                          <li key={i} style={{ marginBottom: '4px', fontSize: '14px', lineHeight: '1.5' }}>{t}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
                                   <div>
                                     <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                      Session Starter
-                                    </h4>
-                                    <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                      {item.data.openingStatement || "—"}
-                                    </p>
-                                  </div>
-                                  
-                                  <div>
-                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                      Notes
+                                      What You Covered
                                     </h4>
                                     <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                       {item.data.notes || "—"}
@@ -2413,7 +2443,7 @@ Everything you write is end-to-end encrypted and private.`,
                       Intention of the Week
                     </div>
                     <p style={{ fontSize: '15px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
-                      "{lastSnapshot.intention}"
+                      {lastSnapshot.intention}
                     </p>
                   </div>
                 )}
@@ -2448,8 +2478,32 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
+                {/* FLAGGED ENTRIES */}
+                {flaggedForSession.length > 0 && (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '24px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(147,51,234,0.06)' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Bookmark size={13} />
+                      Flagged for this session
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {flaggedForSession.map((entry, i) => (
+                        <button
+                          key={entry.parseId || i}
+                          onClick={() => setFlaggedEntryModal(entry)}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e9d5ff', background: 'rgba(147,51,234,0.04)', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+                        >
+                          <span style={{ fontSize: '14px', color: '#581c87', fontWeight: '500' }}>
+                            {entry.date ? new Date(entry.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Journal'} — journal entry
+                          </span>
+                          <ChevronRight size={16} style={{ color: '#9333ea', flexShrink: 0 }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* KEY TOPICS */}
-                {!loading && analysis && (
+                {analysis && (
                   <div style={{
                     background: 'rgba(255,255,255,0.7)',
                     backdropFilter: 'blur(10px)',
@@ -2743,7 +2797,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>📋</span>
                         <div>
                           <p style={{ fontSize: '13px', color: '#6b21a8', margin: '0 0 4px 0', lineHeight: '1.5', fontWeight: '500' }}>What gets saved</p>
-                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>Your session notes, key topics, and opening statement will be archived so you can recall them before your next session.</p>
+                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>Your session reflections and summary, key topics, themes, patterns, and open questions.</p>
                         </div>
                       </div>
 
@@ -2772,6 +2826,32 @@ Everything you write is end-to-end encrypted and private.`,
         {/* Close content area */}
         </div>
 
+        {/* FLAGGED ENTRY MODAL */}
+        {flaggedEntryModal && (
+          <div
+            onClick={() => setFlaggedEntryModal(null)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 10000, padding: '0' }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px 40px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Flagged journal entry</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: '#581c87' }}>
+                    {flaggedEntryModal.date
+                      ? new Date(flaggedEntryModal.date + 'T12:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+                      : 'Journal Entry'}
+                  </div>
+                </div>
+                <button onClick={() => setFlaggedEntryModal(null)} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#9ca3af', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>×</button>
+              </div>
+              <p style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.7', whiteSpace: 'pre-wrap', margin: 0 }}>{flaggedEntryModal.text}</p>
+            </div>
+          </div>
+        )}
+
         {/* SESSION SNAPSHOT MODAL */}
         {homeSessionModal && (
           <div
@@ -2797,15 +2877,19 @@ Everything you write is end-to-end encrypted and private.`,
                 >×</button>
               </div>
 
-              {homeSessionModal.openingStatement && (
-                <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Session Starter</div>
-                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>"{homeSessionModal.openingStatement}"</p>
+              {homeSessionModal.discussedTopics?.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Key Topics</div>
+                  <ul style={{ margin: 0, paddingLeft: '18px', color: '#581c87', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {homeSessionModal.discussedTopics.map((t, i) => (
+                      <li key={i} style={{ fontSize: '14px', lineHeight: '1.5' }}>{t}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Notes</div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
                 {homeSessionModal.notes
                   ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
                   : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
