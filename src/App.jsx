@@ -737,6 +737,7 @@ Everything you write is end-to-end encrypted and private.`,
       setNextSteps("");
       setSessionIntention("");
       setCheckedTopics(new Set());
+      setExtraTopics([]);
       setFlaggedForSession([]);
       setTab("journal");
       setJournalView("log");
@@ -1736,7 +1737,6 @@ Everything you write is end-to-end encrypted and private.`,
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px 24px 12px', width: '100%' }}>
             <div style={{ display: 'flex', gap: '6px' }}>
               {[
-                ["between", "Between"],
                 ["prep", "Before"],
                 ["after", "After"],
               ].map(([view, label]) => (
@@ -2796,7 +2796,7 @@ Everything you write is end-to-end encrypted and private.`,
                       <div style={{ marginBottom: '20px', padding: '14px 16px', background: 'rgba(147,51,234,0.06)', border: '1px solid rgba(147,51,234,0.15)', borderRadius: '12px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>📋</span>
                         <div>
-                          <p style={{ fontSize: '13px', color: '#6b21a8', margin: '0 0 4px 0', lineHeight: '1.5', fontWeight: '500' }}>What gets saved</p>
+                          <p style={{ fontSize: '13px', color: '#6b21a8', margin: '0 0 4px 0', lineHeight: '1.5', fontWeight: '500' }}>What gets saved in your Session Snapshot</p>
                           <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>Your session reflections and summary, key topics, themes, patterns, and open questions.</p>
                         </div>
                       </div>
@@ -3013,9 +3013,10 @@ Everything you write is end-to-end encrypted and private.`,
         <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(147,51,234,0.2)', padding: '8px 16px 20px 16px', boxShadow: '0 -4px 12px rgba(0,0,0,0.1)', zIndex: 1000 }}>
           <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around' }}>
             {[
-              { id: 'home',     label: 'Home',        Icon: Home,     active: tab === 'home',     action: () => { setTab('home'); setExpanded({}); } },
-              { id: 'sessions', label: 'My Sessions',  Icon: Calendar, active: tab === 'sessions', action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
-              { id: 'account',  label: 'You',          Icon: User,     active: tab === 'account',  action: () => { setTab('account'); setExpanded({}); } },
+              { id: 'home',     label: 'Home',        Icon: Home,     active: tab === 'home',                                       action: () => { setTab('home'); setExpanded({}); } },
+              { id: 'between',  label: 'Capture',     Icon: BookOpen, active: tab === 'sessions' && sessionView === 'between',      action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
+              { id: 'sessions', label: 'My Sessions',  Icon: Calendar, active: tab === 'sessions' && sessionView !== 'between',     action: () => { setTab('sessions'); setSessionView('prep'); setExpanded({}); } },
+              { id: 'account',  label: 'You',          Icon: User,     active: tab === 'account',                                   action: () => { setTab('account'); setExpanded({}); } },
             ].map(({ id, label, Icon, active, action }) => (
               <button key={id} onClick={action} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', padding: '8px 4px', border: 'none', cursor: 'pointer', background: 'none', color: active ? '#9333ea' : '#9ca3af' }}>
                 <Icon size={22} />
