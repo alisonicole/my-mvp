@@ -2562,7 +2562,7 @@ Everything you write is end-to-end encrypted and private.`,
                       </div>
                       {/* What's been on your mind */}
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                           Themes
                         </div>
                         {(analysis.themes || []).length ? (
@@ -2600,7 +2600,7 @@ Everything you write is end-to-end encrypted and private.`,
 
                       {/* What might be worth bringing up */}
                       <div>
-                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
                           What might be worth bringing up
                         </div>
                         {(analysis.avoiding || []).length ? (
