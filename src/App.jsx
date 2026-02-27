@@ -1733,7 +1733,7 @@ Everything you write is end-to-end encrypted and private.`,
         )}
 
         {/* SESSIONS SUB-TABS — rendered first so they appear above content */}
-        {tab === "sessions" && (
+        {tab === "sessions" && sessionView !== "between" && (
           <div style={{ maxWidth: '600px', margin: '0 auto', padding: '20px 24px 12px', width: '100%' }}>
             <div style={{ display: 'flex', gap: '6px' }}>
               {[
@@ -3014,7 +3014,7 @@ Everything you write is end-to-end encrypted and private.`,
           <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around' }}>
             {[
               { id: 'home',     label: 'Home',        Icon: Home,     active: tab === 'home',                                       action: () => { setTab('home'); setExpanded({}); } },
-              { id: 'between',  label: 'Capture',     Icon: BookOpen, active: tab === 'sessions' && sessionView === 'between',      action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
+              { id: 'between',  label: 'Journal',     Icon: BookOpen, active: tab === 'sessions' && sessionView === 'between',      action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
               { id: 'sessions', label: 'My Sessions',  Icon: Calendar, active: tab === 'sessions' && sessionView !== 'between',     action: () => { setTab('sessions'); setSessionView('prep'); setExpanded({}); } },
               { id: 'account',  label: 'You',          Icon: User,     active: tab === 'account',                                   action: () => { setTab('account'); setExpanded({}); } },
             ].map(({ id, label, Icon, active, action }) => (
