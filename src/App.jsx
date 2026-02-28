@@ -110,6 +110,8 @@ export default function App() {
   const [sessionDate, setSessionDate] = useState(getDate());
   const [notes, setNotes] = useState("");
   const [nextSteps, setNextSteps] = useState("");
+  const [sessionPrepNote, setSessionPrepNote] = useState("");
+  const [prepNoteSaved, setPrepNoteSaved] = useState(false);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [extraTopics, setExtraTopics] = useState(() => {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -261,6 +263,17 @@ export default function App() {
     localStorage.setItem('between_flagged', JSON.stringify(flaggedForSession));
   }, [flaggedForSession]);
 
+  // Auto-save session prep note (debounced)
+  useEffect(() => {
+    if (!currentUser) return;
+    setPrepNoteSaved(false);
+    const t = setTimeout(() => {
+      currentUser.set("sessionPrepNote", sessionPrepNote);
+      currentUser.save().catch(() => {}).then(() => setPrepNoteSaved(true));
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [sessionPrepNote]);
+
   // Persist key topics to Parse (cross-device) and localStorage (offline fallback)
   useEffect(() => {
     localStorage.setItem('between_extraTopics', JSON.stringify(extraTopics));
@@ -339,6 +352,7 @@ export default function App() {
     setNotes("");
     setNextSteps("");
     setSessionIntention("");
+    setSessionPrepNote("");
     setTherapyDays([]);
     setTherapyTime('');
     setDisplayName("");
@@ -576,6 +590,9 @@ Everything you write is end-to-end encrypted and private.`,
           setExtraTopics(kt);
         }
 
+        const spn = currentUser.get("sessionPrepNote");
+        if (spn) setSessionPrepNote(spn);
+
         setLastAnalyzedEntries([]);
       } catch (err) {
         console.error(err);
@@ -736,6 +753,7 @@ Everything you write is end-to-end encrypted and private.`,
       setNotes("");
       setNextSteps("");
       setSessionIntention("");
+      setSessionPrepNote("");
       setCheckedTopics(new Set());
       setExtraTopics([]);
       setFlaggedForSession([]);
@@ -2501,6 +2519,27 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   </div>
                 )}
+
+                {/* WHAT I WANT TO DISCUSS */}
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '24px', padding: '28px 32px', boxShadow: '0 4px 16px rgba(147,51,234,0.06)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      What I Want to Discuss
+                    </div>
+                    {sessionPrepNote.trim() && (
+                      <span style={{ fontSize: '11px', color: prepNoteSaved ? '#16a34a' : '#a78bfa', fontWeight: '500' }}>
+                        {prepNoteSaved ? '✓ Saved' : 'Saving…'}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#a78bfa', margin: '0 0 14px 0' }}>In your own words — what feels most important to bring up?</p>
+                  <textarea
+                    value={sessionPrepNote}
+                    onChange={e => { setSessionPrepNote(e.target.value); setPrepNoteSaved(false); }}
+                    placeholder={"e.g. I keep ending up in the same pattern and I want to understand why I can't just pursue what I actually want instead of seeking approval."}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '140px', lineHeight: '1.6', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                  />
+                </div>
 
                 {/* KEY TOPICS */}
                 {analysis && (
