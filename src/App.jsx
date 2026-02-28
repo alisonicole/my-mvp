@@ -112,6 +112,8 @@ export default function App() {
   const [nextSteps, setNextSteps] = useState("");
   const [sessionPrepNote, setSessionPrepNote] = useState("");
   const [prepNoteSaved, setPrepNoteSaved] = useState(false);
+  const [patternsData, setPatternsData] = useState(null); // { themes, contradictions, unfinishedThoughts, wordAssociations }
+  const [patternsLoading, setPatternsLoading] = useState(false);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [extraTopics, setExtraTopics] = useState(() => {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -723,6 +725,23 @@ Everything you write is end-to-end encrypted and private.`,
       console.error("Error analyzing journal:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadPatterns = async () => {
+    if (!entries.length) return;
+    setPatternsLoading(true);
+    try {
+      const entriesPayload = entries
+        .filter(e => !e.isWelcomeEntry)
+        .slice(0, 20)
+        .map(e => ({ text: e.text, date: e.date }));
+      const result = await window.Parse.Cloud.run('analyzePatterns', { entries: entriesPayload });
+      setPatternsData(result);
+    } catch (err) {
+      console.warn('[patterns] analyzePatterns cloud function not deployed yet:', err?.message);
+    } finally {
+      setPatternsLoading(false);
     }
   };
 
@@ -2642,96 +2661,112 @@ Everything you write is end-to-end encrypted and private.`,
                 )}
 
                 {/* PATTERNS */}
-                {!loading && analysis && (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                    <div style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Sparkles size={20} style={{ color: '#9333ea' }} />
-                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0, flex: 1 }}>Patterns</h3>
-                        <button onClick={genAnalysis} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.6 : 1 }}>
-                          <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-                          Refresh
-                        </button>
-                      </div>
-                      {/* What's been on your mind */}
-                      <div>
-                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                          Themes
-                        </div>
-                        {(analysis.themes || []).length ? (
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {(analysis.themes || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
-                              const isSelected = selectedPatterns.includes(item);
-                              return (
-                                <li key={i}
-                                  onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
-                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(237,233,254,0.5)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
-                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                      <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                                    </button>
-                                    {isSelected && (
-                                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>✓</div>
-                                    )}
-                                  </div>
-                                </li>
-                              );
-                            })}
-                            {!isPaidSubscriber && (analysis.themes || []).length > 2 && (
-                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.themes || []).length - 2} more — upgrade to unlock</span>
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                        )}
-                      </div>
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
 
-                      {/* What might be worth bringing up */}
-                      <div>
-                        <div style={{ fontSize: '11px', fontWeight: '500', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
-                          What might be worth bringing up
-                        </div>
-                        {(analysis.avoiding || []).length ? (
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {(analysis.avoiding || []).slice(0, isPaidSubscriber ? undefined : 2).map((item, i) => {
-                              const isSelected = selectedPatterns.includes(item);
-                              return (
-                                <li key={i}
-                                  onClick={() => setSelectedPatterns(prev => prev.includes(item) ? prev.filter(t => t !== item) : [...prev, item])}
-                                  style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.25)', borderRadius: '8px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}>
-                                  <span style={{ color: '#8b5cf6', fontSize: '16px', flexShrink: 0, marginTop: '2px' }}>•</span>
-                                  <span style={{ color: '#581c87', fontSize: '15px', flex: 1, lineHeight: '1.6' }}>{item}</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                                    <button onClick={(e) => { e.stopPropagation(); toggleFavorite(item); }} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', color: favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : '#d1d5db' }}>
-                                      <Star size={14} fill={favoritedPatterns.some(f => f.text === item) ? '#f59e0b' : 'none'} />
-                                    </button>
-                                    {isSelected && (
-                                      <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0 }}>✓</div>
-                                    )}
-                                  </div>
-                                </li>
-                              );
-                            })}
-                            {!isPaidSubscriber && (analysis.avoiding || []).length > 2 && (
-                              <li style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: '#f3f4f6', borderRadius: '8px' }}>
-                                <Lock size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
-                                <span style={{ color: '#9ca3af', fontSize: '13px' }}>{(analysis.avoiding || []).length - 2} more — upgrade to unlock</span>
-                              </li>
-                            )}
-                          </ul>
-                        ) : (
-                          <p style={{ color: '#7c3aed', fontSize: '14px', margin: 0 }}>—</p>
-                        )}
-                      </div>
-
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Sparkles size={20} style={{ color: '#9333ea' }} />
+                      <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0, flex: 1 }}>Patterns</h3>
+                      <button
+                        onClick={loadPatterns}
+                        disabled={patternsLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: patternsLoading ? 'default' : 'pointer', opacity: patternsLoading ? 0.6 : 1 }}
+                      >
+                        <RefreshCw size={13} style={{ animation: patternsLoading ? 'spin 1s linear infinite' : 'none' }} />
+                        {patternsLoading ? 'Analyzing…' : 'Refresh'}
+                      </button>
                     </div>
+
+                    {patternsLoading && (
+                      <div style={{ textAlign: 'center', padding: '24px 0', color: '#a78bfa', fontSize: '14px' }}>Analyzing your entries…</div>
+                    )}
+
+                    {!patternsLoading && !patternsData && (
+                      <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                        <p style={{ color: '#9ca3af', fontSize: '14px', margin: '0 0 12px 0' }}>Hit Refresh to analyze your recent entries.</p>
+                      </div>
+                    )}
+
+                    {!patternsLoading && patternsData && (() => {
+                      const themes = patternsData.themes || [];
+                      const contradictions = patternsData.contradictions || [];
+                      const unfinished = patternsData.unfinishedThoughts || [];
+                      const associations = patternsData.wordAssociations || [];
+
+                      const PatternCard = ({ pattern }) => (
+                        <div style={{ padding: '14px 16px', borderRadius: '12px', background: 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div style={{ fontSize: '11px', fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
+                          {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{pattern.description}</p>}
+                          {(pattern.quotes || []).map((q, qi) => (
+                            <div key={qi} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
+                              <div style={{ fontSize: '11px', color: '#a78bfa', fontWeight: '600', marginBottom: '4px' }}>{q.date}</div>
+                              <div style={{ fontSize: '13px', color: '#581c87', lineHeight: '1.5', fontStyle: 'italic' }}>"{q.text}"</div>
+                            </div>
+                          ))}
+                          {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>{pattern.prompt}</p>}
+                        </div>
+                      );
+
+                      return (
+                        <>
+                          {/* Themes */}
+                          {themes.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '11px', fontWeight: '600', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                                What you wrote about
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {themes.map((theme, i) => {
+                                  const key = theme.name || theme;
+                                  const isSelected = selectedPatterns.includes(key);
+                                  return (
+                                    <div key={i}
+                                      onClick={() => setSelectedPatterns(prev => prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key])}
+                                      style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', paddingLeft: isSelected ? '9px' : '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(237,233,254,0.5)', borderRadius: '10px', border: '1px solid rgba(147,51,234,0.1)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.1)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}
+                                    >
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: theme.exampleWords?.length ? '4px' : 0 }}>
+                                          <span style={{ fontSize: '15px', color: '#581c87', fontWeight: '500', lineHeight: '1.4' }}>{theme.name || theme}</span>
+                                          {theme.mentionCount && (
+                                            <span style={{ fontSize: '12px', color: '#9333ea', fontWeight: '600', background: 'rgba(147,51,234,0.1)', padding: '1px 8px', borderRadius: '20px', flexShrink: 0 }}>
+                                              {theme.mentionCount}×
+                                            </span>
+                                          )}
+                                        </div>
+                                        {theme.exampleWords?.length > 0 && (
+                                          <div style={{ fontSize: '12px', color: '#a78bfa' }}>{theme.exampleWords.join(', ')}</div>
+                                        )}
+                                      </div>
+                                      {isSelected && (
+                                        <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', flexShrink: 0, marginTop: '2px' }}>✓</div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Patterns worth exploring */}
+                          {(contradictions.length > 0 || unfinished.length > 0 || associations.length > 0) && (
+                            <div>
+                              <div style={{ fontSize: '11px', fontWeight: '600', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                                Patterns worth exploring
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                {contradictions.map((p, i) => <PatternCard key={`c${i}`} pattern={p} />)}
+                                {unfinished.map((p, i) => <PatternCard key={`u${i}`} pattern={p} />)}
+                                {associations.map((p, i) => <PatternCard key={`a${i}`} pattern={p} />)}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+
                   </div>
-                )}
+                </div>
 
                 {analysis && !loading && realHistory.length === 0 && (
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '14px 16px', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px' }}>
