@@ -2766,9 +2766,22 @@ Everything you write is end-to-end encrypted and private.`,
                                 Patterns worth exploring
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {contradictions.map((p, i) => <PatternCard key={`c${i}`} pattern={p} />)}
-                                {unfinished.map((p, i) => <PatternCard key={`u${i}`} pattern={p} />)}
-                                {associations.map((p, i) => <PatternCard key={`a${i}`} pattern={p} />)}
+                                {contradictions.map((p, i) => <PatternCard key={`c${i}`} pattern={{
+                                  label: p.label || 'Contradiction',
+                                  description: p.description || p.pattern,
+                                  quotes: p.quotes || [p.entry1, p.entry2].filter(Boolean).map(t => ({ date: '', text: t })),
+                                  prompt: p.prompt
+                                }} />)}
+                                {unfinished.map((p, i) => <PatternCard key={`u${i}`} pattern={{
+                                  label: p.label || 'Unfinished thought',
+                                  description: p.description || p.phrase,
+                                  prompt: p.prompt || p.context
+                                }} />)}
+                                {associations.map((p, i) => <PatternCard key={`a${i}`} pattern={{
+                                  label: p.label || p.word,
+                                  description: p.description || (Array.isArray(p.associations) ? p.associations.join(' · ') : p.associations),
+                                  prompt: p.prompt
+                                }} />)}
                               </div>
                             </div>
                           )}
