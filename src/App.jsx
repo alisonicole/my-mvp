@@ -739,19 +739,8 @@ Everything you write is end-to-end encrypted and private.`,
       const result = await window.Parse.Cloud.run('analyzePatterns', { entries: entriesPayload });
       setPatternsData(result);
     } catch (err) {
-      console.error('[patterns]', err);
-      // Fall back to existing analysis data shaped into the new format
-      if (analysis) {
-        setPatternsData({
-          themes: (analysis.themes || []).map(t => ({ name: t, mentionCount: null, exampleWords: [] })),
-          contradictions: [],
-          unfinishedThoughts: [],
-          wordAssociations: (analysis.avoiding || []).map(a => ({ label: 'Worth exploring', description: a, prompt: null })),
-        });
-        setPatternsError('analyzePatterns cloud function not deployed — showing basic analysis instead.');
-      } else {
-        setPatternsError(err?.message || 'Analysis failed. Make sure analyzePatterns is deployed in Back4App.');
-      }
+      console.error('[patterns] full error:', err);
+      setPatternsError(`${err?.message || String(err)}`);
     } finally {
       setPatternsLoading(false);
     }
