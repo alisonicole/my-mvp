@@ -735,11 +735,11 @@ Everything you write is end-to-end encrypted and private.`,
     setPatternsLoading(true);
     setPatternsError(null);
     try {
-      // Only analyze entries from before the latest session snapshot
+      // Only analyze entries since the latest session snapshot (current between-session period)
       const latestSnapshot = history.filter(h => !h.isExampleSnapshot)[0];
       const cutoffDate = latestSnapshot?.sessionDate || latestSnapshot?.timestamp?.slice(0, 10);
       const relevantEntries = cutoffDate
-        ? realEntries.filter(e => e.date < cutoffDate)
+        ? realEntries.filter(e => e.date >= cutoffDate)
         : realEntries;
       const entriesPayload = relevantEntries.slice(0, 15).map(e => ({ text: e.text, date: e.date }));
       const result = await window.Parse.Cloud.run('analyzePatterns', { entries: entriesPayload });
