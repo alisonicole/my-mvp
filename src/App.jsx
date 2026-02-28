@@ -113,7 +113,12 @@ export default function App() {
   const [nextSteps, setNextSteps] = useState("");
   const [sessionPrepNote, setSessionPrepNote] = useState("");
   const [prepNoteSaved, setPrepNoteSaved] = useState(false);
-  const [patternsData, setPatternsData] = useState(null); // { themes, contradictions, unfinishedThoughts, wordAssociations }
+  const [patternsData, setPatternsData] = useState(() => {
+    try { const s = localStorage.getItem('between_patternsData'); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [patternsLastEntryId, setPatternsLastEntryId] = useState(() => {
+    return localStorage.getItem('between_patternsLastEntry') || null;
+  });
   const [patternsLoading, setPatternsLoading] = useState(false);
   const [patternsError, setPatternsError] = useState(null);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
@@ -148,8 +153,10 @@ export default function App() {
   // Home session snapshot modal
   const [homeSessionModal, setHomeSessionModal] = useState(null);
 
-  // AI summary of last session notes (cached by parseId)
-  const [sessionNotesSummary, setSessionNotesSummary] = useState({});
+  // AI summary of last session notes (cached by parseId, persisted to localStorage)
+  const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
+    try { const s = localStorage.getItem('between_sessionSummary'); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
   const [summaryLoading, setSummaryLoading] = useState(false);
 
   // Intention (used in after-session logging)
@@ -273,6 +280,18 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('between_bookmarks', JSON.stringify(bookmarkedEntries));
   }, [bookmarkedEntries]);
+
+  useEffect(() => {
+    localStorage.setItem('between_sessionSummary', JSON.stringify(sessionNotesSummary));
+  }, [sessionNotesSummary]);
+
+  useEffect(() => {
+    if (patternsData) localStorage.setItem('between_patternsData', JSON.stringify(patternsData));
+  }, [patternsData]);
+
+  useEffect(() => {
+    if (patternsLastEntryId) localStorage.setItem('between_patternsLastEntry', patternsLastEntryId);
+  }, [patternsLastEntryId]);
 
   // Auto-save session prep note (debounced)
   useEffect(() => {
@@ -752,6 +771,8 @@ Everything you write is end-to-end encrypted and private.`,
       const entriesPayload = relevantEntries.slice(0, 15).map(e => ({ text: e.text, date: e.date }));
       const result = await window.Parse.Cloud.run('analyzePatterns', { entries: entriesPayload });
       setPatternsData(result);
+      // Record the most recent entry id so we can tell when new entries have been added
+      if (realEntries[0]?.parseId) setPatternsLastEntryId(realEntries[0].parseId);
     } catch (err) {
       console.error('[patterns] full error:', err);
       setPatternsError(`${err?.message || String(err)}`);
@@ -1483,13 +1504,6 @@ Everything you write is end-to-end encrypted and private.`,
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', width: '72px' }}>
-            <button
-              onClick={() => setTab('account')}
-              title="Account"
-              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '50%', width: '40px', height: '40px', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}
-            >
-              <User size={20} color="#7c3aed" />
-            </button>
             {currentUser?.get('username') === 'lee.alisonnicole@gmail.com' && (
               <button
                 onClick={() => setShowAdmin(!showAdmin)}
@@ -2725,14 +2739,27 @@ Everything you write is end-to-end encrypted and private.`,
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <Sparkles size={20} style={{ color: '#9333ea' }} />
                       <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0, flex: 1 }}>Patterns</h3>
-                      <button
-                        onClick={loadPatterns}
-                        disabled={patternsLoading}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: patternsLoading ? 'default' : 'pointer', opacity: patternsLoading ? 0.6 : 1 }}
-                      >
-                        <RefreshCw size={13} style={{ animation: patternsLoading ? 'spin 1s linear infinite' : 'none' }} />
-                        {patternsLoading ? 'Analyzing…' : 'Refresh'}
-                      </button>
+                      {(() => {
+                        const realEntries = entries.filter(e => !e.isWelcomeEntry);
+                        const latestEntry = realEntries[0];
+                        const latestSnap = realHistory[0];
+                        // Disable if: loading, no entries, most recent item is a snapshot, or no new entries since last refresh
+                        const snapshotIsNewer = latestSnap && latestEntry && latestSnap.sessionDate > latestEntry.date;
+                        const noNewEntries = latestEntry && latestEntry.parseId === patternsLastEntryId;
+                        const disabled = patternsLoading || !latestEntry || snapshotIsNewer || noNewEntries;
+                        const title = patternsLoading ? '' : snapshotIsNewer ? 'Log a journal entry to refresh' : noNewEntries ? 'No new entries since last refresh' : '';
+                        return (
+                          <button
+                            onClick={loadPatterns}
+                            disabled={disabled}
+                            title={title}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '13px', fontWeight: '500', cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}
+                          >
+                            <RefreshCw size={13} style={{ animation: patternsLoading ? 'spin 1s linear infinite' : 'none' }} />
+                            {patternsLoading ? 'Analyzing…' : 'Refresh'}
+                          </button>
+                        );
+                      })()}
                     </div>
 
                     {patternsLoading && (
