@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { BarChart3, Users, FileText, Calendar, TrendingUp, X, Percent, UserPlus } from "lucide-react";
+import { BarChart3, Users, FileText, Calendar, TrendingUp, X, Percent, UserPlus, ChevronDown } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export default function AdminDashboard({ onExit }) {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // User drill-down
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [userDetail, setUserDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(null);
 
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
 
@@ -26,6 +32,34 @@ export default function AdminDashboard({ onExit }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchUserDetail = async (userId) => {
+    if (!userId) { setUserDetail(null); return; }
+    setDetailLoading(true);
+    setDetailError(null);
+    setUserDetail(null);
+    try {
+      const result = await Parse.Cloud.run("getUserDetail", { userId });
+      setUserDetail(result);
+    } catch (err) {
+      setDetailError(err.message || "Failed to load user detail.");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleUserSelect = (userId) => {
+    setSelectedUserId(userId);
+    fetchUserDetail(userId);
+  };
+
+  const fmtTime = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
   };
 
   if (loading) {
@@ -77,6 +111,7 @@ export default function AdminDashboard({ onExit }) {
   );
 
   const s = stats;
+  const allUsers = s.allUsersList || [];
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>
@@ -157,7 +192,11 @@ export default function AdminDashboard({ onExit }) {
               </thead>
               <tbody>
                 {s.newUsers7dList.map((user) => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <tr
+                    key={user.id}
+                    onClick={() => handleUserSelect(user.id)}
+                    style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selectedUserId === user.id ? '#faf5ff' : 'transparent' }}
+                  >
                     <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{user.email || 'Unknown'}</td>
                     <td style={{ padding: '10px 12px', color: '#6b7280', fontSize: '13px' }}>
                       {new Date(user.signedUpAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -187,7 +226,11 @@ export default function AdminDashboard({ onExit }) {
             </thead>
             <tbody>
               {s.topUsers.map((user, index) => (
-                <tr key={user.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                <tr
+                  key={user.id}
+                  onClick={() => handleUserSelect(user.id)}
+                  style={{ borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: selectedUserId === user.id ? '#faf5ff' : 'transparent' }}
+                >
                   <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{index + 1}</td>
                   <td style={{ padding: '10px 12px', color: '#581c87', fontSize: '14px' }}>{user.email || 'Unknown'}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: '600', color: '#9333ea', fontSize: '14px' }}>{user.count}</td>
@@ -236,6 +279,101 @@ export default function AdminDashboard({ onExit }) {
         )}
       </div>
 
+      {/* ── USER DETAIL ── */}
+      <div style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', marginBottom: '16px' }}>User Detail</h3>
+
+        {/* User selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, minWidth: '240px' }}>
+            <select
+              value={selectedUserId}
+              onChange={e => handleUserSelect(e.target.value)}
+              style={{ width: '100%', padding: '10px 36px 10px 14px', borderRadius: '12px', border: '2px solid #e9d5ff', background: 'white', color: selectedUserId ? '#581c87' : '#9ca3af', fontSize: '14px', cursor: 'pointer', appearance: 'none', outline: 'none' }}
+            >
+              <option value="">— Select a user —</option>
+              {allUsers.map(u => (
+                <option key={u.id} value={u.id}>{u.email} ({u.entries} entries, {u.sessions} sessions)</option>
+              ))}
+            </select>
+            <ChevronDown size={16} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} />
+          </div>
+          {selectedUserId && (
+            <button onClick={() => { setSelectedUserId(''); setUserDetail(null); }} style={{ padding: '8px 14px', borderRadius: '10px', border: '1px solid #e9d5ff', background: 'white', color: '#7c3aed', fontSize: '13px', cursor: 'pointer' }}>
+              Clear
+            </button>
+          )}
+        </div>
+
+        {detailLoading && (
+          <div style={{ textAlign: 'center', padding: '24px', color: '#a78bfa', fontSize: '14px' }}>Loading user data…</div>
+        )}
+        {detailError && (
+          <div style={{ color: '#dc2626', fontSize: '13px', padding: '12px', background: '#fef2f2', borderRadius: '10px' }}>{detailError}</div>
+        )}
+        {!selectedUserId && !detailLoading && (
+          <p style={{ color: '#9ca3af', fontSize: '14px', margin: 0 }}>Select a user above, or click any row in the tables above to view their detail. You can also select from the dropdown.</p>
+        )}
+
+        {userDetail && !detailLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', border: '1px solid #c4b5fd', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Journal Entries</div>
+                <div style={{ fontSize: '36px', fontWeight: '600', color: '#581c87' }}>{userDetail.entries.length}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: '200px', background: 'linear-gradient(135deg, #f5f3ff, #ede9fe)', border: '1px solid #c4b5fd', borderRadius: '12px', padding: '16px' }}>
+                <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Session Snapshots</div>
+                <div style={{ fontSize: '36px', fontWeight: '600', color: '#581c87' }}>{userDetail.sessions.length}</div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {/* Entries list */}
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '10px' }}>
+                  Entry timestamps ({userDetail.entries.length})
+                </div>
+                {userDetail.entries.length === 0 ? (
+                  <p style={{ color: '#9ca3af', fontSize: '13px' }}>No entries.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '320px', overflowY: 'auto' }}>
+                    {userDetail.entries.map((e, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', borderRadius: '8px', background: i % 2 === 0 ? '#faf5ff' : 'white', fontSize: '13px' }}>
+                        <span style={{ color: '#9ca3af', fontSize: '11px', minWidth: '20px' }}>{i + 1}</span>
+                        <span style={{ color: '#581c87' }}>{fmtTime(e.timestamp || e.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sessions list */}
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87', marginBottom: '10px' }}>
+                  Session timestamps ({userDetail.sessions.length})
+                </div>
+                {userDetail.sessions.length === 0 ? (
+                  <p style={{ color: '#9ca3af', fontSize: '13px' }}>No sessions logged.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '320px', overflowY: 'auto' }}>
+                    {userDetail.sessions.map((s, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '7px 10px', borderRadius: '8px', background: i % 2 === 0 ? '#faf5ff' : 'white', fontSize: '13px' }}>
+                        <span style={{ color: '#9ca3af', fontSize: '11px', minWidth: '20px' }}>{i + 1}</span>
+                        <div>
+                          <div style={{ color: '#581c87' }}>{fmtTime(s.createdAt)}</div>
+                          {s.sessionDate && <div style={{ color: '#a78bfa', fontSize: '11px' }}>Session date: {s.sessionDate}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={fetchStats}
         style={{ padding: '12px 24px', borderRadius: '12px', border: 'none', background: '#9333ea', color: 'white', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
@@ -247,8 +385,7 @@ export default function AdminDashboard({ onExit }) {
   );
 }
 
-const CLOUD_FUNCTION_CODE = `// Paste this into your Back4App Cloud Code (main.js)
-
+const CLOUD_FUNCTION_CODE = `// ── getAdminStats ────────────────────────────────────────────────────────────
 Parse.Cloud.define("getAdminStats", async (request) => {
   const user = request.user;
   if (!user || user.get('username') !== 'lee.alisonnicole@gmail.com') {
@@ -259,7 +396,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  // All users (master key bypasses CLP)
   const allUsersQuery = new Parse.Query(Parse.User);
   allUsersQuery.limit(5000);
   const allUsers = await allUsersQuery.find({ useMasterKey: true });
@@ -267,13 +403,11 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const newSignups7d = allUsers.filter(u => u.createdAt > sevenDaysAgo).length;
   const newSignups30d = allUsers.filter(u => u.createdAt > thirtyDaysAgo).length;
 
-  // All entries (master key bypasses ACL)
   const allEntriesQuery = new Parse.Query("Entry");
   allEntriesQuery.include("user");
   allEntriesQuery.limit(5000);
   const allEntries = await allEntriesQuery.find({ useMasterKey: true });
 
-  // All sessions
   const allSessionsQuery = new Parse.Query("SessionSnapshot");
   allSessionsQuery.include("user");
   allSessionsQuery.limit(5000);
@@ -285,7 +419,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const entriesLast30Days = allEntries.filter(e => e.createdAt > thirtyDaysAgo).length;
   const sessionsLast7Days = allSessions.filter(s => s.createdAt > sevenDaysAgo).length;
 
-  // Active user sets
   const activeIds7d = new Set();
   allEntries.filter(e => e.createdAt > sevenDaysAgo).forEach(e => { const id = e.get("user")?.id; if (id) activeIds7d.add(id); });
   allSessions.filter(s => s.createdAt > sevenDaysAgo).forEach(s => { const id = s.get("user")?.id; if (id) activeIds7d.add(id); });
@@ -294,7 +427,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   allEntries.filter(e => e.createdAt > thirtyDaysAgo).forEach(e => { const id = e.get("user")?.id; if (id) activeIds30d.add(id); });
   allSessions.filter(s => s.createdAt > thirtyDaysAgo).forEach(s => { const id = s.get("user")?.id; if (id) activeIds30d.add(id); });
 
-  // Per-user entry counts (exclude welcome entries)
   const userEntryCount = {};
   const userHasRealEntry = {};
   allEntries.forEach(entry => {
@@ -310,7 +442,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     }
   });
 
-  // Per-user session counts
   const userSessionCount = {};
   allSessions.forEach(s => {
     const userId = s.get("user")?.id;
@@ -340,7 +471,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  // Retention
   const oldUserIds = allUsers.filter(u => u.createdAt < sevenDaysAgo).map(u => u.id);
   const retentionRate7d = oldUserIds.length > 0
     ? Math.round((oldUserIds.filter(id => activeIds7d.has(id)).length / oldUserIds.length) * 100) : 0;
@@ -349,7 +479,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
   const retentionRate30d = oldUser30Ids.length > 0
     ? Math.round((oldUser30Ids.filter(id => activeIds30d.has(id)).length / oldUser30Ids.length) * 100) : 0;
 
-  // New users in last 7 days with entry + session counts
   const newUsers7dList = allUsers
     .filter(u => u.createdAt > sevenDaysAgo)
     .map(u => ({
@@ -361,7 +490,16 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     }))
     .sort((a, b) => new Date(b.signedUpAt) - new Date(a.signedUpAt));
 
-  // Daily activity for last 30 days
+  // All users list for the user-detail dropdown
+  const allUsersList = allUsers
+    .map(u => ({
+      id: u.id,
+      email: u.get('username') || 'Unknown',
+      entries: userEntryCount[u.id]?.count ?? 0,
+      sessions: userSessionCount[u.id]?.count ?? 0,
+    }))
+    .sort((a, b) => b.entries - a.entries);
+
   const dailyData = [];
   for (let i = 29; i >= 0; i--) {
     const dayStart = new Date(now);
@@ -378,7 +516,6 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     });
   }
 
-  // Recent activity — last 10 events across all users
   const recentActivity = [
     ...allEntries
       .filter(e => !e.get("isWelcomeEntry"))
@@ -394,6 +531,47 @@ Parse.Cloud.define("getAdminStats", async (request) => {
     totalEntries, entriesLast7Days, entriesLast30Days,
     totalSessions, sessionsLast7Days,
     engagementRate, avgEntriesPerUser, medianEntriesPerUser,
-    retentionRate7d, retentionRate30d, topUsers, newUsers7dList, dailyData, recentActivity,
+    retentionRate7d, retentionRate30d,
+    topUsers, newUsers7dList, allUsersList, dailyData, recentActivity,
+  };
+});
+
+// ── getUserDetail ─────────────────────────────────────────────────────────────
+Parse.Cloud.define("getUserDetail", async (request) => {
+  const user = request.user;
+  if (!user || user.get('username') !== 'lee.alisonnicole@gmail.com') {
+    throw new Parse.Error(Parse.Error.OPERATION_FORBIDDEN, 'Admin only');
+  }
+  const { userId } = request.params;
+
+  const targetUser = await new Parse.Query(Parse.User).get(userId, { useMasterKey: true });
+
+  const entriesQuery = new Parse.Query("Entry");
+  entriesQuery.equalTo("user", targetUser);
+  entriesQuery.ascending("timestamp");
+  entriesQuery.limit(1000);
+  const entries = await entriesQuery.find({ useMasterKey: true });
+
+  const sessionsQuery = new Parse.Query("SessionSnapshot");
+  sessionsQuery.equalTo("user", targetUser);
+  sessionsQuery.ascending("createdAt");
+  sessionsQuery.limit(1000);
+  const sessions = await sessionsQuery.find({ useMasterKey: true });
+
+  return {
+    email: targetUser.get('username'),
+    entries: entries
+      .filter(e => !e.get('isWelcomeEntry'))
+      .map(e => ({
+        timestamp: e.get('timestamp') || e.createdAt.toISOString(),
+        createdAt: e.createdAt.toISOString(),
+        date: e.get('date') || '',
+      })),
+    sessions: sessions
+      .filter(s => !s.get('isExampleSnapshot'))
+      .map(s => ({
+        sessionDate: s.get('sessionDate') || '',
+        createdAt: s.createdAt.toISOString(),
+      })),
   };
 });`;
