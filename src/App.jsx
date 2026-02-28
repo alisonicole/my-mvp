@@ -2782,19 +2782,35 @@ Everything you write is end-to-end encrypted and private.`,
                       const unfinished = patternsData.unfinishedThoughts || [];
                       const associations = patternsData.wordAssociations || [];
 
-                      const PatternCard = ({ pattern }) => (
-                        <div style={{ padding: '14px 16px', borderRadius: '12px', background: 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          <div style={{ fontSize: '11px', fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
-                          {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{pattern.description}</p>}
-                          {(pattern.quotes || []).map((q, qi) => (
-                            <div key={qi} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
-                              <div style={{ fontSize: '11px', color: '#a78bfa', fontWeight: '600', marginBottom: '4px' }}>{q.date}</div>
-                              <div style={{ fontSize: '13px', color: '#581c87', lineHeight: '1.5', fontStyle: 'italic' }}>"{q.text}"</div>
+                      const PatternCard = ({ pattern, selectionKey }) => {
+                        const isSelected = selectionKey && selectedPatterns.includes(selectionKey);
+                        return (
+                          <div
+                            onClick={() => selectionKey && setSelectedPatterns(prev => prev.includes(selectionKey) ? prev.filter(t => t !== selectionKey) : [...prev, selectionKey])}
+                            style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <div style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#15803d' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
+                              {isSelected && <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', flexShrink: 0 }}>✓</div>}
                             </div>
-                          ))}
-                          {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>{pattern.prompt}</p>}
-                        </div>
-                      );
+                            {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{pattern.description}</p>}
+                            {(pattern.quotes || []).map((q, qi) => {
+                              const formattedDate = q.date
+                                ? new Date(q.date + (q.date.length === 10 ? 'T12:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                : null;
+                              return (
+                                <div key={qi} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
+                                  <div style={{ fontSize: '13px', color: '#581c87', lineHeight: '1.5' }}>
+                                    <span style={{ fontStyle: 'italic' }}>"{q.text}"</span>
+                                    {formattedDate && <span style={{ color: '#a78bfa', fontWeight: '500', marginLeft: '6px', fontStyle: 'normal', fontSize: '12px' }}>({formattedDate})</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>{pattern.prompt}</p>}
+                          </div>
+                        );
+                      };
 
                       return (
                         <>
@@ -2843,22 +2859,31 @@ Everything you write is end-to-end encrypted and private.`,
                                 Patterns worth exploring
                               </div>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                {contradictions.map((p, i) => <PatternCard key={`c${i}`} pattern={{
-                                  label: p.label || 'Contradiction',
-                                  description: p.description || p.pattern,
-                                  quotes: p.quotes || [p.entry1, p.entry2].filter(Boolean).map(t => ({ date: '', text: t })),
-                                  prompt: p.prompt
-                                }} />)}
-                                {unfinished.map((p, i) => <PatternCard key={`u${i}`} pattern={{
-                                  label: p.label || 'Unfinished thought',
-                                  description: p.description || p.phrase,
-                                  prompt: p.prompt || p.context
-                                }} />)}
-                                {associations.map((p, i) => <PatternCard key={`a${i}`} pattern={{
-                                  label: p.label || p.word,
-                                  description: p.description || (Array.isArray(p.associations) ? p.associations.join(' · ') : p.associations),
-                                  prompt: p.prompt
-                                }} />)}
+                                {contradictions.map((p, i) => {
+                                  const desc = p.description || p.pattern;
+                                  return <PatternCard key={`c${i}`} selectionKey={desc} pattern={{
+                                    label: p.label || 'Contradiction',
+                                    description: desc,
+                                    quotes: p.quotes || [p.entry1, p.entry2].filter(Boolean).map(t => ({ date: '', text: t })),
+                                    prompt: p.prompt
+                                  }} />;
+                                })}
+                                {unfinished.map((p, i) => {
+                                  const desc = p.description || p.phrase;
+                                  return <PatternCard key={`u${i}`} selectionKey={desc} pattern={{
+                                    label: p.label || 'Unfinished thought',
+                                    description: desc,
+                                    prompt: p.prompt || p.context
+                                  }} />;
+                                })}
+                                {associations.map((p, i) => {
+                                  const desc = p.description || (Array.isArray(p.associations) ? p.associations.join(' · ') : p.associations);
+                                  return <PatternCard key={`a${i}`} selectionKey={p.label || p.word || desc} pattern={{
+                                    label: p.label || p.word,
+                                    description: desc,
+                                    prompt: p.prompt
+                                  }} />;
+                                })}
                               </div>
                             </div>
                           )}
