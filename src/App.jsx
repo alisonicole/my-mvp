@@ -98,6 +98,7 @@ export default function App() {
   const [expanded, setExpanded] = useState({});
   const [date, setDate] = useState(getDate());
   const [entry, setEntry] = useState({ text: "", prompt: "" }); // Add prompt field
+  const [pendingBookmark, setPendingBookmark] = useState(false);
   const [activePrompt, setActivePrompt] = useState(""); // Currently displayed prompt
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -122,6 +123,9 @@ export default function App() {
   const [selectedPatterns, setSelectedPatterns] = useState([]);
   const [flaggedForSession, setFlaggedForSession] = useState(() => {
     try { const s = localStorage.getItem('between_flagged'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [bookmarkedEntries, setBookmarkedEntries] = useState(() => {
+    try { const s = localStorage.getItem('between_bookmarks'); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [flaggedEntryModal, setFlaggedEntryModal] = useState(null); // { text, date }
   const [newTopicInput, setNewTopicInput] = useState('');
@@ -265,6 +269,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('between_flagged', JSON.stringify(flaggedForSession));
   }, [flaggedForSession]);
+
+  useEffect(() => {
+    localStorage.setItem('between_bookmarks', JSON.stringify(bookmarkedEntries));
+  }, [bookmarkedEntries]);
 
   // Auto-save session prep note (debounced)
   useEffect(() => {
@@ -1846,7 +1854,7 @@ Everything you write is end-to-end encrypted and private.`,
                       + Capture a thought
                     </button>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {[["all", "All"], ["entries", `Thoughts (${entries.length})`], ["snapshots", `Sessions (${realHistory.length})`], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
+                      {[["all", "All"], ["entries", `Thoughts (${entries.length})`], ["snapshots", `Sessions (${realHistory.length})`], ["bookmarked", `Bookmarked${bookmarkedEntries.length > 0 ? ` (${bookmarkedEntries.length})` : ''}`], ["favorites", `★ Favorites${favoritedPatterns.length > 0 ? ` (${favoritedPatterns.length})` : ''}`]].map(([f, label]) => (
                         <button
                           key={f}
                           onClick={() => setLogFilter(f)}
@@ -1868,7 +1876,33 @@ Everything you write is end-to-end encrypted and private.`,
                     </div>
                   </div>
 
-                  {logFilter === "favorites" ? (
+                  {logFilter === "bookmarked" ? (
+                    bookmarkedEntries.length === 0 ? (
+                      <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
+                        No bookmarks yet. Tap the bookmark icon on any entry to save it here.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {[...bookmarkedEntries].reverse().map((entry, i) => (
+                          <div key={entry.parseId || i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', background: 'rgba(255,255,255,0.6)', borderRadius: '12px', border: '1px solid #e9d5ff', padding: '12px 14px' }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: '11px', color: '#9333ea', fontWeight: '600', margin: '0 0 4px 0' }}>
+                                {entry.date ? new Date(entry.date + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                              </p>
+                              <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{entry.text}</p>
+                            </div>
+                            <button
+                              onClick={() => setBookmarkedEntries(prev => prev.filter(b => b.parseId !== entry.parseId))}
+                              title="Remove bookmark"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', flexShrink: 0, color: '#9333ea' }}
+                            >
+                              <Bookmark size={16} fill="#9333ea" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  ) : logFilter === "favorites" ? (
                     favoritedPatterns.length === 0 ? (
                       <p style={{ color: '#7c3aed', textAlign: 'center', padding: '32px 0' }}>
                         No favorites yet. Star patterns in the Patterns tab to save them here.
@@ -1960,21 +1994,21 @@ Everything you write is end-to-end encrypted and private.`,
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                               {item.type === "entry" && (() => {
-                                const isFlagged = flaggedForSession.some(f => f.parseId === item.data.parseId);
+                                const isBookmarked = bookmarkedEntries.some(b => b.parseId === item.data.parseId);
                                 return (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setFlaggedForSession(prev =>
-                                        isFlagged
-                                          ? prev.filter(f => f.parseId !== item.data.parseId)
+                                      setBookmarkedEntries(prev =>
+                                        isBookmarked
+                                          ? prev.filter(b => b.parseId !== item.data.parseId)
                                           : [...prev, { parseId: item.data.parseId, text: item.data.text, date: item.data.date }]
                                       );
                                     }}
-                                    title={isFlagged ? "Remove from session" : "Flag for upcoming session"}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', flexShrink: 0, color: isFlagged ? '#9333ea' : '#d1d5db' }}
+                                    title={isBookmarked ? "Remove bookmark" : "Bookmark this entry"}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', flexShrink: 0, color: isBookmarked ? '#9333ea' : '#d1d5db' }}
                                   >
-                                    <Bookmark size={16} fill={isFlagged ? '#9333ea' : 'none'} />
+                                    <Bookmark size={16} fill={isBookmarked ? '#9333ea' : 'none'} />
                                   </button>
                                 );
                               })()}
@@ -2369,42 +2403,58 @@ Everything you write is end-to-end encrypted and private.`,
                     style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', marginBottom: '16px', height: '192px' }}
                   />
 
-                  <button
-                    onClick={async () => {
-                      if (!entry.text) return;
-                      const n = {
-                        id: Date.now(),
-                        date,
-                        text: entry.text,
-                        prompt: activePrompt,
-                        timestamp: new Date().toISOString(),
-                      };
-                      try {
-                        await createEntry(n);
-                        const updatedEntries = await fetchEntries();
-                        setEntries(updatedEntries);
-                        // Remove used prompt from My Prompts if it came from there
-                        if (activePrompt && savedPrompts.some(p => p.text === activePrompt)) {
-                          removeSavedPrompt(activePrompt);
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '0' }}>
+                    <button
+                      onClick={async () => {
+                        if (!entry.text) return;
+                        const n = {
+                          id: Date.now(),
+                          date,
+                          text: entry.text,
+                          prompt: activePrompt,
+                          timestamp: new Date().toISOString(),
+                        };
+                        try {
+                          await createEntry(n);
+                          const updatedEntries = await fetchEntries();
+                          setEntries(updatedEntries);
+                          if (pendingBookmark) {
+                            const saved = updatedEntries.find(e => e.id === n.id || e.timestamp === n.timestamp);
+                            if (saved) setBookmarkedEntries(prev => [...prev, { parseId: saved.parseId, text: n.text, date: n.date }]);
+                          }
+                          if (activePrompt && savedPrompts.some(p => p.text === activePrompt)) {
+                            removeSavedPrompt(activePrompt);
+                          }
+                          setEntry({ text: "", prompt: "" });
+                          setActivePrompt("");
+                          setPendingBookmark(false);
+                          setJournalView("log");
+                          handlePostEntrySave(updatedEntries);
+                        } catch (err) {
+                          console.error(err);
+                          alert("Save failed. Check Back4App CLP for Entry (Create).");
                         }
-                        setEntry({ text: "", prompt: "" });
-                        setActivePrompt("");
-                        setJournalView("log");
-                        // Fire engagement message async (don't block UI)
-                        handlePostEntrySave(updatedEntries);
-                      } catch (err) {
-                        console.error(err);
-                        alert("Save failed. Check Back4App CLP for Entry (Create).");
-                      }
-                    }}
-                    disabled={!entry.text}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', width: '100%', opacity: entry.text ? 1 : 0.5 }}
-                  >
-                    <Save size={20} />
-                    Save
-                  </button>
+                      }}
+                      disabled={!entry.text}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 20px', borderRadius: '12px', border: 'none', fontWeight: '500', fontSize: '16px', cursor: entry.text ? 'pointer' : 'not-allowed', transition: 'all 0.2s', background: entry.text ? '#9333ea' : '#d1d5db', color: 'white', flex: 1, opacity: entry.text ? 1 : 0.5 }}
+                    >
+                      <Save size={20} />
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setPendingBookmark(p => !p)}
+                      title={pendingBookmark ? "Remove bookmark" : "Bookmark this entry"}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px 16px', borderRadius: '12px', border: `2px solid ${pendingBookmark ? '#9333ea' : '#e9d5ff'}`, background: pendingBookmark ? 'rgba(147,51,234,0.08)' : 'rgba(255,255,255,0.8)', color: pendingBookmark ? '#9333ea' : '#c4b5fd', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                    >
+                      <Bookmark size={20} fill={pendingBookmark ? '#9333ea' : 'none'} />
+                    </button>
+                  </div>
 
-                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
+                  <p style={{ margin: '8px 0 4px', textAlign: 'right', fontSize: '12px', color: '#a78bfa' }}>
+                    Bookmark to bring up in your next session
+                  </p>
+
+                  <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '12px' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
@@ -2522,15 +2572,15 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 )}
 
-                {/* FLAGGED ENTRIES */}
-                {flaggedForSession.length > 0 && (
+                {/* BOOKMARKED ENTRIES */}
+                {bookmarkedEntries.length > 0 && (
                   <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '24px', padding: '24px 28px', boxShadow: '0 4px 16px rgba(147,51,234,0.06)' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Bookmark size={13} />
-                      Flagged for this session
+                      Bookmarked entries
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {flaggedForSession.map((entry, i) => (
+                      {bookmarkedEntries.map((entry, i) => (
                         <button
                           key={entry.parseId || i}
                           onClick={() => setFlaggedEntryModal(entry)}
