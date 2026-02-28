@@ -114,6 +114,7 @@ export default function App() {
   const [prepNoteSaved, setPrepNoteSaved] = useState(false);
   const [patternsData, setPatternsData] = useState(null); // { themes, contradictions, unfinishedThoughts, wordAssociations }
   const [patternsLoading, setPatternsLoading] = useState(false);
+  const [patternsError, setPatternsError] = useState(null);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [extraTopics, setExtraTopics] = useState(() => {
     try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
@@ -729,17 +730,28 @@ Everything you write is end-to-end encrypted and private.`,
   };
 
   const loadPatterns = async () => {
-    if (!entries.length) return;
+    const realEntries = entries.filter(e => !e.isWelcomeEntry);
+    if (!realEntries.length) return;
     setPatternsLoading(true);
+    setPatternsError(null);
     try {
-      const entriesPayload = entries
-        .filter(e => !e.isWelcomeEntry)
-        .slice(0, 20)
-        .map(e => ({ text: e.text, date: e.date }));
+      const entriesPayload = realEntries.slice(0, 20).map(e => ({ text: e.text, date: e.date }));
       const result = await window.Parse.Cloud.run('analyzePatterns', { entries: entriesPayload });
       setPatternsData(result);
     } catch (err) {
-      console.warn('[patterns] analyzePatterns cloud function not deployed yet:', err?.message);
+      console.error('[patterns]', err);
+      // Fall back to existing analysis data shaped into the new format
+      if (analysis) {
+        setPatternsData({
+          themes: (analysis.themes || []).map(t => ({ name: t, mentionCount: null, exampleWords: [] })),
+          contradictions: [],
+          unfinishedThoughts: [],
+          wordAssociations: (analysis.avoiding || []).map(a => ({ label: 'Worth exploring', description: a, prompt: null })),
+        });
+        setPatternsError('analyzePatterns cloud function not deployed — showing basic analysis instead.');
+      } else {
+        setPatternsError(err?.message || 'Analysis failed. Make sure analyzePatterns is deployed in Back4App.');
+      }
     } finally {
       setPatternsLoading(false);
     }
@@ -2680,6 +2692,10 @@ Everything you write is end-to-end encrypted and private.`,
 
                     {patternsLoading && (
                       <div style={{ textAlign: 'center', padding: '24px 0', color: '#a78bfa', fontSize: '14px' }}>Analyzing your entries…</div>
+                    )}
+
+                    {patternsError && (
+                      <div style={{ fontSize: '12px', color: '#9ca3af', padding: '8px 12px', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>{patternsError}</div>
                     )}
 
                     {!patternsLoading && !patternsData && (
