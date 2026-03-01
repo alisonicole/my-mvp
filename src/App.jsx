@@ -158,6 +158,13 @@ export default function App() {
 
   // Home session snapshot modal
   const [homeSessionModal, setHomeSessionModal] = useState(null);
+  const [recallOpen, setRecallOpen] = useState(false);
+
+  // Monthly summary (cached per month)
+  const [monthlySummary, setMonthlySummary] = useState(() => {
+    try { const s = localStorage.getItem(ukey('monthlySummary')); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
 
   // AI summary of last session notes (cached by parseId, persisted to localStorage)
   const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
@@ -323,6 +330,37 @@ export default function App() {
       currentUser.save().catch(() => {});
     }
   }, [extraTopics]);
+
+  // Auto-generate monthly summary when home tab opens
+  useEffect(() => {
+    if (tab !== 'home' || !currentUser || !PARSE_READY) return;
+    const realEntries = entries.filter(e => !e.isWelcomeEntry);
+    if (!realEntries.length) return;
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
+    if (monthlySummary?.monthKey === monthKey) return; // already cached
+    const prevEntries = realEntries.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T12:00');
+      return d.getFullYear() === prevMonth.getFullYear() && d.getMonth() === prevMonth.getMonth();
+    });
+    if (!prevEntries.length) return;
+    setMonthlySummaryLoading(true);
+    const monthLabel = prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    window.Parse.Cloud.run('generateMonthlySummary', {
+      entries: prevEntries.map(e => ({ date: e.date, content: e.text })),
+      month: monthLabel,
+    }).then(result => {
+      const summary = { monthKey, month: monthLabel, text: result.summary };
+      setMonthlySummary(summary);
+      localStorage.setItem(ukey('monthlySummary'), JSON.stringify(summary));
+    }).catch(err => {
+      console.error('Monthly summary error:', err);
+    }).finally(() => {
+      setMonthlySummaryLoading(false);
+    });
+  }, [tab, currentUser, entries.length]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -1547,6 +1585,55 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
               </div>
 
+              {/* MONTHLY SUMMARY */}
+              {(monthlySummaryLoading || monthlySummary) && (() => {
+                const isPaidUser = currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
+                const now = new Date();
+                const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const monthLabel = monthlySummary?.month || prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                const fullText = monthlySummary?.text || '';
+                const sentenceParts = fullText.match(/.*?[.!?]+(?:\s|$)/g) || [];
+                const preview = sentenceParts.slice(0, 2).join('').trim();
+                const blurredPart = sentenceParts.slice(2).join('').trim();
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '20px', overflow: 'hidden' }}>
+                    <div style={{ padding: '18px 22px 20px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px' }}>Monthly Reflection</div>
+                      <div style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif", marginBottom: '14px' }}>Your {monthLabel.split(' ')[0]}</div>
+                      {monthlySummaryLoading ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9ca3af', fontSize: '14px', fontStyle: 'italic', padding: '8px 0' }}>
+                          <Loader2 size={14} className="animate-spin" />
+                          Writing your summary…
+                        </div>
+                      ) : isPaidUser ? (
+                        <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', whiteSpace: 'pre-wrap' }}>{fullText}</div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75' }}>{preview}</div>
+                          {blurredPart && (
+                            <div style={{ position: 'relative', marginTop: '6px' }}>
+                              <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
+                                {blurredPart}
+                              </div>
+                              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.7) 55%, rgba(255,255,255,0.95) 100%)' }} />
+                            </div>
+                          )}
+                          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3e8ff', textAlign: 'center' }}>
+                            <div style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '10px', fontWeight: '500' }}>Unlock your full monthly reflection</div>
+                            <button
+                              onClick={() => setTab('account')}
+                              style={{ padding: '10px 24px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                            >
+                              Get full access — $5/month
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* INTENTION OF THE WEEK */}
               {(() => {
                 const intention = lastSnapshot?.intention || sessionIntention;
@@ -2399,20 +2486,34 @@ Everything you write is end-to-end encrypted and private.`,
         {/* SESSIONS PREP VIEW */}
         {tab === "sessions" && sessionView === "prep" && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                {/* LAST SESSION */}
+                {/* LAST SESSION — collapsible */}
                 {lastSnapshot && (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
-                    <div style={{ padding: '32px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <Archive size={20} style={{ color: '#9333ea' }} />
-                        <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>
-                          Recall Your Last Session
-                        </h3>
+                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '20px', overflow: 'hidden' }}>
+                    {/* Toggle header */}
+                    <button
+                      onClick={() => setRecallOpen(o => !o)}
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 24px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Archive size={18} style={{ color: '#9333ea' }} />
+                        <span style={{ fontSize: '16px', fontWeight: '500', color: '#581c87' }}>Recall Your Last Session</span>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <ChevronDown size={18} style={{ color: '#9333ea', transition: 'transform 0.2s', transform: recallOpen ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }} />
+                    </button>
+
+                    {/* Collapsible content */}
+                    {recallOpen && (
+                      <div style={{ padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {/* Intention of the week */}
+                        {lastSnapshot?.intention && (
+                          <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Intention of the Week</div>
+                            <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>{lastSnapshot.intention}</p>
+                          </div>
+                        )}
                         <div>
-                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Date</div>
-                          <div style={{ fontSize: '16px', color: '#581c87' }}>{formatDate(lastSnapshot?.sessionDate || getDate())}</div>
+                          <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Date</div>
+                          <div style={{ fontSize: '15px', color: '#581c87' }}>{formatDate(lastSnapshot?.sessionDate || getDate())}</div>
                         </div>
                         {lastSnapshot?.notes && (
                           <div>
@@ -2442,32 +2543,20 @@ Everything you write is end-to-end encrypted and private.`,
                         )}
                         {lastSnapshot?.nextSteps && (
                           <div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Follow Ups</div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Follow Ups</div>
                             <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{lastSnapshot.nextSteps}</p>
                           </div>
                         )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => setHomeSessionModal(lastSnapshot)}
+                            style={{ padding: '8px 18px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            View Session Snapshot →
+                          </button>
+                        </div>
                       </div>
-                      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => setHomeSessionModal(lastSnapshot)}
-                          style={{ padding: '8px 18px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
-                        >
-                          View Session Snapshot →
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* INTENTION OF THE WEEK */}
-                {lastSnapshot?.intention && (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid #e9d5ff', borderRadius: '16px', padding: '18px 24px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                      Intention of the Week
-                    </div>
-                    <p style={{ fontSize: '15px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>
-                      {lastSnapshot.intention}
-                    </p>
+                    )}
                   </div>
                 )}
 
