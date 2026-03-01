@@ -335,6 +335,20 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     }
   }, [extraTopics]);
 
+  // Re-load monthly summary from localStorage once user is known (ukey was anon at init time)
+  useEffect(() => {
+    if (!currentUser) return;
+    try {
+      const s = localStorage.getItem(ukey('monthlySummary'));
+      if (!s) return;
+      const cached = JSON.parse(s);
+      const now = new Date();
+      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
+      if (cached?.monthKey === monthKey) setMonthlySummary(cached);
+    } catch {}
+  }, [currentUser?.id]);
+
   // Auto-generate monthly summary when home tab opens
   useEffect(() => {
     if (tab !== 'home' || !currentUser || !PARSE_READY) return;
