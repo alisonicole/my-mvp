@@ -166,6 +166,8 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
   });
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
   const [monthlySummaryError, setMonthlySummaryError] = useState(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   // AI summary of last session notes (cached by parseId, persisted to localStorage)
   const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
@@ -247,7 +249,8 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
   const Parse = typeof window !== 'undefined' ? window.Parse : null;
   const PARSE_READY = Boolean(Parse && APP_ID && JS_KEY && SERVER_URL);
 
-  const isPaidSubscriber = true; // All features enabled for all users
+  const isPaidSubscriber = currentUser?.get('isPro') === true
+    || currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
 
   const [generatedPrompt, setGeneratedPrompt] = useState("");
 
@@ -366,6 +369,32 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
       setMonthlySummaryLoading(false);
     });
   }, [tab, currentUser, entries.length]);
+
+  // Handle Stripe checkout redirect back to app
+  useEffect(() => {
+    if (!currentUser || !PARSE_READY) return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    const sessionId = params.get('session_id');
+    if (checkout === 'success' && sessionId) {
+      // Clear URL params without reloading
+      window.history.replaceState({}, '', window.location.pathname);
+      window.Parse.Cloud.run('verifyStripeSession', { sessionId }).then(() => {
+        // Refresh the user to pick up the new isPro field
+        return currentUser.fetch();
+      }).then(updatedUser => {
+        setCurrentUser(updatedUser);
+        setCheckoutSuccess(true);
+        setTab('account');
+      }).catch(err => {
+        console.error('Stripe verify error:', err);
+        // Still show account tab even if verify failed
+        setTab('account');
+      });
+    } else if (checkout === 'cancel') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [currentUser]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -1595,7 +1624,7 @@ Everything you write is end-to-end encrypted and private.`,
 
               {/* MONTHLY SUMMARY */}
               {(monthlySummaryLoading || monthlySummary || monthlySummaryError) && (() => {
-                const isPaidUser = currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
+                const isPaidUser = isPaidSubscriber;
                 const now = new Date();
                 const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
                 const monthLabel = monthlySummary?.month || prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
@@ -1873,6 +1902,87 @@ Everything you write is end-to-end encrypted and private.`,
                   </div>
                 </div>
               </div>
+
+              {/* Subscription Section */}
+              {checkoutSuccess && (
+                <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.3)', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ fontSize: '20px' }}>✓</div>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#15803d' }}>You're now on Between Pro!</div>
+                    <div style={{ fontSize: '13px', color: '#166534' }}>All features are unlocked.</div>
+                  </div>
+                </div>
+              )}
+
+              {isPaidSubscriber ? (
+                <div style={{ marginTop: '24px', padding: '20px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Between Pro</div>
+                    <div style={{ padding: '2px 8px', background: '#9333ea', color: 'white', borderRadius: '20px', fontSize: '11px', fontWeight: '600' }}>Active</div>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#581c87', margin: '0 0 14px 0', lineHeight: '1.5' }}>
+                    You have full access to all features — monthly reflections, pattern analysis, and more.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      setCheckoutLoading(true);
+                      try {
+                        const { url } = await window.Parse.Cloud.run('createBillingPortal', {
+                          returnUrl: window.location.origin,
+                        });
+                        window.location.href = url;
+                      } catch (err) {
+                        console.error('Portal error:', err);
+                        alert('Could not open billing portal: ' + err.message);
+                      } finally {
+                        setCheckoutLoading(false);
+                      }
+                    }}
+                    disabled={checkoutLoading}
+                    style={{ padding: '10px 20px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'white', color: '#7c3aed', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+                  >
+                    {checkoutLoading ? 'Loading…' : 'Manage subscription'}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ marginTop: '24px', padding: '20px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '16px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '8px' }}>Between Pro</div>
+                  <div style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', marginBottom: '12px' }}>$5 / month</div>
+                  <ul style={{ margin: '0 0 18px 0', padding: '0 0 0 4px', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                    {[
+                      'Full pattern analysis after every session',
+                      'Monthly reflections on your journey',
+                      'All themes, questions & journal prompts',
+                    ].map(f => (
+                      <li key={f} style={{ fontSize: '13px', color: '#581c87', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#9333ea', fontWeight: '700', fontSize: '15px', flexShrink: 0 }}>✓</span>
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={async () => {
+                      setCheckoutLoading(true);
+                      try {
+                        const { url } = await window.Parse.Cloud.run('createStripeCheckout', {
+                          successUrl: `${window.location.origin}/?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+                          cancelUrl: `${window.location.origin}/?checkout=cancel`,
+                        });
+                        window.location.href = url;
+                      } catch (err) {
+                        console.error('Checkout error:', err);
+                        alert('Could not start checkout: ' + err.message);
+                      } finally {
+                        setCheckoutLoading(false);
+                      }
+                    }}
+                    disabled={checkoutLoading}
+                    style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: '#9333ea', color: 'white', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}
+                  >
+                    {checkoutLoading ? 'Loading…' : 'Subscribe to Between Pro'}
+                  </button>
+                </div>
+              )}
 
               {/* Logout Button */}
               <button
