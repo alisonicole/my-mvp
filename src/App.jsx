@@ -105,6 +105,7 @@ export default function App() {
   const [pendingBookmark, setPendingBookmark] = useState(false);
   const [activePrompt, setActivePrompt] = useState(""); // Currently displayed prompt
   const [inlinePromptIdx, setInlinePromptIdx] = useState(0);
+  const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ text: "" });
@@ -131,8 +132,7 @@ export default function App() {
     try { const s = localStorage.getItem(ukey('extraTopics')); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [selectedPatterns, setSelectedPatterns] = useState([]);
-  const [patternModal, setPatternModal] = useState(null); // { label, description, quotes, prompt, selectionKey }
-  const [flaggedForSession, setFlaggedForSession] = useState(() => {
+const [flaggedForSession, setFlaggedForSession] = useState(() => {
     try { const s = localStorage.getItem(ukey('flagged')); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [bookmarkedEntries, setBookmarkedEntries] = useState(() => {
@@ -373,7 +373,9 @@ export default function App() {
       const encKey = generateEncryptionKey(password);
       setUserEncryptionKey(encKey);
       localStorage.setItem('encKey', encKey);
-      setTab("home");
+      setTab("sessions");
+      setSessionView("between");
+      setJournalView("write");
       setEmail("");
       setPassword("");
     } catch (error) {
@@ -2377,29 +2379,40 @@ Everything you write is end-to-end encrypted and private.`,
                     What came up today?
                   </h2>
 
-                  {/* Inline open question */}
+                  {/* Prompt — collapsible */}
                   {(() => {
                     const questions = analysis?.questions?.length ? analysis.questions : [];
                     const pool = [...questions, ...DAILY_PROMPTS];
                     if (!pool.length) return null;
                     const current = pool[inlinePromptIdx % pool.length];
                     return (
-                      <div style={{ marginBottom: '16px', padding: '14px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '14px' }}>
-                        <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 12px 0', lineHeight: '1.6', fontStyle: 'italic' }}>{current}</p>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => setActivePrompt(current)}
-                            style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                          >
-                            Use this prompt →
-                          </button>
-                          <button
-                            onClick={() => setInlinePromptIdx(i => i + 1)}
-                            style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'transparent', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                          >
-                            Show me another
-                          </button>
-                        </div>
+                      <div style={{ marginBottom: '16px', border: '1px solid #e9d5ff', borderRadius: '14px', overflow: 'hidden' }}>
+                        <button
+                          onClick={() => setShowPromptDropdown(v => !v)}
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                        >
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: '#7c3aed' }}>Personalized prompt</span>
+                          <ChevronDown size={15} style={{ color: '#a78bfa', transition: 'transform 0.2s', transform: showPromptDropdown ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }} />
+                        </button>
+                        {showPromptDropdown && (
+                          <div style={{ padding: '4px 16px 14px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)' }}>
+                            <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 12px 0', lineHeight: '1.6', fontStyle: 'italic' }}>{current}</p>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button
+                                onClick={() => { setActivePrompt(current); setShowPromptDropdown(false); }}
+                                style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                              >
+                                Use this prompt →
+                              </button>
+                              <button
+                                onClick={() => setInlinePromptIdx(i => i + 1)}
+                                style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'transparent', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                              >
+                                Show me another
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -2789,16 +2802,34 @@ Everything you write is end-to-end encrypted and private.`,
 
                       const PatternCard = ({ pattern, selectionKey }) => {
                         const isSelected = selectionKey && selectedPatterns.includes(selectionKey);
+                        const toggleSelect = () => selectionKey && setSelectedPatterns(prev =>
+                          prev.includes(selectionKey) ? prev.filter(t => t !== selectionKey) : [...prev, selectionKey]
+                        );
                         return (
-                          <div
-                            onClick={() => setPatternModal({ ...pattern, selectionKey })}
-                            style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}
-                          >
+                          <div style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#15803d' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
                               {isSelected && <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', flexShrink: 0 }}>✓</div>}
                             </div>
                             {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>{pattern.description}</p>}
+                            {(pattern.quotes || []).map((q, qi) => {
+                              const formattedDate = q.date
+                                ? new Date(q.date + (q.date.length === 10 ? 'T12:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                : null;
+                              return (
+                                <div key={qi} style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.6)', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
+                                  <span style={{ fontSize: '13px', color: '#581c87', fontStyle: 'italic', lineHeight: '1.5' }}>"{q.text}"</span>
+                                  {formattedDate && <span style={{ fontSize: '12px', color: '#a78bfa', fontWeight: '500', marginLeft: '6px' }}>({formattedDate})</span>}
+                                </div>
+                              );
+                            })}
+                            {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic', lineHeight: '1.5' }}>{pattern.prompt}</p>}
+                            <button
+                              onClick={toggleSelect}
+                              style={{ alignSelf: 'flex-start', padding: '6px 14px', borderRadius: '20px', border: isSelected ? 'none' : '1px solid #e9d5ff', background: isSelected ? '#16a34a' : 'rgba(255,255,255,0.7)', color: isSelected ? 'white' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                            >
+                              {isSelected ? '✓ Added to key topics' : 'Bring this up'}
+                            </button>
                           </div>
                         );
                       };
@@ -3044,52 +3075,6 @@ Everything you write is end-to-end encrypted and private.`,
         )}
 
 
-        {/* PATTERN DETAIL MODAL */}
-        {patternModal && (
-          <div
-            onClick={() => setPatternModal(null)}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 10000 }}
-          >
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px 40px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{patternModal.label}</div>
-                <button onClick={() => setPatternModal(null)} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#9ca3af', cursor: 'pointer', padding: '4px', lineHeight: 1, flexShrink: 0 }}>×</button>
-              </div>
-              {patternModal.description && (
-                <p style={{ fontSize: '16px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{patternModal.description}</p>
-              )}
-              {(patternModal.quotes || []).map((q, qi) => {
-                const formattedDate = q.date
-                  ? new Date(q.date + (q.date.length === 10 ? 'T12:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                  : null;
-                return (
-                  <div key={qi} style={{ padding: '14px 16px', background: '#faf5ff', borderRadius: '12px', borderLeft: '4px solid #c084fc' }}>
-                    <div style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>
-                      <span style={{ fontStyle: 'italic' }}>"{q.text}"</span>
-                      {formattedDate && <span style={{ color: '#a78bfa', fontWeight: '500', marginLeft: '8px', fontStyle: 'normal', fontSize: '13px' }}>({formattedDate})</span>}
-                    </div>
-                  </div>
-                );
-              })}
-              {patternModal.prompt && (
-                <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, fontStyle: 'italic', lineHeight: '1.6' }}>{patternModal.prompt}</p>
-              )}
-              <button
-                onClick={() => {
-                  const key = patternModal.selectionKey;
-                  if (key) setSelectedPatterns(prev => prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]);
-                  setPatternModal(null);
-                }}
-                style={{ marginTop: '8px', padding: '14px', borderRadius: '14px', border: 'none', background: selectedPatterns.includes(patternModal.selectionKey) ? '#16a34a' : '#9333ea', color: 'white', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}
-              >
-                {selectedPatterns.includes(patternModal.selectionKey) ? '✓ Added to key topics' : 'Bring this up in my session'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* SESSION SNAPSHOT MODAL */}
         {homeSessionModal && (
