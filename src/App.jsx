@@ -162,6 +162,10 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
 
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [monthlySummary, setMonthlySummary] = useState(null);
+  const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
+  const [monthlySummaryError, setMonthlySummaryError] = useState(null);
+  const [monthlySummaryOpen, setMonthlySummaryOpen] = useState(() => new Date().getDate() === 1);
 
   // AI summary of last session notes (cached by parseId, persisted to localStorage)
   const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
@@ -328,6 +332,63 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
       currentUser.save().catch(() => {});
     }
   }, [extraTopics]);
+
+  // Re-read all user-keyed localStorage once user is known.
+  // ukey() returns 'between_anon_*' during useState init (Parse not ready yet),
+  // so every user-keyed state starts empty. This effect fixes that after login.
+  useEffect(() => {
+    if (!currentUser) return;
+    const load = (key, fallback) => {
+      try { const s = localStorage.getItem(ukey(key)); return s ? JSON.parse(s) : fallback; } catch { return fallback; }
+    };
+    const loadRaw = (key) => {
+      try { return localStorage.getItem(ukey(key)); } catch { return null; }
+    };
+    setPatternsData(prev => prev ?? load('patternsData', null));
+    setPatternsLastEntryId(prev => prev ?? (loadRaw('patternsLastEntry') || null));
+    setBookmarkedEntries(prev => prev.length ? prev : load('bookmarks', []));
+    setSessionNotesSummary(prev => Object.keys(prev).length ? prev : load('sessionSummary', {}));
+    setFlaggedForSession(prev => prev.length ? prev : load('flagged', []));
+    // Monthly summary: only restore if it's the current month's entry
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
+    const cached = load('monthlySummary', null);
+    if (cached?.monthKey === monthKey) setMonthlySummary(cached);
+  }, [currentUser?.id]);
+
+  // Auto-generate monthly summary when home tab opens
+  useEffect(() => {
+    if (tab !== 'home' || !currentUser || !PARSE_READY) return;
+    const realEntries = entries.filter(e => !e.isWelcomeEntry);
+    if (!realEntries.length) return;
+    const now = new Date();
+    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
+    if (monthlySummary?.monthKey === monthKey) return;
+    const prevEntries = realEntries.filter(e => {
+      if (!e.date) return false;
+      const d = new Date(e.date + 'T12:00');
+      return d.getFullYear() === prevMonth.getFullYear() && d.getMonth() === prevMonth.getMonth();
+    });
+    if (!prevEntries.length) return;
+    setMonthlySummaryLoading(true);
+    setMonthlySummaryError(null);
+    const monthLabel = prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    window.Parse.Cloud.run('generateMonthlySummary', {
+      entries: prevEntries.map(e => ({ date: e.date, content: e.text })),
+      month: monthLabel,
+    }).then(result => {
+      const text = result?.summary || result?.text || result;
+      const summary = { monthKey, month: monthLabel, text };
+      setMonthlySummary(summary);
+      localStorage.setItem(ukey('monthlySummary'), JSON.stringify(summary));
+    }).catch(err => {
+      setMonthlySummaryError(err?.message || String(err));
+    }).finally(() => {
+      setMonthlySummaryLoading(false);
+    });
+  }, [tab, currentUser, entries.length]);
 
   // Handle Stripe checkout redirect back to app
   useEffect(() => {
@@ -1581,6 +1642,70 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
               </div>
 
+              {/* MONTHLY SUMMARY */}
+              {(monthlySummaryLoading || monthlySummary || monthlySummaryError) && (() => {
+                const now = new Date();
+                const isFirstOfMonth = now.getDate() === 1;
+                const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const monthLabel = monthlySummary?.month || prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                const fullText = monthlySummary?.text || '';
+                const sentenceParts = fullText.match(/.*?[.!?]+(?:\s|$)/g) || [];
+                const preview = sentenceParts.slice(0, 2).join('').trim();
+                const blurredPart = sentenceParts.slice(2).join('').trim();
+                const showToggle = isPaidSubscriber && !isFirstOfMonth && !monthlySummaryLoading && !monthlySummaryError;
+                const bodyVisible = !showToggle || monthlySummaryOpen;
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '20px', overflow: 'hidden' }}>
+                    {showToggle ? (
+                      <button
+                        onClick={() => setMonthlySummaryOpen(o => !o)}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '16px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif" }}>Your {monthLabel.split(' ')[0]}</div>
+                        </div>
+                        <ChevronDown size={18} style={{ color: '#9333ea', flexShrink: 0, transition: 'transform 0.2s', transform: monthlySummaryOpen ? 'rotate(180deg)' : 'rotate(0deg)' }} />
+                      </button>
+                    ) : (
+                      <div style={{ padding: '18px 22px 0' }}>
+                        <div style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif", marginBottom: '14px' }}>Your {monthLabel.split(' ')[0]}</div>
+                      </div>
+                    )}
+                    {bodyVisible && (
+                      <div style={{ padding: '0 22px 20px' }}>
+                        {monthlySummaryLoading ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9ca3af', fontSize: '14px', fontStyle: 'italic', padding: '8px 0' }}>
+                            <Loader2 size={14} className="animate-spin" />
+                            Writing your summary…
+                          </div>
+                        ) : monthlySummaryError ? (
+                          <div style={{ fontSize: '13px', color: '#dc2626', lineHeight: '1.5', padding: '4px 0' }}>
+                            Could not load summary: {monthlySummaryError}
+                          </div>
+                        ) : isPaidSubscriber ? (
+                          <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', whiteSpace: 'pre-wrap' }}>{fullText}</div>
+                        ) : (
+                          <div>
+                            <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75' }}>{preview}</div>
+                            {blurredPart && (
+                              <div style={{ position: 'relative', marginTop: '6px' }}>
+                                <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>{blurredPart}</div>
+                                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.7) 55%, rgba(255,255,255,0.95) 100%)' }} />
+                              </div>
+                            )}
+                            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3e8ff', textAlign: 'center' }}>
+                              <div style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '10px', fontWeight: '500' }}>Unlock your full monthly reflection</div>
+                              <button onClick={() => setTab('account')} style={{ padding: '10px 24px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+                                Get full access — $5/month
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* INTENTION OF THE WEEK */}
               {(() => {
