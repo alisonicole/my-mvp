@@ -87,12 +87,8 @@ export default function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signupName, setSignupName] = useState("");
-  const [signupPhone, setSignupPhone] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
-  const [phoneInput, setPhoneInput] = useState("");
-  const [phoneSaving, setPhoneSaving] = useState(false);
 
   // Main tabs: "journal" or "sessions"
   const [tab, setTab] = useState("sessions"); // "home" | "sessions" | "account"
@@ -277,7 +273,6 @@ export default function App() {
       console.log("Parse initialized successfully");
       const user = Parse.User.current();
       setCurrentUser(user);
-      if (user && !user.get('phoneNumber')) setShowPhonePrompt(true);
     } catch (e) {
       console.error("Parse init failed", e);
     }
@@ -381,7 +376,6 @@ export default function App() {
       setTab("home");
       setEmail("");
       setPassword("");
-      if (!user.get('phoneNumber')) setShowPhonePrompt(true);
     } catch (error) {
       setAuthError(error.message || "Login failed");
     } finally {
@@ -400,7 +394,7 @@ export default function App() {
       user.set("email", email);
       user.set("password", password);
       if (signupName.trim()) user.set("displayName", signupName.trim());
-      if (signupPhone.trim()) user.set("phoneNumber", signupPhone.trim());
+
 
       await user.signUp();
       setCurrentUser(user);
@@ -1073,32 +1067,18 @@ Everything you write is end-to-end encrypted and private.`,
 
           <form onSubmit={authMode === "login" ? handleLogin : handleSignup}>
             {authMode === "signup" && (
-              <>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-                    What can we call you?
-                  </label>
-                  <input
-                    type="text"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    placeholder="Your first name"
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87' }}
-                  />
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-                    Phone number
-                  </label>
-                  <input
-                    type="tel"
-                    value={signupPhone}
-                    onChange={(e) => setSignupPhone(e.target.value)}
-                    placeholder="+1 (555) 000-0000"
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87' }}
-                  />
-                </div>
-              </>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+                  What can we call you?
+                </label>
+                <input
+                  type="text"
+                  value={signupName}
+                  onChange={(e) => setSignupName(e.target.value)}
+                  placeholder="Your first name"
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87' }}
+                />
+              </div>
             )}
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
@@ -3063,50 +3043,6 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
-        {/* PHONE NUMBER PROMPT — blocking, for existing users without a phone */}
-        {showPhonePrompt && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(88,28,135,0.6)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '24px' }}>
-            <div style={{ background: 'white', borderRadius: '24px', padding: '36px 28px', maxWidth: '420px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📱</div>
-                <h2 style={{ fontSize: '22px', fontWeight: '500', color: '#581c87', margin: '0 0 10px 0' }}>One quick thing</h2>
-                <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, lineHeight: '1.6' }}>
-                  We'd like to add your phone number to your account. This helps us reach you if there's ever an issue with your account.
-                </p>
-              </div>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#7c3aed', marginBottom: '8px' }}>Phone number</label>
-                <input
-                  type="tel"
-                  value={phoneInput}
-                  onChange={(e) => setPhoneInput(e.target.value)}
-                  placeholder="+1 (555) 000-0000"
-                  autoFocus
-                  style={{ width: '100%', padding: '13px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', color: '#581c87', boxSizing: 'border-box' }}
-                />
-              </div>
-              <button
-                disabled={phoneSaving || !phoneInput.trim()}
-                onClick={async () => {
-                  if (!phoneInput.trim()) return;
-                  setPhoneSaving(true);
-                  try {
-                    currentUser.set('phoneNumber', phoneInput.trim());
-                    await currentUser.save();
-                    setShowPhonePrompt(false);
-                  } catch (err) {
-                    console.error('Phone save error:', err);
-                  } finally {
-                    setPhoneSaving(false);
-                  }
-                }}
-                style={{ width: '100%', padding: '14px', background: phoneSaving || !phoneInput.trim() ? '#d1d5db' : '#9333ea', color: 'white', border: 'none', borderRadius: '14px', fontSize: '15px', fontWeight: '600', cursor: phoneSaving || !phoneInput.trim() ? 'not-allowed' : 'pointer' }}
-              >
-                {phoneSaving ? 'Saving…' : 'Save and continue'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* PATTERN DETAIL MODAL */}
         {patternModal && (
