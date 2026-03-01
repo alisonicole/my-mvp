@@ -165,6 +165,7 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     try { const s = localStorage.getItem(ukey('monthlySummary')); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
+  const [monthlySummaryError, setMonthlySummaryError] = useState(null);
 
   // AI summary of last session notes (cached by parseId, persisted to localStorage)
   const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
@@ -347,16 +348,20 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     });
     if (!prevEntries.length) return;
     setMonthlySummaryLoading(true);
+    setMonthlySummaryError(null);
     const monthLabel = prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
     window.Parse.Cloud.run('generateMonthlySummary', {
       entries: prevEntries.map(e => ({ date: e.date, content: e.text })),
       month: monthLabel,
     }).then(result => {
-      const summary = { monthKey, month: monthLabel, text: result.summary };
+      // handle both result.summary and result.text field names
+      const text = result?.summary || result?.text || result;
+      const summary = { monthKey, month: monthLabel, text };
       setMonthlySummary(summary);
       localStorage.setItem(ukey('monthlySummary'), JSON.stringify(summary));
     }).catch(err => {
       console.error('Monthly summary error:', err);
+      setMonthlySummaryError(err?.message || String(err));
     }).finally(() => {
       setMonthlySummaryLoading(false);
     });
@@ -1589,7 +1594,7 @@ Everything you write is end-to-end encrypted and private.`,
               </div>
 
               {/* MONTHLY SUMMARY */}
-              {(monthlySummaryLoading || monthlySummary) && (() => {
+              {(monthlySummaryLoading || monthlySummary || monthlySummaryError) && (() => {
                 const isPaidUser = currentUser?.get('username') === 'lee.alisonnicole@gmail.com';
                 const now = new Date();
                 const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -1607,6 +1612,10 @@ Everything you write is end-to-end encrypted and private.`,
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9ca3af', fontSize: '14px', fontStyle: 'italic', padding: '8px 0' }}>
                           <Loader2 size={14} className="animate-spin" />
                           Writing your summary…
+                        </div>
+                      ) : monthlySummaryError ? (
+                        <div style={{ fontSize: '13px', color: '#dc2626', lineHeight: '1.5', padding: '4px 0' }}>
+                          Could not load summary: {monthlySummaryError}
                         </div>
                       ) : isPaidUser ? (
                         <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', whiteSpace: 'pre-wrap' }}>{fullText}</div>
