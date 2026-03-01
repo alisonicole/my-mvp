@@ -160,12 +160,6 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
   const [homeSessionModal, setHomeSessionModal] = useState(null);
   const [recallOpen, setRecallOpen] = useState(false);
 
-  // Monthly summary (cached per month)
-  const [monthlySummary, setMonthlySummary] = useState(() => {
-    try { const s = localStorage.getItem(ukey('monthlySummary')); return s ? JSON.parse(s) : null; } catch { return null; }
-  });
-  const [monthlySummaryLoading, setMonthlySummaryLoading] = useState(false);
-  const [monthlySummaryError, setMonthlySummaryError] = useState(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
@@ -334,55 +328,6 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
       currentUser.save().catch(() => {});
     }
   }, [extraTopics]);
-
-  // Re-load monthly summary from localStorage once user is known (ukey was anon at init time)
-  useEffect(() => {
-    if (!currentUser) return;
-    try {
-      const s = localStorage.getItem(ukey('monthlySummary'));
-      if (!s) return;
-      const cached = JSON.parse(s);
-      const now = new Date();
-      const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
-      if (cached?.monthKey === monthKey) setMonthlySummary(cached);
-    } catch {}
-  }, [currentUser?.id]);
-
-  // Auto-generate monthly summary when home tab opens
-  useEffect(() => {
-    if (tab !== 'home' || !currentUser || !PARSE_READY) return;
-    const realEntries = entries.filter(e => !e.isWelcomeEntry);
-    if (!realEntries.length) return;
-    const now = new Date();
-    const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const monthKey = `${prevMonth.getFullYear()}-${prevMonth.getMonth()}`;
-    if (monthlySummary?.monthKey === monthKey) return; // already cached
-    const prevEntries = realEntries.filter(e => {
-      if (!e.date) return false;
-      const d = new Date(e.date + 'T12:00');
-      return d.getFullYear() === prevMonth.getFullYear() && d.getMonth() === prevMonth.getMonth();
-    });
-    if (!prevEntries.length) return;
-    setMonthlySummaryLoading(true);
-    setMonthlySummaryError(null);
-    const monthLabel = prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-    window.Parse.Cloud.run('generateMonthlySummary', {
-      entries: prevEntries.map(e => ({ date: e.date, content: e.text })),
-      month: monthLabel,
-    }).then(result => {
-      // handle both result.summary and result.text field names
-      const text = result?.summary || result?.text || result;
-      const summary = { monthKey, month: monthLabel, text };
-      setMonthlySummary(summary);
-      localStorage.setItem(ukey('monthlySummary'), JSON.stringify(summary));
-    }).catch(err => {
-      console.error('Monthly summary error:', err);
-      setMonthlySummaryError(err?.message || String(err));
-    }).finally(() => {
-      setMonthlySummaryLoading(false);
-    });
-  }, [tab, currentUser, entries.length]);
 
   // Handle Stripe checkout redirect back to app
   useEffect(() => {
@@ -1636,58 +1581,6 @@ Everything you write is end-to-end encrypted and private.`,
                 </h2>
               </div>
 
-              {/* MONTHLY SUMMARY */}
-              {(monthlySummaryLoading || monthlySummary || monthlySummaryError) && (() => {
-                const isPaidUser = isPaidSubscriber;
-                const now = new Date();
-                const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                const monthLabel = monthlySummary?.month || prevMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-                const fullText = monthlySummary?.text || '';
-                const sentenceParts = fullText.match(/.*?[.!?]+(?:\s|$)/g) || [];
-                const preview = sentenceParts.slice(0, 2).join('').trim();
-                const blurredPart = sentenceParts.slice(2).join('').trim();
-                return (
-                  <div style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid #e9d5ff', borderRadius: '20px', overflow: 'hidden' }}>
-                    <div style={{ padding: '18px 22px 20px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '6px' }}>Monthly Reflection</div>
-                      <div style={{ fontSize: '20px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif", marginBottom: '14px' }}>Your {monthLabel.split(' ')[0]}</div>
-                      {monthlySummaryLoading ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9ca3af', fontSize: '14px', fontStyle: 'italic', padding: '8px 0' }}>
-                          <Loader2 size={14} className="animate-spin" />
-                          Writing your summary…
-                        </div>
-                      ) : monthlySummaryError ? (
-                        <div style={{ fontSize: '13px', color: '#dc2626', lineHeight: '1.5', padding: '4px 0' }}>
-                          Could not load summary: {monthlySummaryError}
-                        </div>
-                      ) : isPaidUser ? (
-                        <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', whiteSpace: 'pre-wrap' }}>{fullText}</div>
-                      ) : (
-                        <div>
-                          <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75' }}>{preview}</div>
-                          {blurredPart && (
-                            <div style={{ position: 'relative', marginTop: '6px' }}>
-                              <div style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.75', filter: 'blur(5px)', userSelect: 'none', pointerEvents: 'none' }}>
-                                {blurredPart}
-                              </div>
-                              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,0.7) 55%, rgba(255,255,255,0.95) 100%)' }} />
-                            </div>
-                          )}
-                          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #f3e8ff', textAlign: 'center' }}>
-                            <div style={{ fontSize: '13px', color: '#7c3aed', marginBottom: '10px', fontWeight: '500' }}>Unlock your full monthly reflection</div>
-                            <button
-                              onClick={() => setTab('account')}
-                              style={{ padding: '10px 24px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '20px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-                            >
-                              Get full access — $5/month
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* INTENTION OF THE WEEK */}
               {(() => {
