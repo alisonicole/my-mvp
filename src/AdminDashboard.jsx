@@ -111,7 +111,16 @@ export default function AdminDashboard({ onExit }) {
   );
 
   const s = stats;
-  const allUsers = s.allUsersList || [];
+  // Fall back to topUsers + newUsers7dList if allUsersList isn't in the deployed cloud function yet
+  const allUsers = s.allUsersList || (() => {
+    const seen = new Set();
+    const combined = [];
+    for (const u of [...(s.topUsers || []).map(u => ({ id: u.id, email: u.email, entries: u.count, sessions: u.sessions })),
+                     ...(s.newUsers7dList || []).map(u => ({ id: u.id, email: u.email, entries: u.entries, sessions: u.sessions }))]) {
+      if (!seen.has(u.id)) { seen.add(u.id); combined.push(u); }
+    }
+    return combined.sort((a, b) => b.entries - a.entries);
+  })();
 
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px' }}>

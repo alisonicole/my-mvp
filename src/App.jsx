@@ -79,6 +79,8 @@ export default function App() {
 
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
+  // Per-user localStorage key — readable synchronously at mount via Parse.User.current()
+  const ukey = (k) => `between_${window.Parse?.User?.current()?.id || 'anon'}_${k}`;
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -100,6 +102,7 @@ export default function App() {
   const [entry, setEntry] = useState({ text: "", prompt: "" }); // Add prompt field
   const [pendingBookmark, setPendingBookmark] = useState(false);
   const [activePrompt, setActivePrompt] = useState(""); // Currently displayed prompt
+  const [inlinePromptIdx, setInlinePromptIdx] = useState(0);
   const [entries, setEntries] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [editDraft, setEditDraft] = useState({ text: "" });
@@ -114,23 +117,24 @@ export default function App() {
   const [sessionPrepNote, setSessionPrepNote] = useState("");
   const [prepNoteSaved, setPrepNoteSaved] = useState(false);
   const [patternsData, setPatternsData] = useState(() => {
-    try { const s = localStorage.getItem('between_patternsData'); return s ? JSON.parse(s) : null; } catch { return null; }
+    try { const s = localStorage.getItem(ukey('patternsData')); return s ? JSON.parse(s) : null; } catch { return null; }
   });
   const [patternsLastEntryId, setPatternsLastEntryId] = useState(() => {
-    return localStorage.getItem('between_patternsLastEntry') || null;
+    return localStorage.getItem(ukey('patternsLastEntry')) || null;
   });
   const [patternsLoading, setPatternsLoading] = useState(false);
   const [patternsError, setPatternsError] = useState(null);
   const [checkedTopics, setCheckedTopics] = useState(new Set());
   const [extraTopics, setExtraTopics] = useState(() => {
-    try { const s = localStorage.getItem('between_extraTopics'); return s ? JSON.parse(s) : []; } catch { return []; }
+    try { const s = localStorage.getItem(ukey('extraTopics')); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [selectedPatterns, setSelectedPatterns] = useState([]);
+  const [patternModal, setPatternModal] = useState(null); // { label, description, quotes, prompt, selectionKey }
   const [flaggedForSession, setFlaggedForSession] = useState(() => {
-    try { const s = localStorage.getItem('between_flagged'); return s ? JSON.parse(s) : []; } catch { return []; }
+    try { const s = localStorage.getItem(ukey('flagged')); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [bookmarkedEntries, setBookmarkedEntries] = useState(() => {
-    try { const s = localStorage.getItem('between_bookmarks'); return s ? JSON.parse(s) : []; } catch { return []; }
+    try { const s = localStorage.getItem(ukey('bookmarks')); return s ? JSON.parse(s) : []; } catch { return []; }
   });
   const [flaggedEntryModal, setFlaggedEntryModal] = useState(null); // { text, date }
   const [newTopicInput, setNewTopicInput] = useState('');
@@ -155,7 +159,7 @@ export default function App() {
 
   // AI summary of last session notes (cached by parseId, persisted to localStorage)
   const [sessionNotesSummary, setSessionNotesSummary] = useState(() => {
-    try { const s = localStorage.getItem('between_sessionSummary'); return s ? JSON.parse(s) : {}; } catch { return {}; }
+    try { const s = localStorage.getItem(ukey('sessionSummary')); return s ? JSON.parse(s) : {}; } catch { return {}; }
   });
   const [summaryLoading, setSummaryLoading] = useState(false);
 
@@ -174,7 +178,7 @@ export default function App() {
 
   // Intention daily check-in
   const [intentionCheckedIn, setIntentionCheckedIn] = useState(() => {
-    try { return localStorage.getItem(`between_checkin_${getDate()}`) === '1'; } catch { return false; }
+    try { return localStorage.getItem(ukey(`checkin_${getDate()}`)) === '1'; } catch { return false; }
   });
 
   const streak = useMemo(() => {
@@ -274,24 +278,29 @@ export default function App() {
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('between_flagged', JSON.stringify(flaggedForSession));
-  }, [flaggedForSession]);
+    if (!currentUser) return;
+    localStorage.setItem(`between_${currentUser.id}_flagged`, JSON.stringify(flaggedForSession));
+  }, [flaggedForSession, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('between_bookmarks', JSON.stringify(bookmarkedEntries));
-  }, [bookmarkedEntries]);
+    if (!currentUser) return;
+    localStorage.setItem(`between_${currentUser.id}_bookmarks`, JSON.stringify(bookmarkedEntries));
+  }, [bookmarkedEntries, currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('between_sessionSummary', JSON.stringify(sessionNotesSummary));
-  }, [sessionNotesSummary]);
+    if (!currentUser) return;
+    localStorage.setItem(`between_${currentUser.id}_sessionSummary`, JSON.stringify(sessionNotesSummary));
+  }, [sessionNotesSummary, currentUser]);
 
   useEffect(() => {
-    if (patternsData) localStorage.setItem('between_patternsData', JSON.stringify(patternsData));
-  }, [patternsData]);
+    if (!currentUser || !patternsData) return;
+    localStorage.setItem(`between_${currentUser.id}_patternsData`, JSON.stringify(patternsData));
+  }, [patternsData, currentUser]);
 
   useEffect(() => {
-    if (patternsLastEntryId) localStorage.setItem('between_patternsLastEntry', patternsLastEntryId);
-  }, [patternsLastEntryId]);
+    if (!currentUser || !patternsLastEntryId) return;
+    localStorage.setItem(`between_${currentUser.id}_patternsLastEntry`, patternsLastEntryId);
+  }, [patternsLastEntryId, currentUser]);
 
   // Auto-save session prep note (debounced)
   useEffect(() => {
@@ -306,7 +315,7 @@ export default function App() {
 
   // Persist key topics to Parse (cross-device) and localStorage (offline fallback)
   useEffect(() => {
-    localStorage.setItem('between_extraTopics', JSON.stringify(extraTopics));
+    if (currentUser) localStorage.setItem(`between_${currentUser.id}_extraTopics`, JSON.stringify(extraTopics));
     if (currentUser && Parse) {
       currentUser.set("keyTopics", extraTopics);
       currentUser.save().catch(() => {});
@@ -1555,7 +1564,7 @@ Everything you write is end-to-end encrypted and private.`,
                     ) : (
                       <button
                         onClick={() => {
-                          localStorage.setItem(`between_checkin_${getDate()}`, '1');
+                          localStorage.setItem(ukey(`checkin_${getDate()}`), '1');
                           setIntentionCheckedIn(true);
                         }}
                         style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'none', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
@@ -2278,128 +2287,32 @@ Everything you write is end-to-end encrypted and private.`,
                     What came up today?
                   </h2>
 
-                  {/* Prompt buttons: My Prompts | Prompt of the Day | Generate Journaling Prompt */}
-                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                    {/* My Prompts */}
-                    <button
-                      onClick={() => { setShowMyPrompts(p => !p); setShowDailyPrompt(false); }}
-                      style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showMyPrompts ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showMyPrompts ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
-                    >
-                      <BookOpen size={14} />
-                      My Prompts ({savedPrompts.length})
-                    </button>
-
-                    {/* Prompt of the Day */}
-                    <button
-                      onClick={() => { setShowDailyPrompt(p => !p); setShowMyPrompts(false); setShowOpenQuestions(false); }}
-                      style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showDailyPrompt ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showDailyPrompt ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
-                    >
-                      <Calendar size={14} />
-                      Prompt of the Day
-                    </button>
-
-                    {/* Open Questions */}
-                    {analysis && (analysis.questions || []).length > 0 && (
-                      <button
-                        onClick={() => { setShowOpenQuestions(p => !p); setShowDailyPrompt(false); setShowMyPrompts(false); }}
-                        style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: showOpenQuestions ? '#9333ea' : 'rgba(255,255,255,0.8)', color: showOpenQuestions ? 'white' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
-                      >
-                        <MessageCircle size={14} />
-                        Open Questions
-                      </button>
-                    )}
-
-                    {/* Generate Journaling Prompt */}
-                    {(() => {
-                      const noSource = !realHistory?.length && !analysis;
-                      return (
-                        <button
-                          onClick={noSource ? undefined : handleGeneratePrompt}
-                          disabled={loading || noSource}
-                          title={noSource ? 'Capture a few thoughts first to get a custom prompt' : ''}
-                          style={{ padding: '7px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: (loading || noSource) ? '#f3f4f6' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', color: (loading || noSource) ? '#9ca3af' : '#7c3aed', fontWeight: '500', fontSize: '12px', cursor: (loading || noSource) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.2s' }}
-                        >
-                          {noSource ? <Lock size={14} /> : <Sparkles size={14} />}
-                          {loading && !noSource ? 'Generating...' : 'Generate Journaling Prompt'}
-                        </button>
-                      );
-                    })()}
-                  </div>
-
-                  {/* My Prompts panel */}
-                  {showMyPrompts && savedPrompts.length > 0 && (
-                    <div style={{ marginBottom: '12px', border: '1px solid #e9d5ff', borderRadius: '12px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #e9d5ff', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <BookOpen size={12} />
-                        Saved Prompts — tap to use
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {savedPrompts.map((p, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', padding: '10px 14px', borderBottom: i < savedPrompts.length - 1 ? '1px solid #f3f4f6' : 'none', background: 'white' }}>
-                            <button
-                              onClick={() => { setActivePrompt(p.text); setShowMyPrompts(false); }}
-                              style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', color: '#581c87', lineHeight: '1.5', padding: 0 }}
-                            >
-                              {p.text}
-                            </button>
-                            <button
-                              onClick={() => removeSavedPrompt(p.text)}
-                              title="Remove"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '2px', flexShrink: 0 }}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Prompt of the Day panel */}
-                  {showDailyPrompt && (() => {
-                    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-                    const dailyPrompt = DAILY_PROMPTS[dayOfYear % DAILY_PROMPTS.length];
+                  {/* Inline open question */}
+                  {(() => {
+                    const questions = analysis?.questions?.length ? analysis.questions : [];
+                    const pool = [...questions, ...DAILY_PROMPTS];
+                    if (!pool.length) return null;
+                    const current = pool[inlinePromptIdx % pool.length];
                     return (
-                      <div style={{ marginBottom: '12px', border: '1px solid #ddd6fe', borderRadius: '12px', overflow: 'hidden' }}>
-                        <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Calendar size={12} />
-                          Today's Prompt
-                        </div>
-                        <div style={{ padding: '12px 14px', background: 'white', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
-                          <p style={{ flex: 1, fontSize: '13px', color: '#581c87', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>{dailyPrompt}</p>
+                      <div style={{ marginBottom: '16px', padding: '14px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', border: '1px solid #e9d5ff', borderRadius: '14px' }}>
+                        <p style={{ fontSize: '14px', color: '#581c87', margin: '0 0 12px 0', lineHeight: '1.6', fontStyle: 'italic' }}>{current}</p>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           <button
-                            onClick={() => { setActivePrompt(dailyPrompt); setShowDailyPrompt(false); }}
-                            style={{ flexShrink: 0, padding: '5px 12px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '16px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                            onClick={() => setActivePrompt(current)}
+                            style={{ padding: '6px 14px', borderRadius: '20px', border: 'none', background: '#9333ea', color: 'white', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
                           >
-                            Use →
+                            Use this prompt →
+                          </button>
+                          <button
+                            onClick={() => setInlinePromptIdx(i => i + 1)}
+                            style={{ padding: '6px 14px', borderRadius: '20px', border: '1px solid #e9d5ff', background: 'transparent', color: '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            Show me another
                           </button>
                         </div>
                       </div>
                     );
                   })()}
-
-                  {/* Open Questions panel */}
-                  {showOpenQuestions && analysis && (analysis.questions || []).length > 0 && (
-                    <div style={{ marginBottom: '12px', border: '1px solid #ddd6fe', borderRadius: '12px', overflow: 'hidden' }}>
-                      <div style={{ padding: '10px 14px', background: '#f5f3ff', borderBottom: '1px solid #ddd6fe', fontSize: '12px', fontWeight: '600', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <MessageCircle size={12} />
-                        Open Questions
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        {(analysis.questions || []).map((q, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px', padding: '10px 14px', borderBottom: i < analysis.questions.length - 1 ? '1px solid #f3f4f6' : 'none', background: 'white' }}>
-                            <p style={{ flex: 1, fontSize: '13px', color: '#581c87', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>{q}</p>
-                            <button
-                              onClick={() => { setActivePrompt(q); setShowOpenQuestions(false); }}
-                              style={{ flexShrink: 0, padding: '5px 12px', background: '#9333ea', color: 'white', border: 'none', borderRadius: '16px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                            >
-                              Use →
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div style={{ marginBottom: '16px' }}>
                     <VoiceInput
@@ -2786,28 +2699,14 @@ Everything you write is end-to-end encrypted and private.`,
                         const isSelected = selectionKey && selectedPatterns.includes(selectionKey);
                         return (
                           <div
-                            onClick={() => selectionKey && setSelectedPatterns(prev => prev.includes(selectionKey) ? prev.filter(t => t !== selectionKey) : [...prev, selectionKey])}
-                            style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}
+                            onClick={() => setPatternModal({ ...pattern, selectionKey })}
+                            style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '8px', cursor: 'pointer', userSelect: 'none', transition: 'all 0.15s' }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#15803d' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
                               {isSelected && <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', flexShrink: 0 }}>✓</div>}
                             </div>
-                            {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{pattern.description}</p>}
-                            {(pattern.quotes || []).map((q, qi) => {
-                              const formattedDate = q.date
-                                ? new Date(q.date + (q.date.length === 10 ? 'T12:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                : null;
-                              return (
-                                <div key={qi} style={{ padding: '10px 12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px', borderLeft: '3px solid #c084fc' }}>
-                                  <div style={{ fontSize: '13px', color: '#581c87', lineHeight: '1.5' }}>
-                                    <span style={{ fontStyle: 'italic' }}>"{q.text}"</span>
-                                    {formattedDate && <span style={{ color: '#a78bfa', fontWeight: '500', marginLeft: '6px', fontStyle: 'normal', fontSize: '12px' }}>({formattedDate})</span>}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic' }}>{pattern.prompt}</p>}
+                            {pattern.description && <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5' }}>{pattern.description}</p>}
                           </div>
                         );
                       };
@@ -3052,6 +2951,53 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
+        {/* PATTERN DETAIL MODAL */}
+        {patternModal && (
+          <div
+            onClick={() => setPatternModal(null)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 10000 }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '28px 24px 40px', width: '100%', maxWidth: '600px', maxHeight: '85vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{patternModal.label}</div>
+                <button onClick={() => setPatternModal(null)} style={{ background: 'none', border: 'none', fontSize: '24px', color: '#9ca3af', cursor: 'pointer', padding: '4px', lineHeight: 1, flexShrink: 0 }}>×</button>
+              </div>
+              {patternModal.description && (
+                <p style={{ fontSize: '16px', color: '#581c87', margin: 0, lineHeight: '1.6' }}>{patternModal.description}</p>
+              )}
+              {(patternModal.quotes || []).map((q, qi) => {
+                const formattedDate = q.date
+                  ? new Date(q.date + (q.date.length === 10 ? 'T12:00' : '')).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  : null;
+                return (
+                  <div key={qi} style={{ padding: '14px 16px', background: '#faf5ff', borderRadius: '12px', borderLeft: '4px solid #c084fc' }}>
+                    <div style={{ fontSize: '15px', color: '#581c87', lineHeight: '1.6' }}>
+                      <span style={{ fontStyle: 'italic' }}>"{q.text}"</span>
+                      {formattedDate && <span style={{ color: '#a78bfa', fontWeight: '500', marginLeft: '8px', fontStyle: 'normal', fontSize: '13px' }}>({formattedDate})</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {patternModal.prompt && (
+                <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, fontStyle: 'italic', lineHeight: '1.6' }}>{patternModal.prompt}</p>
+              )}
+              <button
+                onClick={() => {
+                  const key = patternModal.selectionKey;
+                  if (key) setSelectedPatterns(prev => prev.includes(key) ? prev.filter(t => t !== key) : [...prev, key]);
+                  setPatternModal(null);
+                }}
+                style={{ marginTop: '8px', padding: '14px', borderRadius: '14px', border: 'none', background: selectedPatterns.includes(patternModal.selectionKey) ? '#16a34a' : '#9333ea', color: 'white', fontWeight: '600', fontSize: '15px', cursor: 'pointer' }}
+              >
+                {selectedPatterns.includes(patternModal.selectionKey) ? '✓ Added to key topics' : 'Bring this up in my session'}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* SESSION SNAPSHOT MODAL */}
         {homeSessionModal && (
           <div
@@ -3214,7 +3160,7 @@ Everything you write is end-to-end encrypted and private.`,
           <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', justifyContent: 'space-around' }}>
             {[
               { id: 'home',     label: 'Home',        Icon: Home,     active: tab === 'home',                                       action: () => { setTab('home'); setExpanded({}); } },
-              { id: 'between',  label: 'Journal',     Icon: BookOpen, active: tab === 'sessions' && sessionView === 'between',      action: () => { setTab('sessions'); setSessionView('between'); setExpanded({}); } },
+              { id: 'between',  label: 'Journal',     Icon: BookOpen, active: tab === 'sessions' && sessionView === 'between',      action: () => { setTab('sessions'); setSessionView('between'); setJournalView('write'); setExpanded({}); } },
               { id: 'sessions', label: 'My Sessions',  Icon: Calendar, active: tab === 'sessions' && sessionView !== 'between',     action: () => { setTab('sessions'); setSessionView('prep'); setExpanded({}); } },
               { id: 'account',  label: 'You',          Icon: User,     active: tab === 'account',                                   action: () => { setTab('account'); setExpanded({}); } },
             ].map(({ id, label, Icon, active, action }) => (
