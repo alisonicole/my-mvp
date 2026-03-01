@@ -291,27 +291,27 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
   useEffect(() => {
     if (!currentUser) return;
     localStorage.setItem(`between_${currentUser.id}_flagged`, JSON.stringify(flaggedForSession));
-  }, [flaggedForSession, currentUser]);
+  }, [flaggedForSession]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!currentUser) return;
     localStorage.setItem(`between_${currentUser.id}_bookmarks`, JSON.stringify(bookmarkedEntries));
-  }, [bookmarkedEntries, currentUser]);
+  }, [bookmarkedEntries]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!currentUser) return;
     localStorage.setItem(`between_${currentUser.id}_sessionSummary`, JSON.stringify(sessionNotesSummary));
-  }, [sessionNotesSummary, currentUser]);
+  }, [sessionNotesSummary]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!currentUser || !patternsData) return;
     localStorage.setItem(`between_${currentUser.id}_patternsData`, JSON.stringify(patternsData));
-  }, [patternsData, currentUser]);
+  }, [patternsData]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!currentUser || !patternsLastEntryId) return;
     localStorage.setItem(`between_${currentUser.id}_patternsLastEntry`, patternsLastEntryId);
-  }, [patternsLastEntryId, currentUser]);
+  }, [patternsLastEntryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-save session prep note (debounced)
   useEffect(() => {
