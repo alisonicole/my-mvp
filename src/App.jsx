@@ -79,8 +79,10 @@ export default function App() {
 
   // Auth state
   const [currentUser, setCurrentUser] = useState(null);
-  // Per-user localStorage key — readable synchronously at mount via Parse.User.current()
-  const ukey = (k) => `between_${window.Parse?.User?.current()?.id || 'anon'}_${k}`;
+  // Per-user localStorage key — safely reads current user before Parse.initialize() is called
+  const ukey = (k) => {
+    try { return `between_${window.Parse?.User?.current()?.id || 'anon'}_${k}`; } catch { return `between_anon_${k}`; }
+  };
   const [authMode, setAuthMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
