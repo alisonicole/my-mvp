@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
+import { BrowserRouter } from "react-router-dom";
+import AppRouter from "./AppRouter";
 import "./index.css";
 
 class ErrorBoundary extends React.Component {
@@ -27,7 +28,8 @@ class ErrorBoundary extends React.Component {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ErrorBoundary>
-    <App />
+    <BrowserRouter>
+      <AppRouter />
+    </BrowserRouter>
   </ErrorBoundary>
 );
-
