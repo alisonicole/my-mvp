@@ -70,17 +70,12 @@ const DAILY_PROMPTS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 import { useLocation } from 'react-router-dom';
 
 export default function App() {
   const location = useLocation();
   
-  // Show signup mode if on /signup route
-  const [authMode, setAuthMode] = useState(() => {
-    return location.pathname === '/signup' ? 'signup' : 'login';
-  });
-  
-export default function App() {
   const getDate = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -92,7 +87,10 @@ export default function App() {
   const ukey = (k) => {
     try { return `between_${window.Parse?.User?.current()?.id || 'anon'}_${k}`; } catch { return `between_anon_${k}`; }
   };
-  const [authMode, setAuthMode] = useState("login");
+ // Show signup mode if on /signup route
+  const [authMode, setAuthMode] = useState(() => {
+    return location.pathname === '/signup' ? 'signup' : 'login';
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signupName, setSignupName] = useState("");
