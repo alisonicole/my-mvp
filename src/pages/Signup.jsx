@@ -164,4 +164,3 @@ export default function Signup({ onSignup }) {
     </div>
   );
 }
-EOF
