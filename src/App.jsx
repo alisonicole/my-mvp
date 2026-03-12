@@ -70,7 +70,16 @@ const DAILY_PROMPTS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+import { useLocation } from 'react-router-dom';
 
+export default function App() {
+  const location = useLocation();
+  
+  // Show signup mode if on /signup route
+  const [authMode, setAuthMode] = useState(() => {
+    return location.pathname === '/signup' ? 'signup' : 'login';
+  });
+  
 export default function App() {
   const getDate = () => {
     const d = new Date();
