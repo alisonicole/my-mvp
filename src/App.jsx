@@ -2425,11 +2425,16 @@ Everything you write is end-to-end encrypted and private.`,
                                 </>
                               ) : (
                                 <div className="archive-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '12px' }}>
+                                  {item.data.prepNote && (
+                                    <div>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>What I Wanted to Discuss</h4>
+                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.data.prepNote}</p>
+                                    </div>
+                                  )}
+
                                   {item.data.discussedTopics?.length > 0 && (
                                     <div>
-                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>
-                                        Key Topics
-                                      </h4>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Key Topics</h4>
                                       <ul style={{ margin: 0, paddingLeft: '18px', color: '#581c87' }}>
                                         {item.data.discussedTopics.map((t, i) => (
                                           <li key={i} style={{ marginBottom: '4px', fontSize: '14px', lineHeight: '1.5' }}>{t}</li>
@@ -2438,21 +2443,27 @@ Everything you write is end-to-end encrypted and private.`,
                                     </div>
                                   )}
 
-                                  {item.data.prepNote && (
+                                  {item.data.notes && (
                                     <div>
-                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>What I Wanted to Discuss</h4>
-                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                        {item.data.prepNote}
-                                      </p>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Session Notes</h4>
+                                      {(() => {
+                                        const raw = sessionNotesSummary[item.data.parseId];
+                                        const bullets = Array.isArray(raw) ? raw : (raw?.bullets ?? []);
+                                        if (bullets.length > 0) {
+                                          return (
+                                            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                              {bullets.map((b, bi) => (
+                                                <li key={bi} style={{ fontSize: '14px', color: '#7c3aed', lineHeight: '1.5', display: 'flex', gap: '6px' }}>
+                                                  <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{b}
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          );
+                                        }
+                                        return <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.data.notes}</p>;
+                                      })()}
                                     </div>
                                   )}
-
-                                  <div>
-                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Session Notes</h4>
-                                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                      {item.data.notes || "—"}
-                                    </p>
-                                  </div>
 
                                   {item.data.nextSteps && (
                                     <div>
