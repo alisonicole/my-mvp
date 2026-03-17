@@ -764,10 +764,10 @@ Everything you write is end-to-end encrypted and private.`,
       setSummaryLoading(true);
       window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
         .then(result => {
-          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
+          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: { bullets: result.bullets ?? [], themes: result.themes ?? [] } }));
         })
         .catch(() => {
-          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
+          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: { bullets: [], themes: [] } }));
         })
         .finally(() => setSummaryLoading(false));
     }
@@ -775,14 +775,13 @@ Everything you write is end-to-end encrypted and private.`,
     if (sessionView === 'progress') {
       const unsummarized = realHistory.filter(s => s.notes && s.parseId && sessionNotesSummary[s.parseId] === undefined);
       if (!unsummarized.length) return;
-      // Summarize sequentially to avoid hammering the API
       unsummarized.forEach(snap => {
         window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
           .then(result => {
-            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
+            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: { bullets: result.bullets ?? [], themes: result.themes ?? [] } }));
           })
           .catch(() => {
-            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
+            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: { bullets: [], themes: [] } }));
           });
       });
     }
@@ -2726,27 +2725,24 @@ Everything you write is end-to-end encrypted and private.`,
                         {lastSnapshot?.notes && (
                           <div>
                             <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>What You Covered</div>
-                            {summaryLoading && !sessionNotesSummary[lastSnapshot?.parseId] ? (
-                              <div style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>Summarizing…</div>
-                            ) : sessionNotesSummary[lastSnapshot?.parseId]?.length > 0 ? (
-                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {sessionNotesSummary[lastSnapshot.parseId].map((bullet, i) => (
-                                  <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                    <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
-                                    {bullet}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                {lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3).map((line, i) => (
-                                  <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                    <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
-                                    {line}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                            {(() => {
+                              if (summaryLoading && !sessionNotesSummary[lastSnapshot?.parseId]) {
+                                return <div style={{ fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>Summarizing…</div>;
+                              }
+                              const raw = sessionNotesSummary[lastSnapshot?.parseId];
+                              const bullets = Array.isArray(raw) ? raw : (raw?.bullets ?? []);
+                              const lines = bullets.length > 0 ? bullets : lastSnapshot.notes.split('\n').map(s => s.trim()).filter(Boolean).slice(0, 3);
+                              return (
+                                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {lines.map((line, i) => (
+                                    <li key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                      <span style={{ color: '#9333ea', fontWeight: '600', flexShrink: 0 }}>•</span>
+                                      {line}
+                                    </li>
+                                  ))}
+                                </ul>
+                              );
+                            })()}
                           </div>
                         )}
                         {lastSnapshot?.nextSteps && (
@@ -3411,10 +3407,12 @@ Everything you write is end-to-end encrypted and private.`,
         {tab === 'sessions' && sessionView === 'progress' && (() => {
           const snapshots = [...realHistory].sort((a, b) => new Date(a.sessionDate) - new Date(b.sessionDate));
 
-          // Count macro theme frequency across all sessions (broader themes from analyzeJournal)
+          // Count macro theme frequency using session summary themes (from summarizeSessionNotes)
           const themeCount = {};
           snapshots.forEach(snap => {
-            (snap.questions || []).forEach(t => {
+            const raw = sessionNotesSummary[snap.parseId];
+            const themes = Array.isArray(raw) ? [] : (raw?.themes ?? []);
+            themes.forEach(t => {
               const key = t.toLowerCase().trim();
               themeCount[key] = (themeCount[key] || { count: 0, display: t, sessions: [] });
               themeCount[key].count++;
@@ -3478,14 +3476,19 @@ Everything you write is end-to-end encrypted and private.`,
                                 </div>
                               </div>
 
-                              {/* Macro theme bubbles */}
-                              {snap.questions?.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                  {snap.questions.map((t, ti) => (
-                                    <span key={ti} style={{ fontSize: '12px', color: '#7c3aed', background: 'rgba(147,51,234,0.08)', border: '1px solid rgba(147,51,234,0.15)', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
-                                  ))}
-                                </div>
-                              )}
+                              {/* Macro theme bubbles from session summary */}
+                              {(() => {
+                                const raw = sessionNotesSummary[snap.parseId];
+                                const themes = Array.isArray(raw) ? [] : (raw?.themes ?? []);
+                                if (!themes.length) return null;
+                                return (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                    {themes.map((t, ti) => (
+                                      <span key={ti} style={{ fontSize: '12px', color: '#7c3aed', background: 'rgba(147,51,234,0.08)', border: '1px solid rgba(147,51,234,0.15)', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
+                                    ))}
+                                  </div>
+                                );
+                              })()}
 
                               {snap.notes && (() => {
                                 const bullets = sessionNotesSummary[snap.parseId];
