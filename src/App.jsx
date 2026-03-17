@@ -578,7 +578,6 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
       themes: (o.get("themes") ?? []).map(t => decryptText(t, userEncryptionKey)),
       avoiding: (o.get("avoiding") ?? []).map(t => decryptText(t, userEncryptionKey)),
       questions: (o.get("questions") ?? []).map(t => decryptText(t, userEncryptionKey)),
-      openingStatement: decryptText(o.get("openingStatement") ?? "", userEncryptionKey),
       notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
       nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
       intention: decryptText(o.get("intention") ?? "", userEncryptionKey),
@@ -598,7 +597,6 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     obj.set("themes", (payload.themes ?? []).map(t => encryptText(t, userEncryptionKey)));
     obj.set("avoiding", (payload.avoiding ?? []).map(t => encryptText(t, userEncryptionKey)));
     obj.set("questions", (payload.questions ?? []).map(t => encryptText(t, userEncryptionKey)));
-    obj.set("openingStatement", encryptText(payload.openingStatement ?? "", userEncryptionKey));
     obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
     obj.set("intention", encryptText(payload.intention ?? "", userEncryptionKey));
@@ -777,7 +775,6 @@ Everything you write is end-to-end encrypted and private.`,
         themes: ["Capture at least 3 thoughts to see patterns"],
         avoiding: ["Begin capturing your thoughts between sessions"],
         questions: ["What would you like to explore?"],
-        openingStatement: "I think what I'd like to talk about today is just getting started.",
       };
       setAnalysis((prev) => ({
         ...(prev ?? {}),
@@ -815,7 +812,6 @@ Everything you write is end-to-end encrypted and private.`,
           themes: lastSnapshot.themes || [],
           avoiding: lastSnapshot.avoiding || [],
           questions: lastSnapshot.questions || [],
-          openingStatement: lastSnapshot.openingStatement || "I think what I'd like to talk about today is…",
           sessionDate: sessionDate || getDate(),
           showNewEntryWarning: true,
         }));
@@ -847,7 +843,6 @@ Everything you write is end-to-end encrypted and private.`,
         themes: result.themes || [],
         avoiding: result.avoiding || [],
         questions: result.questions || [],
-        openingStatement: result.openingStatement || "I think what I'd like to talk about today is…",
         sessionDate: sessionDate || getDate(),
         showNewEntryWarning: false,
       };
@@ -898,14 +893,30 @@ Everything you write is end-to-end encrypted and private.`,
     if (!analysis) return;
 
     const visibleSlice = (arr) => isPaidSubscriber ? (arr || []) : (arr || []).slice(0, 2);
+
+    // "What you wrote about" — topic names from the Before/Patterns analysis
+    const patternThemes = patternsData
+      ? (patternsData.themes || []).map(t => t.name || String(t)).filter(Boolean)
+      : visibleSlice(analysis.themes);
+
+    // "Patterns worth exploring" — all pattern cards (contradictions, unfinished thoughts, associations)
+    const patternInsights = patternsData
+      ? [
+          ...(patternsData.contradictions || []),
+          ...(patternsData.unfinished || []),
+          ...(patternsData.associations || []),
+        ]
+          .map(p => p.description ? `${p.label}: ${p.description}` : p.label)
+          .filter(Boolean)
+      : visibleSlice(analysis.avoiding);
+
     const payload = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       sessionDate: sessionDate || getDate(),
-      themes: visibleSlice(analysis.themes),
-      avoiding: visibleSlice(analysis.avoiding),
-      questions: visibleSlice(analysis.questions),
-      openingStatement: analysis.openingStatement || "",
+      themes: patternThemes,
+      avoiding: patternInsights,
+      questions: visibleSlice(analysis.questions), // broader themes from journal analysis
       notes: notes || "",
       nextSteps: nextSteps || "",
       intention: sessionIntention || "",
@@ -925,6 +936,8 @@ Everything you write is end-to-end encrypted and private.`,
       setCheckedTopics(new Set());
       setExtraTopics([]);
       setFlaggedForSession([]);
+      setPatternsData(null);
+      setPatternsLastEntryId(null);
       setTab("journal");
       setJournalView("log");
       // Fire session snapshot message async (don't block UI)
@@ -3455,10 +3468,9 @@ Everything you write is end-to-end encrypted and private.`,
                                 </div>
                               )}
 
-                              {/* Opening statement / notes */}
-                              {(snap.openingStatement || snap.notes) && (
+                              {snap.notes && (
                                 <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>
-                                  "{snap.openingStatement || snap.notes}"
+                                  "{snap.notes}"
                                 </p>
                               )}
 
