@@ -2064,6 +2064,7 @@ Everything you write is end-to-end encrypted and private.`,
               {[
                 ["prep", "Before"],
                 ["after", "After"],
+                ["progress", "Progress"],
               ].map(([view, label]) => (
                 <button
                   key={view}
@@ -2964,7 +2965,7 @@ Everything you write is end-to-end encrypted and private.`,
                           prev.includes(selectionKey) ? prev.filter(t => t !== selectionKey) : [...prev, selectionKey]
                         );
                         return (
-                          <div style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          <div onClick={toggleSelect} style={{ padding: '14px 16px', paddingLeft: isSelected ? '11px' : '16px', borderRadius: '12px', background: isSelected ? 'rgba(187,247,208,0.55)' : 'rgba(216,180,254,0.15)', border: '1px solid rgba(147,51,234,0.12)', borderLeft: isSelected ? '4px solid #16a34a' : '1px solid rgba(147,51,234,0.12)', display: 'flex', flexDirection: 'column', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                               <div style={{ fontSize: '11px', fontWeight: '700', color: isSelected ? '#15803d' : '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{pattern.label}</div>
                               {isSelected && <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700', flexShrink: 0 }}>✓</div>}
@@ -2982,12 +2983,6 @@ Everything you write is end-to-end encrypted and private.`,
                               );
                             })}
                             {pattern.prompt && <p style={{ fontSize: '13px', color: '#7c3aed', margin: 0, fontStyle: 'italic', lineHeight: '1.5' }}>{pattern.prompt}</p>}
-                            <button
-                              onClick={toggleSelect}
-                              style={{ alignSelf: 'flex-start', padding: '6px 14px', borderRadius: '20px', border: isSelected ? 'none' : '1px solid #e9d5ff', background: isSelected ? '#16a34a' : 'rgba(255,255,255,0.7)', color: isSelected ? 'white' : '#7c3aed', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                            >
-                              {isSelected ? '✓ Added to key topics' : 'Bring this up'}
-                            </button>
                           </div>
                         );
                       };
@@ -3370,6 +3365,111 @@ Everything you write is end-to-end encrypted and private.`,
           </div>
         )}
 
+        {/* PROGRESS TIMELINE VIEW */}
+        {tab === 'sessions' && sessionView === 'progress' && (() => {
+          const snapshots = [...realHistory].sort((a, b) => new Date(a.sessionDate) - new Date(b.sessionDate));
+
+          // Count theme frequency across all sessions
+          const themeCount = {};
+          snapshots.forEach(snap => {
+            (snap.themes || []).forEach(t => {
+              const key = t.toLowerCase().trim();
+              themeCount[key] = (themeCount[key] || { count: 0, display: t, sessions: [] });
+              themeCount[key].count++;
+              themeCount[key].sessions.push(snap.sessionDate);
+            });
+          });
+          const recurringThemes = Object.values(themeCount).filter(t => t.count >= 3).sort((a, b) => b.count - a.count);
+
+          return (
+            <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px 16px 100px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+              {snapshots.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '60px 24px', background: 'rgba(255,255,255,0.7)', borderRadius: '24px', border: '1px solid #e9d5ff' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '16px' }}>🌱</div>
+                  <div style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif", marginBottom: '8px' }}>Your journey starts here</div>
+                  <div style={{ fontSize: '14px', color: '#7c3aed', lineHeight: '1.6' }}>Create a session snapshot after your first therapy session to begin tracking your progress.</div>
+                </div>
+              ) : (
+                <>
+                  {/* Recurring theme insights */}
+                  {recurringThemes.length > 0 && (
+                    <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: '20px', border: '1px solid #e9d5ff', padding: '20px 22px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: '700', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: '14px' }}>Recurring themes</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {recurringThemes.map((t, i) => (
+                          <div key={i} style={{ padding: '12px 14px', borderRadius: '12px', borderLeft: '4px solid #9333ea', background: '#faf5ff' }}>
+                            <div style={{ fontSize: '14px', color: '#581c87', fontWeight: '500', marginBottom: '2px' }}>{t.display}</div>
+                            <div style={{ fontSize: '12px', color: '#7c3aed' }}>Came up in {t.count} of your sessions</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Timeline */}
+                  <div style={{ position: 'relative' }}>
+                    {/* Connecting line */}
+                    <div style={{ position: 'absolute', left: '15px', top: '16px', bottom: '16px', width: '2px', background: 'linear-gradient(to bottom, #9333ea, #c084fc)', borderRadius: '2px' }} />
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      {[...snapshots].reverse().map((snap, i) => {
+                        const isFirst = i === snapshots.length - 1;
+                        const isLatest = i === 0;
+                        const dateStr = snap.sessionDate
+                          ? new Date(snap.sessionDate + 'T12:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+                          : '';
+                        return (
+                          <div key={snap.parseId || i} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                            {/* Timeline dot */}
+                            <div style={{ flexShrink: 0, width: '32px', height: '32px', borderRadius: '50%', background: isLatest ? 'linear-gradient(135deg, #9333ea, #7c3aed)' : 'linear-gradient(135deg, #c084fc, #a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: isLatest ? '0 2px 8px rgba(147,51,234,0.4)' : 'none', zIndex: 1, position: 'relative' }}>
+                              <span style={{ fontSize: '11px', fontWeight: '700', color: 'white' }}>{snapshots.length - i}</span>
+                            </div>
+
+                            {/* Card */}
+                            <div style={{ flex: 1, background: 'rgba(255,255,255,0.75)', borderRadius: '16px', border: '1px solid #e9d5ff', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#581c87' }}>{dateStr}</div>
+                                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                                  {isLatest && <span style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', background: 'rgba(147,51,234,0.1)', padding: '2px 10px', borderRadius: '20px' }}>Most recent</span>}
+                                  {isFirst && !isLatest && <span style={{ fontSize: '11px', fontWeight: '600', color: '#16a34a', background: 'rgba(22,163,74,0.1)', padding: '2px 10px', borderRadius: '20px' }}>First session</span>}
+                                </div>
+                              </div>
+
+                              {/* Themes */}
+                              {snap.themes?.length > 0 && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                  {snap.themes.map((t, ti) => (
+                                    <span key={ti} style={{ fontSize: '12px', color: '#7c3aed', background: 'rgba(147,51,234,0.08)', border: '1px solid rgba(147,51,234,0.15)', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Opening statement / notes */}
+                              {(snap.openingStatement || snap.notes) && (
+                                <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>
+                                  "{snap.openingStatement || snap.notes}"
+                                </p>
+                              )}
+
+                              {/* Intention */}
+                              {snap.intention && (
+                                <div style={{ fontSize: '12px', color: '#7c3aed', background: '#faf5ff', borderRadius: '8px', padding: '8px 10px' }}>
+                                  <span style={{ fontWeight: '600' }}>Intention: </span>{snap.intention}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
+
         {/* PATTERNS STICKY SELECTION BAR */}
         {tab === 'sessions' && sessionView === 'prep' && selectedPatterns.length > 0 && (
           <div style={{ position: 'fixed', bottom: '68px', left: 0, right: 0, zIndex: 999, padding: '0 16px' }}>
@@ -3385,7 +3485,7 @@ Everything you write is end-to-end encrypted and private.`,
                 }}
                 style={{ background: '#9333ea', color: 'white', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                Bring this up
+                Add to session topics
               </button>
             </div>
           </div>
