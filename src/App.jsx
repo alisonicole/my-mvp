@@ -575,13 +575,12 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
       id: o.get("clientId") ?? o.id,
       sessionDate: o.get("sessionDate") ?? getDate(),
       timestamp: o.get("timestamp") ?? o.createdAt?.toISOString?.() ?? new Date().toISOString(),
-      themes: (o.get("themes") ?? []).map(t => decryptText(t, userEncryptionKey)),
-      avoiding: (o.get("avoiding") ?? []).map(t => decryptText(t, userEncryptionKey)),
-      questions: (o.get("questions") ?? []).map(t => decryptText(t, userEncryptionKey)),
       notes: decryptText(o.get("notes") ?? "", userEncryptionKey),
+      prepNote: decryptText(o.get("prepNote") ?? "", userEncryptionKey),
       nextSteps: decryptText(o.get("nextSteps") ?? "", userEncryptionKey),
       intention: decryptText(o.get("intention") ?? "", userEncryptionKey),
-      intentionCheckIns: o.get("intentionCheckIns") ?? [],
+      avoiding: (o.get("avoiding") ?? []).map(t => decryptText(t, userEncryptionKey)),
+      discussedTopics: o.get("discussedTopics") ?? [],
       isExampleSnapshot: o.get("isExampleSnapshot") ?? false,
     }));
   }
@@ -594,13 +593,11 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     obj.set("clientId", payload.id ?? Date.now());
     obj.set("sessionDate", payload.sessionDate ?? getDate());
     obj.set("timestamp", payload.timestamp ?? new Date().toISOString());
-    obj.set("themes", (payload.themes ?? []).map(t => encryptText(t, userEncryptionKey)));
-    obj.set("avoiding", (payload.avoiding ?? []).map(t => encryptText(t, userEncryptionKey)));
-    obj.set("questions", (payload.questions ?? []).map(t => encryptText(t, userEncryptionKey)));
     obj.set("notes", encryptText(payload.notes ?? "", userEncryptionKey));
+    obj.set("prepNote", encryptText(payload.prepNote ?? "", userEncryptionKey));
     obj.set("nextSteps", encryptText(payload.nextSteps ?? "", userEncryptionKey));
     obj.set("intention", encryptText(payload.intention ?? "", userEncryptionKey));
-    obj.set("intentionCheckIns", payload.intentionCheckIns ?? []);
+    obj.set("avoiding", (payload.avoiding ?? []).map(t => encryptText(t, userEncryptionKey)));
     obj.set("discussedTopics", payload.discussedTopics ?? []);
     if (payload.isExampleSnapshot) obj.set("isExampleSnapshot", true);
     const saved = await obj.save();
@@ -910,14 +907,7 @@ Everything you write is end-to-end encrypted and private.`,
   const moveToArchive = async () => {
     if (!analysis) return;
 
-    const visibleSlice = (arr) => isPaidSubscriber ? (arr || []) : (arr || []).slice(0, 2);
-
-    // "What you wrote about" — topic names from the Before/Patterns analysis
-    const patternThemes = patternsData
-      ? (patternsData.themes || []).map(t => t.name || String(t)).filter(Boolean)
-      : visibleSlice(analysis.themes);
-
-    // "Patterns worth exploring" — all pattern cards (contradictions, unfinished thoughts, associations)
+    // Patterns — all pattern cards from the Before view (contradictions, unfinished thoughts, associations)
     const patternInsights = patternsData
       ? [
           ...(patternsData.contradictions || []),
@@ -926,19 +916,17 @@ Everything you write is end-to-end encrypted and private.`,
         ]
           .map(p => p.description ? `${p.label}: ${p.description}` : p.label)
           .filter(Boolean)
-      : visibleSlice(analysis.avoiding);
+      : [];
 
     const payload = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       sessionDate: sessionDate || getDate(),
-      themes: patternThemes,
-      avoiding: patternInsights,
-      questions: visibleSlice(analysis.questions), // broader themes from journal analysis
       notes: notes || "",
+      prepNote: sessionPrepNote || "",
       nextSteps: nextSteps || "",
       intention: sessionIntention || "",
-      intentionCheckIns: [],
+      avoiding: patternInsights,
       discussedTopics: Array.from(checkedTopics).map(i => extraTopics[i]).filter(Boolean),
     };
 
@@ -2450,62 +2438,44 @@ Everything you write is end-to-end encrypted and private.`,
                                     </div>
                                   )}
 
+                                  {item.data.prepNote && (
+                                    <div>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>What I Wanted to Discuss</h4>
+                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                                        {item.data.prepNote}
+                                      </p>
+                                    </div>
+                                  )}
+
                                   <div>
-                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>What You Covered</h4>
+                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Session Notes</h4>
                                     <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                                       {item.data.notes || "—"}
                                     </p>
                                   </div>
 
-                                  <div>
-                                    <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Next Steps</h4>
-                                    <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                      {item.data.nextSteps || "—"}
-                                    </p>
-                                  </div>
+                                  {item.data.nextSteps && (
+                                    <div>
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Next Steps</h4>
+                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>{item.data.nextSteps}</p>
+                                    </div>
+                                  )}
 
                                   {item.data.intention && (
                                     <div>
                                       <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Intention</h4>
-                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word' }}>
-                                        {item.data.intention}
-                                      </p>
+                                      <p style={{ color: '#7c3aed', whiteSpace: 'pre-wrap', margin: 0, wordBreak: 'break-word', overflowWrap: 'break-word', fontStyle: 'italic' }}>{item.data.intention}</p>
                                     </div>
                                   )}
 
-                                  {(item.data.themes?.length > 0 || item.data.avoiding?.length > 0 || item.data.questions?.length > 0) && (
+                                  {item.data.avoiding?.length > 0 && (
                                     <div>
-                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '12px', fontSize: '14px' }}>Session Summary</h4>
-                                      {item.data.themes?.length > 0 && (
-                                        <div style={{ marginBottom: '12px' }}>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>What you wrote about:</p>
-                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                            {item.data.themes.map((theme, i) => (
-                                              <li key={i} style={{ marginBottom: '4px' }}>{theme}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      {item.data.avoiding?.length > 0 && (
-                                        <div style={{ marginBottom: '12px' }}>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Patterns worth exploring:</p>
-                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                            {item.data.avoiding.map((avoid, i) => (
-                                              <li key={i} style={{ marginBottom: '4px' }}>{avoid}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
-                                      {item.data.questions?.length > 0 && (
-                                        <div>
-                                          <p style={{ fontWeight: '500', color: '#7c3aed', marginBottom: '4px', fontSize: '13px' }}>Broader themes:</p>
-                                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#581c87' }}>
-                                            {item.data.questions.map((question, i) => (
-                                              <li key={i} style={{ marginBottom: '4px' }}>{question}</li>
-                                            ))}
-                                          </ul>
-                                        </div>
-                                      )}
+                                      <h4 style={{ fontWeight: '600', color: '#581c87', marginBottom: '8px', fontSize: '14px' }}>Patterns</h4>
+                                      <ul style={{ margin: 0, paddingLeft: '18px', color: '#581c87' }}>
+                                        {item.data.avoiding.map((p, i) => (
+                                          <li key={i} style={{ marginBottom: '4px', fontSize: '14px', lineHeight: '1.5' }}>{p}</li>
+                                        ))}
+                                      </ul>
                                     </div>
                                   )}
                                 </div>
@@ -2711,13 +2681,6 @@ Everything you write is end-to-end encrypted and private.`,
                     {/* Collapsible content */}
                     {recallOpen && (
                       <div style={{ padding: '0 24px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {/* Intention of the week */}
-                        {lastSnapshot?.intention && (
-                          <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)', borderRadius: '12px', border: '1px solid #e9d5ff' }}>
-                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>Intention of the Week</div>
-                            <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.5', fontStyle: 'italic' }}>{lastSnapshot.intention}</p>
-                          </div>
-                        )}
                         <div>
                           <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Date</div>
                           <div style={{ fontSize: '15px', color: '#581c87' }}>{formatDate(lastSnapshot?.sessionDate || getDate())}</div>
@@ -2747,8 +2710,14 @@ Everything you write is end-to-end encrypted and private.`,
                         )}
                         {lastSnapshot?.nextSteps && (
                           <div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Follow Ups</div>
-                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word', overflowWrap: 'break-word' }}>{lastSnapshot.nextSteps}</p>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Next Steps</div>
+                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', wordBreak: 'break-word' }}>{lastSnapshot.nextSteps}</p>
+                          </div>
+                        )}
+                        {lastSnapshot?.intention && (
+                          <div>
+                            <div style={{ fontSize: '12px', fontWeight: '600', color: '#9333ea', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Intention</div>
+                            <p style={{ color: '#581c87', whiteSpace: 'pre-wrap', margin: 0, fontSize: '14px', lineHeight: '1.6', fontStyle: 'italic' }}>{lastSnapshot.intention}</p>
                           </div>
                         )}
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -3153,20 +3122,6 @@ Everything you write is end-to-end encrypted and private.`,
                         />
                       </div>
 
-                      {/* Intention of the week */}
-                      <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-                          Intention of the week
-                        </label>
-                        <input
-                          type="text"
-                          value={sessionIntention}
-                          onChange={(e) => setSessionIntention(e.target.value)}
-                          placeholder="What do you want to carry forward from this session?"
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', background: 'rgba(255,255,255,0.8)', color: '#581c87', boxSizing: 'border-box' }}
-                        />
-                      </div>
-
                       <h2 style={{ fontSize: '24px', fontWeight: '300', color: '#581c87', marginBottom: '12px' }}>
                         How did your session go?
                       </h2>
@@ -3188,14 +3143,23 @@ Everything you write is end-to-end encrypted and private.`,
                       />
 
                       <div style={{ marginBottom: '24px' }}>
-                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
-                          Next Steps
-                        </label>
+                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>Next Steps</label>
                         <textarea
                           value={nextSteps}
                           onChange={(e) => setNextSteps(e.target.value)}
                           placeholder="Homework, things to work on, reminders for next time..."
-                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '128px' }}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', resize: 'none', background: 'rgba(255,255,255,0.8)', color: '#581c87', height: '100px', boxSizing: 'border-box' }}
+                        />
+                      </div>
+
+                      <div style={{ marginBottom: '24px' }}>
+                        <label style={{ display: 'block', color: '#7c3aed', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>Intention</label>
+                        <input
+                          type="text"
+                          value={sessionIntention}
+                          onChange={(e) => setSessionIntention(e.target.value)}
+                          placeholder="What do you want to carry forward from this session?"
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '15px', background: 'rgba(255,255,255,0.8)', color: '#581c87', boxSizing: 'border-box' }}
                         />
                       </div>
 
@@ -3203,7 +3167,7 @@ Everything you write is end-to-end encrypted and private.`,
                         <span style={{ fontSize: '16px', flexShrink: 0 }}>📋</span>
                         <div>
                           <p style={{ fontSize: '13px', color: '#6b21a8', margin: '0 0 4px 0', lineHeight: '1.5', fontWeight: '500' }}>What gets saved in your Session Snapshot</p>
-                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>What you covered, next steps, intention, and a session summary — what you wrote about, patterns worth exploring, and broader themes.</p>
+                          <p style={{ fontSize: '13px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>Session notes, next steps, intention, what you wanted to discuss, key topics, and patterns.</p>
                         </div>
                       </div>
 
@@ -3285,6 +3249,13 @@ Everything you write is end-to-end encrypted and private.`,
                 >×</button>
               </div>
 
+              {homeSessionModal.prepNote && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What I Wanted to Discuss</div>
+                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.prepNote}</p>
+                </div>
+              )}
+
               {homeSessionModal.discussedTopics?.length > 0 && (
                 <div style={{ marginBottom: '20px' }}>
                   <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Key Topics</div>
@@ -3297,20 +3268,19 @@ Everything you write is end-to-end encrypted and private.`,
               )}
 
               <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>What You Covered</div>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Session Notes</div>
                 {homeSessionModal.notes
                   ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.notes}</p>
                   : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
                 }
               </div>
 
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Next Steps</div>
-                {homeSessionModal.nextSteps
-                  ? <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
-                  : <p style={{ fontSize: '14px', color: '#9ca3af', margin: 0, fontStyle: 'italic' }}>—</p>
-                }
-              </div>
+              {homeSessionModal.nextSteps && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Next Steps</div>
+                  <p style={{ fontSize: '14px', color: '#581c87', margin: 0, lineHeight: '1.7', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{homeSessionModal.nextSteps}</p>
+                </div>
+              )}
 
               {homeSessionModal.intention && (
                 <div style={{ marginBottom: '20px' }}>
@@ -3319,47 +3289,18 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
               )}
 
-              {(() => {
-                const themes = (homeSessionModal.themes ?? []).filter(t => t && t !== 'Capture at least 3 thoughts to see patterns');
-                const avoiding = (homeSessionModal.avoiding ?? []).filter(Boolean);
-                const questions = (homeSessionModal.questions ?? []).filter(Boolean);
-                if (!themes.length && !avoiding.length && !questions.length) return null;
-                return (
-                  <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Session Summary</div>
-                    {themes.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>What you wrote about</div>
-                        {themes.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
-                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
-                          </div>
-                        ))}
+              {homeSessionModal.avoiding?.length > 0 && (
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#9333ea', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Patterns</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {homeSessionModal.avoiding.map((p, i) => (
+                      <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px' }}>
+                        <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{p}
                       </div>
-                    )}
-                    {avoiding.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Patterns worth exploring</div>
-                        {avoiding.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
-                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {questions.length > 0 && (
-                      <div>
-                        <div style={{ fontSize: '12px', fontWeight: '600', color: '#7c3aed', marginBottom: '6px' }}>Broader themes</div>
-                        {questions.slice(0, isPaidSubscriber ? undefined : 2).map((t, i) => (
-                          <div key={i} style={{ fontSize: '14px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '8px', marginBottom: '4px' }}>
-                            <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{t}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                );
-              })()}
+                </div>
+              )}
             </div>
           </div>
         )}
