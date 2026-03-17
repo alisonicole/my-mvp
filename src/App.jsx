@@ -752,21 +752,40 @@ Everything you write is end-to-end encrypted and private.`,
     }
   }, [currentUser]);
 
-  // Auto-summarize last session notes when opening prep view
+  // Auto-summarize session notes for prep view (latest) and progress view (all)
   useEffect(() => {
-    if (tab !== 'sessions' || sessionView !== 'prep') return;
-    const snap = history.filter(h => !h.isExampleSnapshot)[0] ?? history[0] ?? null;
-    if (!snap?.notes || !snap?.parseId) return;
-    if (sessionNotesSummary[snap.parseId] !== undefined) return;
-    setSummaryLoading(true);
-    window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
-      .then(result => {
-        setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
-      })
-      .catch(() => {
-        setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
-      })
-      .finally(() => setSummaryLoading(false));
+    if (tab !== 'sessions') return;
+    const realHistory = history.filter(h => !h.isExampleSnapshot);
+
+    if (sessionView === 'prep') {
+      const snap = realHistory[0] ?? history[0] ?? null;
+      if (!snap?.notes || !snap?.parseId) return;
+      if (sessionNotesSummary[snap.parseId] !== undefined) return;
+      setSummaryLoading(true);
+      window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
+        .then(result => {
+          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
+        })
+        .catch(() => {
+          setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
+        })
+        .finally(() => setSummaryLoading(false));
+    }
+
+    if (sessionView === 'progress') {
+      const unsummarized = realHistory.filter(s => s.notes && s.parseId && sessionNotesSummary[s.parseId] === undefined);
+      if (!unsummarized.length) return;
+      // Summarize sequentially to avoid hammering the API
+      unsummarized.forEach(snap => {
+        window.Parse.Cloud.run('summarizeSessionNotes', { notes: snap.notes })
+          .then(result => {
+            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: result.bullets ?? [] }));
+          })
+          .catch(() => {
+            setSessionNotesSummary(prev => ({ ...prev, [snap.parseId]: [] }));
+          });
+      });
+    }
   }, [tab, sessionView]);
 
   const genAnalysis = async () => {
@@ -3392,10 +3411,10 @@ Everything you write is end-to-end encrypted and private.`,
         {tab === 'sessions' && sessionView === 'progress' && (() => {
           const snapshots = [...realHistory].sort((a, b) => new Date(a.sessionDate) - new Date(b.sessionDate));
 
-          // Count theme frequency across all sessions
+          // Count macro theme frequency across all sessions (broader themes from analyzeJournal)
           const themeCount = {};
           snapshots.forEach(snap => {
-            (snap.themes || []).forEach(t => {
+            (snap.questions || []).forEach(t => {
               const key = t.toLowerCase().trim();
               themeCount[key] = (themeCount[key] || { count: 0, display: t, sessions: [] });
               themeCount[key].count++;
@@ -3459,20 +3478,33 @@ Everything you write is end-to-end encrypted and private.`,
                                 </div>
                               </div>
 
-                              {/* Themes */}
-                              {snap.themes?.length > 0 && (
+                              {/* Macro theme bubbles */}
+                              {snap.questions?.length > 0 && (
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                  {snap.themes.map((t, ti) => (
+                                  {snap.questions.map((t, ti) => (
                                     <span key={ti} style={{ fontSize: '12px', color: '#7c3aed', background: 'rgba(147,51,234,0.08)', border: '1px solid rgba(147,51,234,0.15)', padding: '3px 10px', borderRadius: '20px' }}>{t}</span>
                                   ))}
                                 </div>
                               )}
 
-                              {snap.notes && (
-                                <p style={{ fontSize: '13px', color: '#581c87', margin: 0, lineHeight: '1.6', fontStyle: 'italic' }}>
-                                  "{snap.notes}"
-                                </p>
-                              )}
+                              {snap.notes && (() => {
+                                const bullets = sessionNotesSummary[snap.parseId];
+                                if (bullets === undefined) {
+                                  return <p style={{ fontSize: '13px', color: '#a78bfa', margin: 0, fontStyle: 'italic' }}>Summarizing…</p>;
+                                }
+                                if (bullets.length > 0) {
+                                  return (
+                                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                      {bullets.map((b, bi) => (
+                                        <li key={bi} style={{ fontSize: '13px', color: '#581c87', lineHeight: '1.5', display: 'flex', gap: '6px' }}>
+                                          <span style={{ color: '#9333ea', flexShrink: 0 }}>•</span>{b}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  );
+                                }
+                                return null;
+                              })()}
 
                               {/* Intention */}
                               {snap.intention && (
