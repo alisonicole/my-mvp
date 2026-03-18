@@ -186,8 +186,8 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
   // Onboarding
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
-  const [therapyDays, setTherapyDays] = useState([]); // array of day names
-  const [therapyTime, setTherapyTime] = useState('');
+  const [sessionDays, setSessionDays] = useState([]); // array of day names
+  const [sessionTime, setSessionTime] = useState('');
   const [onboardingEntry, setOnboardingEntry] = useState('');
 
   // Engagement messages
@@ -496,8 +496,8 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     setNextSteps("");
     setSessionIntention("");
     setSessionPrepNote("");
-    setTherapyDays([]);
-    setTherapyTime('');
+    setSessionDays([]);
+    setSessionTime('');
     setDisplayName("");
     setSavedPrompts([]);
     setFavoritedPatterns([]);
@@ -663,12 +663,12 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
 Here's how to get the most out of your journaling practice:
 
 📝 Write Between Sessions
-Capture thoughts, feelings, and moments as they come up between therapy sessions. Don't wait until your next appointment — write when something resonates.
+Capture thoughts, feelings, and moments as they come up between sessions. Don't wait until your next appointment — write when something resonates.
 
 ✨ Get AI Insights
 After a few entries, go to the Patterns tab to see what themes are emerging in your life.
 
-💬 Prep for Therapy
+💬 Prep for Session
 Before your session, tap Sessions to review what you've been working through and get a suggested conversation starter.
 
 🎤 Use Voice Input
@@ -712,15 +712,15 @@ Everything you write is end-to-end encrypted and private.`,
         const sp = currentUser.get("savedPrompts");
         if (Array.isArray(sp)) setSavedPrompts(sp);
 
-        const tds = currentUser.get("therapyDays");
-        const tt = currentUser.get("therapyTime");
+        const tds = currentUser.get("sessionDays");
+        const tt = currentUser.get("sessionTime");
         if (Array.isArray(tds) && tds.length > 0) {
-          setTherapyDays(tds);
+          setSessionDays(tds);
         } else {
           const legacyTd = currentUser.get("therapyDay");
-          if (legacyTd) setTherapyDays([legacyTd]);
+          if (legacyTd) setSessionDays([legacyTd]);
         }
-        if (tt) setTherapyTime(tt);
+        if (tt) setSessionTime(tt);
 
         // Load key topics from Parse (cross-device); if none set, pre-populate from analysis avoiding
         const kt = currentUser.get("keyTopics");
@@ -782,7 +782,7 @@ Everything you write is end-to-end encrypted and private.`,
           });
       });
     }
-  }, [tab, sessionView]);
+  }, [tab, sessionView, history]);
 
   const genAnalysis = async () => {
     if (entries.length < 3) {
@@ -1101,7 +1101,7 @@ Everything you write is end-to-end encrypted and private.`,
             <Logo />
           </div>
           <p style={{ color: '#7c3aed', fontSize: '16px', textAlign: 'center', marginBottom: '32px' }}>
-            Capture what comes up between therapy sessions and bring it into the room
+            Capture what comes up between sessions and bring it into the room
           </p>
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
@@ -1253,14 +1253,14 @@ Everything you write is end-to-end encrypted and private.`,
   }
 
   // ── ONBOARDING OVERLAY ──────────────────────────────────────────────────────
-  const saveTherapySchedule = async (day, time) => {
+  const saveSessionSchedule = async (day, time) => {
     if (currentUser && Parse) {
-      currentUser.set("therapyDays", day);
-      currentUser.set("therapyTime", time);
+      currentUser.set("sessionDays", day);
+      currentUser.set("sessionTime", time);
       await currentUser.save().catch(() => {});
     }
-    setTherapyDays(day);
-    setTherapyTime(time);
+    setSessionDays(day);
+    setSessionTime(time);
   };
 
   const finishOnboarding = async (firstEntryText) => {
@@ -1304,7 +1304,7 @@ Everything you write is end-to-end encrypted and private.`,
                 Welcome to between
               </h2>
               <p style={{ fontSize: '16px', color: '#7c3aed', margin: 0, lineHeight: '1.6' }}>
-                A private space to process what comes up between therapy sessions.
+                A private space to process what comes up between sessions.
               </p>
             </div>
 
@@ -1312,7 +1312,7 @@ Everything you write is end-to-end encrypted and private.`,
               {[
                 { icon: '📝', title: 'Write between sessions', desc: 'Capture thoughts, feelings, and moments as they arise — not just before your appointment.' },
                 { icon: '✨', title: 'Discover patterns', desc: 'After a few entries, AI surfaces themes and what you might be avoiding.' },
-                { icon: '💬', title: 'Prep for therapy', desc: 'Get a suggested opening statement and key topics to bring into the room.' },
+                { icon: '💬', title: 'Prep for Session', desc: 'Get a suggested opening statement and key topics to bring into the room.' },
               ].map(({ icon, title, desc }) => (
                 <div key={title} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start', background: 'rgba(147,51,234,0.05)', border: '1px solid rgba(147,51,234,0.12)', borderRadius: '14px', padding: '16px' }}>
                   <div style={{ fontSize: '24px', flexShrink: 0, lineHeight: 1 }}>{icon}</div>
@@ -1340,7 +1340,7 @@ Everything you write is end-to-end encrypted and private.`,
             <div style={{ textAlign: 'center', marginBottom: '28px' }}>
               <div style={{ fontSize: '36px', marginBottom: '10px' }}>🗓️</div>
               <h2 style={{ fontSize: '24px', fontWeight: '400', color: '#581c87', margin: '0 0 8px 0', fontFamily: "'Crimson Pro', serif" }}>
-                When is your therapy session?
+                When is your session?
               </h2>
               <p style={{ fontSize: '14px', color: '#7c3aed', margin: 0, lineHeight: '1.5' }}>
                 We'll personalize your home screen based on where you are in the week.
@@ -1356,8 +1356,8 @@ Everything you write is end-to-end encrypted and private.`,
                   {DAYS.map(d => (
                     <button
                       key={d}
-                      onClick={() => setTherapyDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
-                      style={{ padding: '8px 16px', borderRadius: '20px', border: '2px solid', borderColor: therapyDays.includes(d) ? '#9333ea' : '#e9d5ff', background: therapyDays.includes(d) ? '#9333ea' : 'white', color: therapyDays.includes(d) ? 'white' : '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s' }}
+                      onClick={() => setSessionDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d])}
+                      style={{ padding: '8px 16px', borderRadius: '20px', border: '2px solid', borderColor: sessionDays.includes(d) ? '#9333ea' : '#e9d5ff', background: sessionDays.includes(d) ? '#9333ea' : 'white', color: sessionDays.includes(d) ? 'white' : '#7c3aed', fontSize: '14px', fontWeight: '500', cursor: 'pointer', transition: 'all 0.15s' }}
                     >
                       {d.slice(0, 3)}
                     </button>
@@ -1370,8 +1370,8 @@ Everything you write is end-to-end encrypted and private.`,
                   Approximate time <span style={{ color: '#9ca3af', fontWeight: '400' }}>(optional)</span>
                 </label>
                 <select
-                  value={therapyTime}
-                  onChange={e => setTherapyTime(e.target.value)}
+                  value={sessionTime}
+                  onChange={e => setSessionTime(e.target.value)}
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '2px solid #e9d5ff', outline: 'none', fontSize: '16px', background: 'white', color: '#581c87', cursor: 'pointer' }}
                 >
                   <option value="">Select a time...</option>
@@ -1382,10 +1382,10 @@ Everything you write is end-to-end encrypted and private.`,
 
             <button
               onClick={async () => {
-                if (therapyDays.length > 0) await saveTherapySchedule(therapyDays, therapyTime);
+                if (sessionDays.length > 0) await saveSessionSchedule(sessionDays, sessionTime);
                 setOnboardingStep(3);
               }}
-              style={{ width: '100%', padding: '14px', background: therapyDays.length > 0 ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: therapyDays.length > 0 ? 'pointer' : 'not-allowed', boxShadow: therapyDays.length > 0 ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
+              style={{ width: '100%', padding: '14px', background: sessionDays.length > 0 ? 'linear-gradient(135deg, #9333ea 0%, #7c3aed 100%)' : '#d1d5db', color: 'white', border: 'none', borderRadius: '14px', fontSize: '16px', fontWeight: '600', cursor: sessionDays.length > 0 ? 'pointer' : 'not-allowed', boxShadow: sessionDays.length > 0 ? '0 4px 16px rgba(147,51,234,0.35)' : 'none', marginBottom: '10px' }}
             >
               Continue →
             </button>
@@ -1631,7 +1631,7 @@ Everything you write is end-to-end encrypted and private.`,
             <h1 style={{ fontSize: '22px', fontWeight: '300', color: '#581c87', margin: 0 }}>between</h1>
             {tab === 'home' && (
               <p style={{ color: '#7c3aed', fontSize: '13px', margin: '4px 0 0 0' }}>
-                Capture what comes up between therapy sessions and bring it into the room
+                Capture what comes up between sessions and bring it into the room
               </p>
             )}
           </div>
@@ -1773,7 +1773,7 @@ Everything you write is end-to-end encrypted and private.`,
                 </div>
                 {[
                   { label: 'Capture a Thought', subtitle: 'Something on your mind?', action: () => { setTab('sessions'); setSessionView('between'); setJournalView('write'); }, primary: true },
-                  { label: 'Prep for Session', subtitle: 'Organize your thoughts before therapy', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
+                  { label: 'Prep for Session', subtitle: 'Organize your thoughts before your session', action: () => { setTab('sessions'); setSessionView('prep'); }, primary: false },
                   { label: 'Reflect on Session', subtitle: 'How did your session go?', action: () => { setTab('sessions'); setSessionView('after'); }, primary: false },
                   { label: 'View All Thoughts', subtitle: "Review what you've captured", action: () => { setTab('sessions'); setSessionView('between'); setJournalView('log'); }, primary: false },
                 ].map(({ label, subtitle, action, primary }, idx, arr) => (
@@ -1947,16 +1947,16 @@ Everything you write is end-to-end encrypted and private.`,
 
                 <div style={{ padding: '16px', background: 'rgba(147,51,234,0.05)', borderRadius: '12px', border: '1px solid rgba(147,51,234,0.1)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>Therapy Schedule</div>
+                    <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: '500' }}>Session Schedule</div>
                     <button
                       onClick={() => { setShowOnboarding(true); setOnboardingStep(2); }}
                       style={{ background: 'none', border: 'none', color: '#9333ea', cursor: 'pointer', fontSize: '12px', fontWeight: '500', padding: '2px 6px' }}
                     >
-                      {therapyDays.length > 0 ? 'Edit' : 'Set'}
+                      {sessionDays.length > 0 ? 'Edit' : 'Set'}
                     </button>
                   </div>
                   <div style={{ fontSize: '16px', color: '#581c87' }}>
-                    {therapyDays.length > 0 ? `${therapyDays.join(', ')}${therapyTime ? ` at ${therapyTime}` : ''}` : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
+                    {sessionDays.length > 0 ? `${sessionDays.join(', ')}${sessionTime ? ` at ${sessionTime}` : ''}` : <span style={{ color: '#9ca3af', fontStyle: 'italic' }}>Not set</span>}
                   </div>
                 </div>
               </div>
@@ -3380,7 +3380,7 @@ Everything you write is end-to-end encrypted and private.`,
                 <div style={{ textAlign: 'center', padding: '60px 24px', background: 'rgba(255,255,255,0.7)', borderRadius: '24px', border: '1px solid #e9d5ff' }}>
                   <div style={{ fontSize: '40px', marginBottom: '16px' }}>🌱</div>
                   <div style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', fontFamily: "'Crimson Pro', serif", marginBottom: '8px' }}>Your journey starts here</div>
-                  <div style={{ fontSize: '14px', color: '#7c3aed', lineHeight: '1.6' }}>Create a session snapshot after your first therapy session to begin tracking your progress.</div>
+                  <div style={{ fontSize: '14px', color: '#7c3aed', lineHeight: '1.6' }}>Create a session snapshot after your first session to begin tracking your progress.</div>
                 </div>
               ) : (
                 <>
