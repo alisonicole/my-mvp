@@ -3077,6 +3077,53 @@ Everything you write is end-to-end encrypted and private.`,
                       );
                     })()}
 
+                    {/* Themes / Avoiding / Questions from journal analysis */}
+                    {analysis && (
+                      <>
+                        {(analysis.themes || []).length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Themes</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {(isPaidSubscriber ? analysis.themes : analysis.themes.slice(0, 2)).map((theme, i) => (
+                                <span key={i} style={{ padding: '6px 14px', background: 'rgba(147,51,234,0.1)', borderRadius: '20px', fontSize: '13px', color: '#581c87', fontWeight: '500' }}>{theme}</span>
+                              ))}
+                              {!isPaidSubscriber && analysis.themes.length > 2 && (
+                                <span style={{ padding: '6px 14px', background: 'rgba(147,51,234,0.05)', border: '1px dashed #c084fc', borderRadius: '20px', fontSize: '13px', color: '#9ca3af' }}>+{analysis.themes.length - 2} more (Premium)</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {(analysis.avoiding || []).length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>What you might be avoiding</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {(isPaidSubscriber ? analysis.avoiding : analysis.avoiding.slice(0, 2)).map((item, i) => (
+                                <div key={i} style={{ padding: '10px 14px', background: 'rgba(237,233,254,0.5)', borderRadius: '10px', border: '1px solid rgba(147,51,234,0.1)', fontSize: '14px', color: '#581c87', lineHeight: '1.5' }}>{item}</div>
+                              ))}
+                              {!isPaidSubscriber && analysis.avoiding.length > 2 && (
+                                <div style={{ padding: '10px 14px', background: 'rgba(147,51,234,0.03)', border: '1px dashed #c084fc', borderRadius: '10px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>+{analysis.avoiding.length - 2} more with Premium</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {(analysis.questions || []).length > 0 && (
+                          <div>
+                            <div style={{ fontSize: '11px', fontWeight: '600', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Open questions</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {(isPaidSubscriber ? analysis.questions : analysis.questions.slice(0, 2)).map((q, i) => (
+                                <div key={i} style={{ padding: '10px 14px', background: 'rgba(237,233,254,0.5)', borderRadius: '10px', border: '1px solid rgba(147,51,234,0.1)', fontSize: '14px', color: '#581c87', lineHeight: '1.5', fontStyle: 'italic' }}>{q}</div>
+                              ))}
+                              {!isPaidSubscriber && analysis.questions.length > 2 && (
+                                <div style={{ padding: '10px 14px', background: 'rgba(147,51,234,0.03)', border: '1px dashed #c084fc', borderRadius: '10px', fontSize: '13px', color: '#9ca3af', fontStyle: 'italic' }}>+{analysis.questions.length - 2} more with Premium</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+
                   </div>
                 </div>
 
