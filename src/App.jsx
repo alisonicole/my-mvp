@@ -787,6 +787,7 @@ Everything you write is end-to-end encrypted and private.`,
   }, [tab, sessionView, history]);
 
   const genAnalysis = async () => {
+    console.log('[genAnalysis] called, entries:', entries.length, 'loading:', loading);
     if (entries.length < 3) {
       const empty = {
         themes: ["Capture at least 3 thoughts to see patterns"],
@@ -821,7 +822,9 @@ Everything you write is end-to-end encrypted and private.`,
     if (entriesToAnalyze.length === 0) {
       entriesToAnalyze = journalEntries.slice(0, 20);
     }
-    
+
+    console.log('[genAnalysis] entriesToAnalyze:', entriesToAnalyze.length, 'lastSnapshot:', lastSnapshot?.sessionDate);
+
     const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
 
     setLoading(true);
@@ -884,6 +887,7 @@ Everything you write is end-to-end encrypted and private.`,
       setPatternsLoading(false);
     }
     // Also refresh journal analysis (themes / avoiding / questions)
+    console.log('[loadPatterns] calling genAnalysis');
     genAnalysis();
   };
 
