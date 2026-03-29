@@ -907,6 +907,8 @@ Everything you write is end-to-end encrypted and private.`,
     } finally {
       setPatternsLoading(false);
     }
+    // Also refresh journal analysis (themes / avoiding / questions)
+    genAnalysis();
   };
 
   const moveToArchive = async () => {
