@@ -3082,8 +3082,28 @@ Everything you write is end-to-end encrypted and private.`,
                       );
                     })()}
 
-                    {/* Themes / Avoiding / Questions from journal analysis */}
-                    {analysis && (
+                  </div>
+                </div>
+
+                {/* PATTERNS DEEP DIVE */}
+                <div style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.8)', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)' }}>
+                  <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Sparkles size={20} style={{ color: '#9333ea' }} />
+                      <h3 style={{ fontSize: '18px', fontWeight: '500', color: '#581c87', margin: 0 }}>Patterns Deep Dive</h3>
+                    </div>
+
+                    {loading && (
+                      <div style={{ textAlign: 'center', padding: '16px 0', color: '#a78bfa', fontSize: '14px' }}>Analyzing…</div>
+                    )}
+
+                    {!loading && !analysis && (
+                      <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                        <p style={{ color: '#9ca3af', fontSize: '14px', margin: '0 0 12px 0' }}>Add at least 3 journal entries, then hit Refresh in Patterns above.</p>
+                      </div>
+                    )}
+
+                    {!loading && analysis && (
                       <>
                         {(analysis.themes || []).length > 0 && (
                           <div>
@@ -3128,7 +3148,6 @@ Everything you write is end-to-end encrypted and private.`,
                         )}
                       </>
                     )}
-
                   </div>
                 </div>
 
