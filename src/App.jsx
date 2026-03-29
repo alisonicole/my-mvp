@@ -803,38 +803,22 @@ Everything you write is end-to-end encrypted and private.`,
       return;
     }
 
-    const lastSnapshot = history?.[0];
-    const journalEntries = entries;
+    const realHistory = history.filter(h => !h.isExampleSnapshot);
+    const lastSnapshot = realHistory[0];
+    const journalEntries = entries.filter(e => !e.isWelcomeEntry);
 
     let entriesToAnalyze = [];
-    let previousPatterns = null;
 
     if (lastSnapshot) {
-      const snapshotTime = new Date(lastSnapshot.timestamp).getTime();
-      const newEntries = journalEntries.filter(e => {
-        const entryTime = new Date(e.timestamp).getTime();
-        return entryTime > snapshotTime;
-      });
-
-      if (newEntries.length > 0) {
-        entriesToAnalyze = newEntries.slice(0, 20);
-        previousPatterns = {
-          themes: lastSnapshot.themes || [],
-          avoiding: lastSnapshot.avoiding || [],
-          questions: lastSnapshot.questions || []
-        };
-      } else {
-        setAnalysis((prev) => ({
-          ...(prev ?? {}),
-          themes: lastSnapshot.themes || [],
-          avoiding: lastSnapshot.avoiding || [],
-          questions: lastSnapshot.questions || [],
-          sessionDate: sessionDate || getDate(),
-          showNewEntryWarning: true,
-        }));
-        return;
-      }
+      const cutoffDate = lastSnapshot.sessionDate || lastSnapshot.timestamp?.slice(0, 10);
+      entriesToAnalyze = cutoffDate
+        ? journalEntries.filter(e => e.date >= cutoffDate).slice(0, 20)
+        : journalEntries.slice(0, 20);
     } else {
+      entriesToAnalyze = journalEntries.slice(0, 20);
+    }
+
+    if (entriesToAnalyze.length === 0) {
       entriesToAnalyze = journalEntries.slice(0, 20);
     }
     
@@ -847,8 +831,6 @@ Everything you write is end-to-end encrypted and private.`,
         entries: entriesToAnalyze.map(e =>
           e.prompt ? `Prompt: ${e.prompt}\n\nEntry: ${e.text}` : e.text
         ),
-        previousPatterns: previousPatterns,
-        isIncremental: !!previousPatterns,
         discussedTopics: discussedTopics.length > 0 ? discussedTopics : undefined,
       });
 
