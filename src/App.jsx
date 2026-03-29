@@ -830,11 +830,25 @@ Everything you write is end-to-end encrypted and private.`,
     setLoading(true);
     try {
       const discussedTopics = Array.from(checkedTopics).map(i => extraTopics[i]).filter(Boolean);
+
+      // Build last session context from snapshot fields
+      let lastSessionContext = undefined;
+      if (lastSnapshot) {
+        const parts = [];
+        if (lastSnapshot.prepNote) parts.push(`What I wanted to discuss: ${lastSnapshot.prepNote}`);
+        if (lastSnapshot.discussedTopics?.length) parts.push(`Key topics covered: ${lastSnapshot.discussedTopics.join(', ')}`);
+        if (lastSnapshot.avoiding?.length) parts.push(`Patterns noted: ${lastSnapshot.avoiding.join('; ')}`);
+        if (lastSnapshot.notes) parts.push(`Session notes: ${lastSnapshot.notes}`);
+        if (lastSnapshot.nextSteps) parts.push(`Next steps: ${lastSnapshot.nextSteps}`);
+        if (parts.length) lastSessionContext = parts.join('\n');
+      }
+
       const result = await Parse.Cloud.run("analyzeJournal", {
         entries: entriesToAnalyze.map(e =>
           e.prompt ? `Prompt: ${e.prompt}\n\nEntry: ${e.text}` : e.text
         ),
         discussedTopics: discussedTopics.length > 0 ? discussedTopics : undefined,
+        lastSessionContext,
       });
 
       console.log('[analyzeJournal] result:', JSON.stringify(result, null, 2));
