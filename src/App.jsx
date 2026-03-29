@@ -755,6 +755,11 @@ Everything you write is end-to-end encrypted and private.`,
     const realHistory = history.filter(h => !h.isExampleSnapshot);
 
     if (sessionView === 'prep') {
+      // Auto-run journal analysis if not yet loaded
+      if (!analysis && !loading && entries.filter(e => !e.isWelcomeEntry).length >= 3) {
+        genAnalysis();
+      }
+
       const snap = realHistory[0] ?? history[0] ?? null;
       if (!snap?.notes || !snap?.parseId) return;
       if (sessionNotesSummary[snap.parseId] !== undefined) return;
