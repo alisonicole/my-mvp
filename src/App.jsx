@@ -119,7 +119,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [analysisTimestamp, setAnalysisTimestamp] = useState(null);
-  const [lastAnalyzedEntries, setLastAnalyzedEntries] = useState([]);
   const [history, setHistory] = useState([]);
   const [sessionDate, setSessionDate] = useState(getDate());
   const [notes, setNotes] = useState("");
@@ -488,7 +487,6 @@ const [flaggedForSession, setFlaggedForSession] = useState(() => {
     setHistory([]);
     setAnalysis(null);
     setAnalysisTimestamp(null);
-    setLastAnalyzedEntries([]);
     setActivePrompt("");
     setGeneratedPrompt("");
     setEntry({ text: "", prompt: "" });
@@ -731,7 +729,6 @@ Everything you write is end-to-end encrypted and private.`,
         const spn = currentUser.get("sessionPrepNote");
         if (spn) setSessionPrepNote(spn);
 
-        setLastAnalyzedEntries([]);
       } catch (err) {
         console.error(err);
       }
@@ -842,10 +839,6 @@ Everything you write is end-to-end encrypted and private.`,
     }
     
     const entriesHash = JSON.stringify(entriesToAnalyze.map(e => e.parseId));
-    if (analysis && lastAnalyzedEntries === entriesHash && !analysis.showNewEntryWarning) {
-      console.log("Using cached analysis");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -858,6 +851,8 @@ Everything you write is end-to-end encrypted and private.`,
         isIncremental: !!previousPatterns,
         discussedTopics: discussedTopics.length > 0 ? discussedTopics : undefined,
       });
+
+      console.log('[analyzeJournal] result:', JSON.stringify(result, null, 2));
 
       const newAnalysis = {
         themes: result.themes || [],
@@ -873,7 +868,6 @@ Everything you write is end-to-end encrypted and private.`,
         nextSteps: prev?.nextSteps ?? "",
       }));
       setAnalysisTimestamp(new Date().toISOString());
-      setLastAnalyzedEntries(entriesHash);
       setCheckedTopics(new Set());
       
       await saveAnalysisToUser(newAnalysis);
